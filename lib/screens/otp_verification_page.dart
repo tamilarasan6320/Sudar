@@ -229,56 +229,62 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
 
   Widget _buildOTPFields() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(6, (index) {
-        return Container(
-          width: 48,
-          height: 56,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _otpControllers[index].text.isNotEmpty 
-                  ? AppColors.primary 
-                  : AppColors.border,
-              width: 1,
+        return Flexible(
+          child: Container(
+            constraints: const BoxConstraints(
+              maxWidth: 50,
+              minWidth: 40,
             ),
-          ),
-          child: TextFormField(
-            controller: _otpControllers[index],
-            focusNode: _focusNodes[index],
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            maxLength: 1,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+            height: 56,
+            margin: EdgeInsets.symmetric(horizontal: index == 0 || index == 5 ? 0 : 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _otpControllers[index].text.isNotEmpty 
+                    ? AppColors.primary 
+                    : AppColors.border,
+                width: 1,
+              ),
             ),
-            decoration: const InputDecoration(
-              counterText: '',
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-            ],
-            onChanged: (value) {
-              setState(() {});
-              if (value.isNotEmpty && index < 5) {
-                _focusNodes[index + 1].requestFocus();
-              } else if (value.isEmpty && index > 0) {
-                _focusNodes[index - 1].requestFocus();
-              }
-              
-              // Auto-verify when all fields are filled
-              if (index == 5 && value.isNotEmpty) {
-                bool allFilled = _otpControllers.every((c) => c.text.isNotEmpty);
-                if (allFilled) {
-                  FocusScope.of(context).unfocus();
+            child: TextFormField(
+              controller: _otpControllers[index],
+              focusNode: _focusNodes[index],
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              maxLength: 1,
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              decoration: const InputDecoration(
+                counterText: '',
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              onChanged: (value) {
+                setState(() {});
+                if (value.isNotEmpty && index < 5) {
+                  _focusNodes[index + 1].requestFocus();
+                } else if (value.isEmpty && index > 0) {
+                  _focusNodes[index - 1].requestFocus();
                 }
-              }
-            },
+                
+                // Auto-verify when all fields are filled
+                if (index == 5 && value.isNotEmpty) {
+                  bool allFilled = _otpControllers.every((c) => c.text.isNotEmpty);
+                  if (allFilled) {
+                    FocusScope.of(context).unfocus();
+                  }
+                }
+              },
+            ),
           ),
         );
       }),

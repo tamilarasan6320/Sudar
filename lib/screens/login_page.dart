@@ -250,6 +250,9 @@ class _LoginPageState extends State<LoginPage> {
               ),
               counterText: '',
             ),
+            onChanged: (value) {
+              setState(() {}); // Rebuild to update button color
+            },
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your mobile number';
@@ -269,10 +272,12 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildLoginButton() {
+    bool isValid = _phoneController.text.length == 10;
+    
     return ElevatedButton(
       onPressed: _isLoading ? null : _handleLogin,
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFBDBDBD),
+        backgroundColor: isValid ? AppColors.primary : const Color(0xFFBDBDBD),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 18),
         shape: RoundedRectangleBorder(

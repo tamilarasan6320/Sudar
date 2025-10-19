@@ -104,17 +104,6 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       elevation: 1,
       shadowColor: Colors.black.withOpacity(0.1),
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: IconButton(
-          icon: const Icon(
-            Icons.menu,
-            color: AppColors.textPrimary,
-            size: 28,
-          ),
-          onPressed: () {},
-        ),
-      ),
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

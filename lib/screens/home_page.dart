@@ -5,6 +5,7 @@ import 'test_page.dart';
 import 'tests_page.dart';
 import 'progress_page.dart';
 import 'profile_page.dart';
+import 'performance_page.dart';
 
 class HomePage extends StatefulWidget {
   final String? selectedExam;
@@ -380,10 +381,10 @@ class _HomePageState extends State<HomePage> {
                 label: 'Performance',
                 color: AppColors.secondary,
                 onTap: () {
-                  // TODO: Navigate to Performance page
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Performance page coming soon!', style: GoogleFonts.poppins()),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PerformancePage(),
                     ),
                   );
                 },

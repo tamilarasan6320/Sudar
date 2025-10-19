@@ -131,19 +131,6 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          TextButton(
-            onPressed: () {},
-            child: Text(
-              'Help',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
         elevation: 0,
         backgroundColor: Colors.white,
       ),
@@ -229,26 +216,35 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
 
   Widget _buildOTPFields() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(6, (index) {
-        return Flexible(
-          child: Container(
-            constraints: const BoxConstraints(
-              maxWidth: 50,
-              minWidth: 40,
+        final bool hasValue = _otpControllers[index].text.isNotEmpty;
+        
+        return Container(
+          width: 50,
+          height: 60,
+          margin: EdgeInsets.only(
+            left: index == 0 ? 0 : 6,
+            right: index == 5 ? 0 : 6,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasValue ? AppColors.primary : const Color(0xFFE0E0E0),
+              width: 2,
             ),
-            height: 56,
-            margin: EdgeInsets.symmetric(horizontal: index == 0 || index == 5 ? 0 : 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _otpControllers[index].text.isNotEmpty 
-                    ? AppColors.primary 
-                    : AppColors.border,
-                width: 1,
+            boxShadow: [
+              BoxShadow(
+                color: hasValue 
+                    ? AppColors.primary.withOpacity(0.2)
+                    : Colors.black.withOpacity(0.05),
+                blurRadius: hasValue ? 8 : 4,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
+          ),
+          child: Center(
             child: TextFormField(
               controller: _otpControllers[index],
               focusNode: _focusNodes[index],
@@ -256,8 +252,8 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
               keyboardType: TextInputType.number,
               maxLength: 1,
               style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
               decoration: const InputDecoration(

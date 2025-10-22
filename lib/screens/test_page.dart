@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'test_results_page.dart';
 
 class TestPage extends StatefulWidget {
@@ -192,12 +193,12 @@ class _TestPageState extends State<TestPage> {
     final currentQuestion = _questions[_currentQuestionIndex];
     
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ThemeHelper.cardColor(context),
         elevation: 1,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: ThemeHelper.textPrimary(context)),
           onPressed: () {
             showDialog(
               context: context,
@@ -229,7 +230,7 @@ class _TestPageState extends State<TestPage> {
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             Text(
@@ -309,23 +310,17 @@ class _TestPageState extends State<TestPage> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+      decoration: BoxDecoration(
+        color: ThemeHelper.cardColor(context),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: ThemeHelper.cardShadow(context),
+      ),
                     child: Text(
                       currentQuestion.text,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
+                        color: ThemeHelper.textPrimary(context),
                         height: 1.5,
                       ),
                     ),

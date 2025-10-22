@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'profile_setup_page.dart';
 
 class OTPVerificationPage extends StatefulWidget {
@@ -116,7 +117,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     final isMobile = size.width < 600;
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 24),
@@ -132,7 +133,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         ),
         centerTitle: false,
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: ThemeHelper.cardColor(context),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -204,7 +205,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                 text: '+91 ${widget.phoneNumber}',
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: ThemeHelper.textPrimary(context),
                 ),
               ),
             ],
@@ -228,7 +229,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
             right: index == 5 ? 0 : 6,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: ThemeHelper.cardColor(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: hasValue ? AppColors.primary : const Color(0xFFE0E0E0),
@@ -254,7 +255,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
               style: GoogleFonts.poppins(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
               decoration: const InputDecoration(
                 counterText: '',

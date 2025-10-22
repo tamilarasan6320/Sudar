@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 
 class PerformancePage extends StatelessWidget {
   const PerformancePage({Key? key}) : super(key: key);
@@ -8,12 +9,12 @@ class PerformancePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ThemeHelper.cardColor(context),
         elevation: 1,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: ThemeHelper.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -21,7 +22,7 @@ class PerformancePage extends StatelessWidget {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: ThemeHelper.textPrimary(context),
           ),
         ),
       ),
@@ -36,12 +37,12 @@ class PerformancePage extends StatelessWidget {
             const SizedBox(height: 20),
             
             // Time Period Selector
-            _buildTimePeriodSelector(),
+            _buildTimePeriodSelector(context),
             
             const SizedBox(height: 20),
             
             // Performance Chart
-            _buildPerformanceChart(),
+            _buildPerformanceChart(context),
             
             const SizedBox(height: 24),
             
@@ -51,21 +52,21 @@ class PerformancePage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             
             const SizedBox(height: 12),
             
-            _buildSubjectPerformance('Tamil Language', 0.85, 42, 50, AppColors.primary),
+            _buildSubjectPerformance(context, 'Tamil Language', 0.85, 42, 50, AppColors.primary),
             const SizedBox(height: 12),
-            _buildSubjectPerformance('General Science', 0.72, 36, 50, const Color(0xFF00BCD4)),
+            _buildSubjectPerformance(context, 'General Science', 0.72, 36, 50, const Color(0xFF00BCD4)),
             const SizedBox(height: 12),
-            _buildSubjectPerformance('Social Science', 0.68, 34, 50, const Color(0xFF4CAF50)),
+            _buildSubjectPerformance(context, 'Social Science', 0.68, 34, 50, const Color(0xFF4CAF50)),
             const SizedBox(height: 12),
-            _buildSubjectPerformance('Aptitude', 0.78, 39, 50, AppColors.secondary),
+            _buildSubjectPerformance(context, 'Aptitude', 0.78, 39, 50, AppColors.secondary),
             const SizedBox(height: 12),
-            _buildSubjectPerformance('Current Affairs', 0.60, 30, 50, const Color(0xFFFF5722)),
+            _buildSubjectPerformance(context, 'Current Affairs', 0.60, 30, 50, const Color(0xFFFF5722)),
             
             const SizedBox(height: 24),
             
@@ -75,7 +76,7 @@ class PerformancePage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             
@@ -83,9 +84,9 @@ class PerformancePage extends StatelessWidget {
             
             Row(
               children: [
-                Expanded(child: _buildStrengthsCard()),
+                Expanded(child: _buildStrengthsCard(context)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildWeaknessesCard()),
+                Expanded(child: _buildWeaknessesCard(context)),
               ],
             ),
             
@@ -97,13 +98,13 @@ class PerformancePage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             
             const SizedBox(height: 12),
             
-            _buildActivityTimeline(),
+            _buildActivityTimeline(context),
           ],
         ),
       ),
@@ -194,31 +195,25 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildTimePeriodSelector() {
+  Widget _buildTimePeriodSelector(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Row(
         children: [
-          _buildPeriodButton('7D', true),
-          _buildPeriodButton('1M', false),
-          _buildPeriodButton('3M', false),
-          _buildPeriodButton('1Y', false),
+          _buildPeriodButton(context, '7D', true),
+          _buildPeriodButton(context, '1M', false),
+          _buildPeriodButton(context, '3M', false),
+          _buildPeriodButton(context, '1Y', false),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodButton(String label, bool isSelected) {
+  Widget _buildPeriodButton(BuildContext context, String label, bool isSelected) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -232,7 +227,7 @@ class PerformancePage extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+              color: isSelected ? Colors.white : ThemeHelper.textSecondary(context),
             ),
           ),
         ),
@@ -240,20 +235,14 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildPerformanceChart() {
+  Widget _buildPerformanceChart(BuildContext context) {
     return Container(
       height: 200,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,7 +252,7 @@ class PerformancePage extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: ThemeHelper.textPrimary(context),
             ),
           ),
           const SizedBox(height: 20),
@@ -272,13 +261,13 @@ class PerformancePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _buildChartBar('Mon', 0.65),
-                _buildChartBar('Tue', 0.72),
-                _buildChartBar('Wed', 0.68),
-                _buildChartBar('Thu', 0.80),
-                _buildChartBar('Fri', 0.75),
-                _buildChartBar('Sat', 0.85),
-                _buildChartBar('Sun', 0.78),
+                _buildChartBar(context, 'Mon', 0.65),
+                _buildChartBar(context, 'Tue', 0.72),
+                _buildChartBar(context, 'Wed', 0.68),
+                _buildChartBar(context, 'Thu', 0.80),
+                _buildChartBar(context, 'Fri', 0.75),
+                _buildChartBar(context, 'Sat', 0.85),
+                _buildChartBar(context, 'Sun', 0.78),
               ],
             ),
           ),
@@ -287,7 +276,7 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildChartBar(String day, double value) {
+  Widget _buildChartBar(BuildContext context, String day, double value) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -324,19 +313,13 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSubjectPerformance(String subject, double progress, int correct, int total, Color color) {
+  Widget _buildSubjectPerformance(BuildContext context, String subject, double progress, int correct, int total, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,7 +332,7 @@ class PerformancePage extends StatelessWidget {
                 style: GoogleFonts.poppins(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: ThemeHelper.textPrimary(context),
                 ),
               ),
               Text(
@@ -392,7 +375,7 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStrengthsCard() {
+  Widget _buildStrengthsCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -416,7 +399,7 @@ class PerformancePage extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: ThemeHelper.textPrimary(context),
             ),
           ),
           const SizedBox(height: 12),
@@ -430,7 +413,7 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildWeaknessesCard() {
+  Widget _buildWeaknessesCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -454,7 +437,7 @@ class PerformancePage extends StatelessWidget {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: ThemeHelper.textPrimary(context),
             ),
           ),
           const SizedBox(height: 12),
@@ -486,35 +469,29 @@ class PerformancePage extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityTimeline() {
+  Widget _buildActivityTimeline(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Column(
         children: [
-          _buildTimelineItem('Completed Tamil Test 12', '85% Score', '2 hours ago', AppColors.success),
+          _buildTimelineItem(context, 'Completed Tamil Test 12', '85% Score', '2 hours ago', AppColors.success),
           const SizedBox(height: 16),
-          _buildTimelineItem('Completed Science Test 8', '72% Score', '5 hours ago', AppColors.success),
+          _buildTimelineItem(context, 'Completed Science Test 8', '72% Score', '5 hours ago', AppColors.success),
           const SizedBox(height: 16),
-          _buildTimelineItem('Completed Aptitude Test 5', '68% Score', 'Yesterday', AppColors.warning),
+          _buildTimelineItem(context, 'Completed Aptitude Test 5', '68% Score', 'Yesterday', AppColors.warning),
           const SizedBox(height: 16),
-          _buildTimelineItem('Started Current Affairs', 'In Progress', '2 days ago', AppColors.primary),
+          _buildTimelineItem(context, 'Started Current Affairs', 'In Progress', '2 days ago', AppColors.primary),
         ],
       ),
     );
   }
 
-  Widget _buildTimelineItem(String title, String subtitle, String time, Color color) {
+  Widget _buildTimelineItem(BuildContext context, String title, String subtitle, String time, Color color) {
     return Row(
       children: [
         Container(
@@ -535,7 +512,7 @@ class PerformancePage extends StatelessWidget {
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: ThemeHelper.textPrimary(context),
                 ),
               ),
               const SizedBox(height: 2),

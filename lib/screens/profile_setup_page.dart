@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'exam_selection_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
@@ -33,6 +34,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       await prefs.setString('userName', _nameController.text.trim());
       await prefs.setString('userMobile', widget.mobileNumber);
       await prefs.setBool('isProfileComplete', true);
+      await prefs.setBool('isLoggedIn', true);
       
       setState(() => _isLoading = false);
       
@@ -50,9 +52,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ThemeHelper.cardColor(context),
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
@@ -94,7 +96,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: ThemeHelper.textPrimary(context),
                     ),
                   ),
                 ),
@@ -120,7 +122,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: ThemeHelper.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -157,7 +159,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: ThemeHelper.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 8),

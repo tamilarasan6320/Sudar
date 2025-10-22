@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'otp_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -46,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
     final isMobile = size.width < 600;
     
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       body: Center(
         child: SingleChildScrollView(
           child: Container(
@@ -153,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
           'Destination',
           style: GoogleFonts.poppins(
             fontSize: 18,
-            color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
             fontWeight: FontWeight.w500,
           ),
         ),

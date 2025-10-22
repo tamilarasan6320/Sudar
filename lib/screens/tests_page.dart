@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'test_page.dart';
 
 class TestsPage extends StatefulWidget {
@@ -170,15 +171,9 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Material(
         color: Colors.transparent,
@@ -212,7 +207,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                              color: ThemeHelper.textPrimary(context),
                             ),
                           ),
                           const SizedBox(height: 8),

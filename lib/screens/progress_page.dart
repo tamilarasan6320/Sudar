@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 
 class ProgressPage extends StatelessWidget {
   const ProgressPage({Key? key}) : super(key: key);
@@ -8,16 +9,16 @@ class ProgressPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ThemeHelper.cardColor(context),
         elevation: 1,
         title: Text(
           'Your Progress',
           style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: ThemeHelper.textPrimary(context),
           ),
         ),
       ),
@@ -49,7 +50,7 @@ class ProgressPage extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildStatItem(
+                        child: _buildStatItem(context,
                           icon: Icons.assignment_turned_in_rounded,
                           label: 'Tests Taken',
                           value: '24',
@@ -58,7 +59,7 @@ class ProgressPage extends StatelessWidget {
                       ),
                       Container(width: 1, height: 40, color: Colors.white.withOpacity(0.3)),
                       Expanded(
-                        child: _buildStatItem(
+                        child: _buildStatItem(context,
                           icon: Icons.trending_up_rounded,
                           label: 'Avg Score',
                           value: '78%',
@@ -73,7 +74,7 @@ class ProgressPage extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildStatItem(
+                        child: _buildStatItem(context,
                           icon: Icons.emoji_events_rounded,
                           label: 'Rank',
                           value: '#142',
@@ -82,7 +83,7 @@ class ProgressPage extends StatelessWidget {
                       ),
                       Container(width: 1, height: 40, color: Colors.white.withOpacity(0.3)),
                       Expanded(
-                        child: _buildStatItem(
+                        child: _buildStatItem(context,
                           icon: Icons.local_fire_department_rounded,
                           label: 'Streak',
                           value: '7 days',
@@ -103,7 +104,7 @@ class ProgressPage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             
@@ -124,17 +125,17 @@ class ProgressPage extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildPerformanceBar('Previous Year Papers', 0.85, AppColors.primary),
+                  _buildPerformanceBar(context, 'Previous Year Papers', 0.85, AppColors.primary),
                   const SizedBox(height: 16),
-                  _buildPerformanceBar('Tamil Language', 0.72, const Color(0xFF9C27B0)),
+                  _buildPerformanceBar(context, 'Tamil Language', 0.72, const Color(0xFF9C27B0)),
                   const SizedBox(height: 16),
-                  _buildPerformanceBar('General Science', 0.68, const Color(0xFF00BCD4)),
+                  _buildPerformanceBar(context, 'General Science', 0.68, const Color(0xFF00BCD4)),
                   const SizedBox(height: 16),
-                  _buildPerformanceBar('Social Science', 0.75, const Color(0xFF4CAF50)),
+                  _buildPerformanceBar(context, 'Social Science', 0.75, const Color(0xFF4CAF50)),
                   const SizedBox(height: 16),
-                  _buildPerformanceBar('Aptitude', 0.80, AppColors.secondary),
+                  _buildPerformanceBar(context, 'Aptitude', 0.80, AppColors.secondary),
                   const SizedBox(height: 16),
-                  _buildPerformanceBar('Current Affairs', 0.65, const Color(0xFFFF5722)),
+                  _buildPerformanceBar(context, 'Current Affairs', 0.65, const Color(0xFFFF5722)),
                 ],
               ),
             ),
@@ -147,13 +148,13 @@ class ProgressPage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             
             const SizedBox(height: 12),
             
-            _buildActivityCard(
+            _buildActivityCard(context,
               title: 'TNPSC Group 1 - Mock Test',
               date: 'Today, 10:30 AM',
               score: 85,
@@ -164,7 +165,7 @@ class ProgressPage extends StatelessWidget {
             
             const SizedBox(height: 12),
             
-            _buildActivityCard(
+            _buildActivityCard(context,
               title: 'Tamil Grammar Practice',
               date: 'Yesterday, 3:45 PM',
               score: 72,
@@ -175,7 +176,7 @@ class ProgressPage extends StatelessWidget {
             
             const SizedBox(height: 12),
             
-            _buildActivityCard(
+            _buildActivityCard(context,
               title: 'General Science Quiz',
               date: '2 days ago',
               score: 68,
@@ -186,7 +187,7 @@ class ProgressPage extends StatelessWidget {
             
             const SizedBox(height: 12),
             
-            _buildActivityCard(
+            _buildActivityCard(context,
               title: 'Current Affairs - 2024',
               date: '3 days ago',
               score: 78,
@@ -203,7 +204,7 @@ class ProgressPage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             
@@ -228,7 +229,7 @@ class ProgressPage extends StatelessWidget {
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: ThemeHelper.textPrimary(context),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -257,7 +258,7 @@ class ProgressPage extends StatelessWidget {
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: ThemeHelper.textPrimary(context),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -276,7 +277,7 @@ class ProgressPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem({
+  Widget _buildStatItem(BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
@@ -309,7 +310,7 @@ class ProgressPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPerformanceBar(String subject, double progress, Color color) {
+  Widget _buildPerformanceBar(BuildContext context, String subject, double progress, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,7 +322,7 @@ class ProgressPage extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             Text(
@@ -348,7 +349,7 @@ class ProgressPage extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityCard({
+  Widget _buildActivityCard(BuildContext context, {
     required String title,
     required String date,
     required int score,
@@ -359,15 +360,9 @@ class ProgressPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Row(
         children: [
@@ -389,7 +384,7 @@ class ProgressPage extends StatelessWidget {
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: ThemeHelper.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),

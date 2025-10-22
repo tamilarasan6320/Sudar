@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'home_page.dart';
 
 class ExamSelectionPage extends StatefulWidget {
@@ -69,7 +70,7 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
     final isMobile = size.width < 600;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
         title: Text(
           'Select Exam',
@@ -234,7 +235,7 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: ThemeHelper.textPrimary(context),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -284,14 +285,8 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: ThemeHelper.cardColor(context),
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: SafeArea(
         child: SizedBox(

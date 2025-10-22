@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
+import '../utils/theme_helper.dart';
 import 'test_page.dart';
 import 'tests_page.dart';
 import 'progress_page.dart';
@@ -49,7 +50,7 @@ class _HomePageState extends State<HomePage> {
     ];
     
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: ThemeHelper.backgroundColor(context),
       body: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 450),
@@ -102,7 +103,7 @@ class _HomePageState extends State<HomePage> {
       expandedHeight: 60,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: ThemeHelper.cardColor(context),
       elevation: 1,
       shadowColor: Colors.black.withOpacity(0.1),
       title: Row(
@@ -130,13 +131,13 @@ class _HomePageState extends State<HomePage> {
                     style: GoogleFonts.poppins(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: ThemeHelper.textPrimary(context),
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.keyboard_arrow_down,
-                    color: AppColors.textPrimary,
+                    color: ThemeHelper.textPrimary(context),
                     size: 20,
                   ),
                 ],
@@ -148,9 +149,9 @@ class _HomePageState extends State<HomePage> {
       centerTitle: false,
       actions: [
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.notifications_outlined,
-            color: AppColors.textPrimary,
+            color: ThemeHelper.textPrimary(context),
             size: 26,
           ),
           onPressed: () {},
@@ -188,7 +189,7 @@ class _HomePageState extends State<HomePage> {
                         style: GoogleFonts.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: ThemeHelper.textPrimary(context),
                         ),
                       ),
                       IconButton(
@@ -298,15 +299,9 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Column(
         children: [
@@ -324,7 +319,7 @@ class _HomePageState extends State<HomePage> {
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: ThemeHelper.textPrimary(context),
             ),
           ),
           const SizedBox(height: 2),
@@ -350,7 +345,7 @@ class _HomePageState extends State<HomePage> {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: ThemeHelper.textPrimary(context),
           ),
         ),
         const SizedBox(height: 12),
@@ -457,7 +452,7 @@ class _HomePageState extends State<HomePage> {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: ThemeHelper.textPrimary(context),
               ),
             ),
             TextButton(
@@ -568,15 +563,9 @@ class _HomePageState extends State<HomePage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Material(
         color: Colors.transparent,
@@ -616,7 +605,7 @@ class _HomePageState extends State<HomePage> {
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: ThemeHelper.textPrimary(context),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -678,7 +667,7 @@ class _HomePageState extends State<HomePage> {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: ThemeHelper.textPrimary(context),
           ),
         ),
         const SizedBox(height: 12),
@@ -723,15 +712,9 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ThemeHelper.cardShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -745,7 +728,7 @@ class _HomePageState extends State<HomePage> {
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: ThemeHelper.textPrimary(context),
                   ),
                 ),
               ),

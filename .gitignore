@@ -79,8 +79,7 @@ migrate_working_dir/
 *.aab
 *.ipa
 
-# Admin panel (separate repo)
-admin/
+# Admin panel (now included in main repo)
 
 # Node modules
 node_modules/

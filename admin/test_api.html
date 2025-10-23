@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin API Test Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 32px; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 16px; }
+        .content { padding: 30px; }
+        .test-section {
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .test-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-header h2 {
+            font-size: 18px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-body { padding: 20px; }
+        .test-item {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .test-name { font-weight: 500; color: #333; }
+        .test-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-loading { background: #ffc107; color: #856404; }
+        .status-pass { background: #d4edda; color: #155724; }
+        .status-fail { background: #f8d7da; color: #721c24; }
+        .status-pending { background: #d1ecf1; color: #0c5460; }
+        .test-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #666;
+            display: none;
+        }
+        .test-details.show { display: block; }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover { background: #5568d3; transform: translateY(-2px); }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+        }
+        .summary-card h3 { font-size: 36px; margin-bottom: 5px; }
+        .summary-card p { font-size: 14px; opacity: 0.9; }
+        .card-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-pass { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
+        .card-fail { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+        .card-pending { background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%); }
+        .icon { font-size: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Admin API Test Suite</h1>
+            <p>Comprehensive Database Connection & API Endpoint Testing</p>
+        </div>
+        
+        <div class="content">
+            <!-- Summary Cards -->
+            <div class="summary">
+                <div class="summary-card card-total">
+                    <h3 id="totalTests">0</h3>
+                    <p>Total Tests</p>
+                </div>
+                <div class="summary-card card-pass">
+                    <h3 id="passedTests">0</h3>
+                    <p>Passed</p>
+                </div>
+                <div class="summary-card card-fail">
+                    <h3 id="failedTests">0</h3>
+                    <p>Failed</p>
+                </div>
+                <div class="summary-card card-pending">
+                    <h3 id="pendingTests">0</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+
+            <!-- Test Sections -->
+            <div class="test-section">
+                <div class="test-header">
+                    <h2><span class="icon">🔐</span> Authentication Tests</h2>
+                    <button class="btn btn-primary" onclick="runTests('auth')">Run Tests</button>
+                </div>
+                <div class="test-body" id="authTests"></div>
+            </div>
+
+            <div class="test-section">
+                <div class="test-header">
+                    <h2><span class="icon">📚</span> Exam Categories API</h2>
+                    <button class="btn btn-primary" onclick="runTests('exam')">Run Tests</button>
+                </div>
+                <div class="test-body" id="examTests"></div>
+            </div>
+
+            <div class="test-section">
+                <div class="test-header">
+                    <h2><span class="icon">📝</span> Test Categories API</h2>
+                    <button class="btn btn-primary" onclick="runTests('test')">Run Tests</button>
+                </div>
+                <div class="test-body" id="testTests"></div>
+            </div>
+
+            <div class="test-section">
+                <div class="test-header">
+                    <h2><span class="icon">📋</span> Question Sessions API</h2>
+                    <button class="btn btn-primary" onclick="runTests('session')">Run Tests</button>
+                </div>
+                <div class="test-body" id="sessionTests"></div>
+            </div>
+
+            <div class="test-section">
+                <div class="test-header">
+                    <h2><span class="icon">❓</span> Questions API</h2>
+                    <button class="btn btn-primary" onclick="runTests('question')">Run Tests</button>
+                </div>
+                <div class="test-body" id="questionTests"></div>
+            </div>
+
+            <div class="test-section">
+                <div class="test-header">
+                    <h2><span class="icon">👥</span> Users API</h2>
+                    <button class="btn btn-primary" onclick="runTests('user')">Run Tests</button>
+                </div>
+                <div class="test-body" id="userTests"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-primary" onclick="runAllTests()" style="padding: 15px 40px; font-size: 16px;">
+                    🚀 Run All Tests
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '../api';
+        let testResults = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            pending: 0
+        };
+
+        const tests = {
+            auth: [
+                { name: 'Admin Login - Valid Credentials', endpoint: 'admin/login.php', method: 'POST', data: {username: 'admin', password: 'admin123'} },
+                { name: 'Admin Login - Invalid Credentials', endpoint: 'admin/login.php', method: 'POST', data: {username: 'wrong', password: 'wrong'}, expectFail: true }
+            ],
+            exam: [
+                { name: 'Get All Exam Categories', endpoint: 'admin/exam_categories/crud.php', method: 'GET' },
+                { name: 'Create Exam Category', endpoint: 'admin/exam_categories/crud.php', method: 'POST', data: {name: 'Test Category', description: 'Test', icon: 'T'} }
+            ],
+            test: [
+                { name: 'Get All Test Categories', endpoint: 'admin/test_categories/crud.php', method: 'GET' }
+            ],
+            session: [
+                { name: 'Get All Question Sessions', endpoint: 'admin/sessions/crud.php', method: 'GET' }
+            ],
+            question: [
+                { name: 'Get Questions (Empty Session)', endpoint: 'admin/questions/crud.php?session_id=999', method: 'GET' }
+            ],
+            user: [
+                { name: 'Get All Users', endpoint: 'admin/users/list.php', method: 'GET' },
+                { name: 'Get Dashboard Stats', endpoint: 'admin/get_dashboard_stats.php', method: 'GET' }
+            ]
+        };
+
+        function updateSummary() {
+            document.getElementById('totalTests').textContent = testResults.total;
+            document.getElementById('passedTests').textContent = testResults.passed;
+            document.getElementById('failedTests').textContent = testResults.failed;
+            document.getElementById('pendingTests').textContent = testResults.pending;
+        }
+
+        async function runTest(test, container) {
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-item';
+            testDiv.innerHTML = `
+                <span class="test-name">${test.name}</span>
+                <span class="test-status status-loading">Testing...</span>
+            `;
+            container.appendChild(testDiv);
+
+            try {
+                const options = {
+                    method: test.method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                
+                if (test.data) {
+                    options.body = JSON.stringify(test.data);
+                }
+
+                const response = await fetch(`${API_BASE}/${test.endpoint}`, options);
+                const data = await response.json();
+
+                const expectFail = test.expectFail || false;
+                const success = expectFail ? !data.success : data.success;
+
+                if (success) {
+                    testDiv.querySelector('.test-status').className = 'test-status status-pass';
+                    testDiv.querySelector('.test-status').textContent = '✓ PASS';
+                    testResults.passed++;
+                } else {
+                    testDiv.querySelector('.test-status').className = 'test-status status-fail';
+                    testDiv.querySelector('.test-status').textContent = '✗ FAIL';
+                    testResults.failed++;
+                }
+
+                testDiv.innerHTML += `<div class="test-details">${JSON.stringify(data, null, 2)}</div>`;
+                testDiv.onclick = () => testDiv.querySelector('.test-details').classList.toggle('show');
+
+            } catch (error) {
+                testDiv.querySelector('.test-status').className = 'test-status status-fail';
+                testDiv.querySelector('.test-status').textContent = '✗ ERROR';
+                testDiv.innerHTML += `<div class="test-details">${error.message}</div>`;
+                testResults.failed++;
+            }
+
+            updateSummary();
+        }
+
+        async function runTests(category) {
+            const container = document.getElementById(`${category}Tests`);
+            container.innerHTML = '';
+            
+            for (const test of tests[category]) {
+                testResults.total++;
+                updateSummary();
+                await runTest(test, container);
+            }
+        }
+
+        async function runAllTests() {
+            testResults = { total: 0, passed: 0, failed: 0, pending: 0 };
+            updateSummary();
+
+            for (const category in tests) {
+                await runTests(category);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        // Initialize
+        updateSummary();
+    </script>
+</body>
+</html>
+

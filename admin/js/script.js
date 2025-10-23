@@ -1,73 +1,15 @@
-// Mock Data Storage
-let users = [
-    { id: 1, name: 'Rajesh Kumar', email: 'rajesh@example.com', mobile: '+91 98765 43210', exam: 'TNPSC Group 4', language: 'en', status: 'active' },
-    { id: 2, name: 'Priya Sharma', email: 'priya@example.com', mobile: '+91 87654 32109', exam: 'TNPSC Group 4', language: 'en', status: 'active' },
-    { id: 3, name: 'Tamil Selvan', email: 'tamil@example.com', mobile: '+91 76543 21098', exam: 'TNPSC Group 4', language: 'ta', status: 'active' },
-    { id: 4, name: 'Kumar Raja', email: 'kumar@example.com', mobile: '+91 99887 76655', exam: 'TNPSC Group 1', language: 'en', status: 'active' },
-    { id: 5, name: 'Anitha Devi', email: 'anitha@example.com', mobile: '+91 88776 65544', exam: 'TNPSC VAO', language: 'ta', status: 'active' }
-];
+// API Configuration
+const API_BASE_URL = '../api';
 
-let exams = [
-    { id: 1, name: 'TNPSC Group 4 - VAO Exam', category: 'TNPSC Group 4', questions: 100, duration: 120, status: 'active' },
-    { id: 2, name: 'TNPSC Group 4 - General Studies', category: 'TNPSC Group 4', questions: 150, duration: 180, status: 'active' },
-    { id: 3, name: 'TNPSC Group 4 - Mock Test', category: 'TNPSC Group 4', questions: 80, duration: 90, status: 'active' },
-    { id: 4, name: 'TNPSC Group 1 - Prelims', category: 'TNPSC Group 1', questions: 100, duration: 120, status: 'active' },
-    { id: 5, name: 'TNPSC Group 2 - Main Exam', category: 'TNPSC Group 2', questions: 200, duration: 180, status: 'active' },
-    { id: 6, name: 'TNPSC VAO - Practice Test', category: 'TNPSC VAO', questions: 75, duration: 90, status: 'active' }
-];
+// Data Storage (loaded from API)
+let users = [];
 
-let questions = [
-    { 
-        id: 1, sessionId: 1, 
-        questionEn: 'What is the capital of Tamil Nadu?',
-        questionTa: 'தமிழகத்தின் தலைநகரம் எது?',
-        optionAEn: 'Chennai', optionATa: 'சென்னை',
-        optionBEn: 'Mumbai', optionBTa: 'மும்பை',
-        optionCEn: 'Delhi', optionCTa: 'டெல்லி',
-        optionDEn: 'Kolkata', optionDTa: 'கொல்கத்தா',
-        correctAnswer: 'A',
-        explanationEn: 'Chennai is the capital of Tamil Nadu',
-        explanationTa: 'சென்னை தமிழ்நாட்டின் தலைநகரம்'
-    },
-    { 
-        id: 2, sessionId: 2, 
-        questionEn: 'Who wrote Thirukkural?',
-        questionTa: 'திருக்குறள் எழுதியவர் யார்?',
-        optionAEn: 'Thiruvalluvar', optionATa: 'திருவள்ளுவர்',
-        optionBEn: 'Bharathi', optionBTa: 'பாரதி',
-        optionCEn: 'Kambar', optionCTa: 'கம்பர்',
-        optionDEn: 'Bharathidasan', optionDTa: 'பாரதிதாசன்',
-        correctAnswer: 'A',
-        explanationEn: 'Thiruvalluvar is the author of Thirukkural',
-        explanationTa: 'திருவள்ளுவர் திருக்குறளின் ஆசிரியர்'
-    }
-];
-
-let testCategories = [
-    { id: 1, name: 'Tamil Language', examCategory: 'TNPSC Group 4', description: 'Tamil language and literature', icon: 'fas fa-language', color: '#9C27B0' },
-    { id: 2, name: 'General Knowledge', examCategory: 'TNPSC Group 4', description: 'Current affairs and general knowledge', icon: 'fas fa-brain', color: '#FF6B6B' },
-    { id: 3, name: 'General Science', examCategory: 'TNPSC Group 4', description: 'Physics, Chemistry, Biology', icon: 'fas fa-flask', color: '#00BCD4' },
-    { id: 4, name: 'History', examCategory: 'TNPSC Group 1', description: 'Indian and Tamil Nadu history', icon: 'fas fa-landmark', color: '#FFD93D' }
-];
-
-let questionSessions = [
-    { id: 1, name: 'Tamil Language - Practice Test 1', examCategory: 'TNPSC Group 4', testCategory: 'Tamil Language', time: 60, totalQuestions: 100, status: 'active' },
-    { id: 2, name: 'General Knowledge - Mock Test', examCategory: 'TNPSC Group 4', testCategory: 'General Knowledge', time: 90, totalQuestions: 150, status: 'active' },
-    { id: 3, name: 'Science Basics - Test 1', examCategory: 'TNPSC Group 4', testCategory: 'General Science', time: 45, totalQuestions: 75, status: 'draft' }
-];
-
-let examCategories = [
-    { id: 1, title: 'TNPSC Group 4', name: 'Combined Civil Services Examination - IV', description: 'VAO and other Group IV services', icon: '4', color: '#6C63FF', tests: 150 },
-    { id: 2, title: 'TNPSC Group 1', name: 'Combined Civil Services Examination - I', description: 'Group I services - highest level', icon: '1', color: '#FF6B6B', tests: 85 },
-    { id: 3, title: 'TNPSC Group 2', name: 'Combined Civil Services Examination - II', description: 'Group II services', icon: '2', color: '#4ECDC4', tests: 120 },
-    { id: 4, title: 'TNPSC Group 2A', name: 'Combined Civil Services Examination - II A', description: 'Group IIA services', icon: '2A', color: '#FFD93D', tests: 95 }
-];
-
-let results = [
-    { id: 1, userName: 'Rajesh Kumar', testName: 'Tamil Language Test 1', score: 72, percentage: 72, status: 'passed' },
-    { id: 2, userName: 'Priya Sharma', testName: 'General Science Test 5', score: 85, percentage: 85, status: 'passed' },
-    { id: 3, userName: 'Tamil Selvan', testName: 'Aptitude Test 12', score: 45, percentage: 45, status: 'failed' }
-];
+let exams = [];
+let questions = [];
+let testCategories = [];
+let questionSessions = [];
+let examCategories = [];
+let results = [];
 
 // Settings Data
 let appSettings = {
@@ -222,17 +164,23 @@ function loadDashboard() {
 }
 
 // Users CRUD
-function loadUsers() {
+async function loadUsers() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/list.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            users = data.users;
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = users.map(user => `
         <tr>
             <td>#U${user.id.toString().padStart(3, '0')}</td>
             <td>${user.name}</td>
-            <td>${user.email}</td>
+                    <td>${user.email || 'N/A'}</td>
             <td>${user.mobile || 'N/A'}</td>
-            <td>${user.exam}</td>
+                    <td>-</td>
             <td>${user.language === 'en' ? 'English' : 'Tamil'}</td>
-            <td><span class="badge badge-${user.status === 'active' ? 'success' : 'danger'}">${user.status}</span></td>
+                    <td><span class="badge badge-${user.is_active ? 'success' : 'danger'}">${user.is_active ? 'active' : 'inactive'}</span></td>
             <td>
                 <button class="btn-icon btn-view" onclick="viewUser(${user.id})"><i class="fas fa-eye"></i></button>
                 <button class="btn-icon btn-edit" onclick="editUser(${user.id})"><i class="fas fa-edit"></i></button>
@@ -240,6 +188,16 @@ function loadUsers() {
             </td>
         </tr>
     `).join('');
+            
+            // Update dashboard stats
+            document.getElementById('totalUsers').textContent = data.total || users.length;
+        } else {
+            console.error('Failed to load users:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showNotification('Failed to load users', 'error');
+    }
 }
 
 function saveUser() {
@@ -859,24 +817,37 @@ function deleteCategory(id) {
 }
 
 // Exam Categories CRUD
-function loadExamCategories() {
+async function loadExamCategories() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            examCategories = data.categories;
     const grid = document.getElementById('examCategoriesGrid');
     grid.innerHTML = examCategories.map(cat => `
         <div class="category-card">
-            <div class="category-header" style="background: ${cat.color};">
-                <div style="font-size: 48px; font-weight: bold; color: white;">${cat.icon}</div>
+                    <div class="category-header" style="background: #6C63FF;">
+                        <div style="font-size: 48px; font-weight: bold; color: white;">${cat.icon || cat.name.charAt(0)}</div>
             </div>
             <div class="category-body">
-                <h3>${cat.title}</h3>
-                <p style="font-size: 14px; color: #666; margin: 8px 0;">${cat.name}</p>
-                <p style="font-size: 13px; color: #999;">${cat.description}</p>
+                        <h3>${cat.name}</h3>
+                        <p style="font-size: 13px; color: #999;">${cat.description || ''}</p>
             </div>
-            <div class="category-actions">
-                <button class="btn-icon btn-edit" onclick="editExamCategory(${cat.id})"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon btn-delete" onclick="deleteExamCategory(${cat.id})"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
+                    <div class="category-actions">
+                        <button class="btn-icon btn-edit" onclick="editExamCategory(${cat.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteExamCategory(${cat.id})"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            populateExamCategoryDropdown();
+        } else {
+            console.error('Failed to load exam categories:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading exam categories:', error);
+        showNotification('Failed to load exam categories', 'error');
+    }
 }
 
 function saveExamCategory() {
@@ -929,22 +900,36 @@ function populateExamCategoryDropdown() {
 }
 
 // Test Categories CRUD
-function loadTestCategories() {
-    const tbody = document.getElementById('testCategoriesTableBody');
-    tbody.innerHTML = testCategories.map(cat => `
-        <tr>
-            <td>#TC${cat.id.toString().padStart(3, '0')}</td>
-            <td><strong>${cat.name}</strong></td>
-            <td><span class="badge badge-info">${cat.examCategory}</span></td>
-            <td>${cat.description || 'N/A'}</td>
-            <td><i class="${cat.icon}" style="font-size: 20px; color: ${cat.color};"></i></td>
-            <td><div style="width: 30px; height: 30px; background: ${cat.color}; border-radius: 5px;"></div></td>
-            <td>
-                <button class="btn-icon btn-edit" onclick="editTestCategory(${cat.id})"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon btn-delete" onclick="deleteTestCategory(${cat.id})"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+async function loadTestCategories() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/test_categories/crud.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            testCategories = data.categories;
+            const tbody = document.getElementById('testCategoriesTableBody');
+            tbody.innerHTML = testCategories.map(cat => `
+                <tr>
+                    <td>#TC${cat.id.toString().padStart(3, '0')}</td>
+                    <td><strong>${cat.name}</strong></td>
+                    <td><span class="badge badge-info">${cat.exam_name || 'N/A'}</span></td>
+                    <td>${cat.description || 'N/A'}</td>
+                    <td><i class="${cat.icon || 'fas fa-book'}" style="font-size: 20px; color: ${cat.color || '#6C63FF'};"></i></td>
+                    <td><div style="width: 30px; height: 30px; background: ${cat.color || '#6C63FF'}; border-radius: 5px;"></div></td>
+                    <td>
+                        <button class="btn-icon btn-edit" onclick="editTestCategory(${cat.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteTestCategory(${cat.id})"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            document.getElementById('totalTests').textContent = testCategories.length;
+        } else {
+            console.error('Failed to load test categories:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading test categories:', error);
+        showNotification('Failed to load test categories', 'error');
+    }
 }
 
 function saveTestCategory() {
@@ -1019,24 +1004,38 @@ function filterTestCategories() {
 }
 
 // Question Sessions CRUD
-function loadQuestionSessions() {
-    const tbody = document.getElementById('questionSessionsTableBody');
-    tbody.innerHTML = questionSessions.map(session => `
-        <tr>
-            <td>#QS${session.id.toString().padStart(3, '0')}</td>
-            <td><strong>${session.name}</strong></td>
-            <td><span class="badge badge-primary">${session.examCategory}</span></td>
-            <td><span class="badge badge-info">${session.testCategory}</span></td>
-            <td>${session.time} mins</td>
-            <td>${session.totalQuestions}</td>
-            <td><span class="badge badge-${session.status === 'active' ? 'success' : session.status === 'draft' ? 'warning' : 'secondary'}">${session.status}</span></td>
-            <td>
-                <button class="btn-icon btn-view" onclick="viewSessionQuestions(${session.id})" title="View Questions"><i class="fas fa-eye"></i></button>
-                <button class="btn-icon btn-edit" onclick="editQuestionSession(${session.id})" title="Edit Session"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon btn-delete" onclick="deleteQuestionSession(${session.id})" title="Delete Session"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+async function loadQuestionSessions() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/sessions/crud.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            questionSessions = data.sessions;
+            const tbody = document.getElementById('questionSessionsTableBody');
+            tbody.innerHTML = questionSessions.map(session => `
+                <tr>
+                    <td>#QS${session.id.toString().padStart(3, '0')}</td>
+                    <td><strong>${session.name}</strong></td>
+                    <td><span class="badge badge-primary">${session.category_name || 'N/A'}</span></td>
+                    <td>${session.duration || 60} mins</td>
+                    <td>${session.actual_question_count || 0}</td>
+                    <td><span class="badge badge-${session.is_active ? 'success' : 'secondary'}">${session.is_active ? 'active' : 'inactive'}</span></td>
+                    <td>
+                        <button class="btn-icon btn-view" onclick="viewSessionQuestions(${session.id})" title="View Questions"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon btn-edit" onclick="editQuestionSession(${session.id})" title="Edit Session"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon btn-delete" onclick="deleteQuestionSession(${session.id})" title="Delete Session"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            populateSessionDropdowns();
+            loadSessionCards();
+        } else {
+            console.error('Failed to load question sessions:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading question sessions:', error);
+        showNotification('Failed to load question sessions', 'error');
+    }
 }
 
 function saveQuestionSession() {
@@ -1232,15 +1231,22 @@ function openUploadForSession(sessionId) {
     openModal('csvUploadModal');
 }
 
-function viewSessionQuestions(sessionId) {
+async function viewSessionQuestions(sessionId) {
     const session = questionSessions.find(s => s.id === sessionId);
     if (!session) return;
     
-    const sessionQuestions = questions.filter(q => q.sessionId === sessionId);
-    
-    document.getElementById('viewSessionName').innerHTML = `<i class="fas fa-clipboard-list"></i> ${session.name}`;
-    document.getElementById('viewSessionDetails').textContent = `${session.examCategory} - ${session.testCategory} | ${session.time} mins`;
-    document.getElementById('totalQuestionsCount').textContent = sessionQuestions.length;
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php?session_id=${sessionId}`);
+        const data = await response.json();
+        
+        let sessionQuestions = [];
+        if (data.success) {
+            sessionQuestions = data.questions;
+        }
+        
+        document.getElementById('viewSessionName').innerHTML = `<i class="fas fa-clipboard-list"></i> ${session.name}`;
+        document.getElementById('viewSessionDetails').textContent = `${session.category_name || 'N/A'} | ${session.duration || 60} mins`;
+        document.getElementById('totalQuestionsCount').textContent = sessionQuestions.length;
     
     const tbody = document.getElementById('viewQuestionsTableBody');
     
@@ -1330,6 +1336,10 @@ function viewSessionQuestions(sessionId) {
     }
     
     openModal('viewQuestionsModal');
+    } catch (error) {
+        console.error('Error loading session questions:', error);
+        showNotification('Failed to load session questions', 'error');
+    }
 }
 
 function deleteQuestionFromView(questionId, sessionId) {

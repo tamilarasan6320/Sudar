@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'profile_setup_page.dart';
+import 'dart:async';
 
 class OTPVerificationPage extends StatefulWidget {
   final String phoneNumber;
@@ -30,6 +32,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
   bool _isLoading = false;
   int _resendTimer = 30;
   bool _canResend = false;
+  bool _isResending = false;
 
   @override
   void initState() {
@@ -53,20 +56,28 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
       _resendTimer = 30;
       _canResend = false;
     });
-    
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted && _resendTimer > 0) {
-        setState(() => _resendTimer--);
-        _startResendTimer();
-      } else if (mounted) {
-        setState(() => _canResend = true);
+
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendTimer > 0) {
+        setState(() {
+          _resendTimer--;
+        });
+      } else {
+        timer.cancel();
+        setState(() {
+          _canResend = true;
+        });
       }
     });
   }
 
-  void _handleVerify() {
+  Future<void> _handleVerify() async {
     String otp = _otpControllers.map((c) => c.text).join();
-    
+
     if (otp.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -81,34 +92,85 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     }
 
     setState(() => _isLoading = true);
-    
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() => _isLoading = false);
+
+    final response = await ApiService.verifyOTP(widget.phoneNumber, otp);
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    if (response['success'] == true) {
+      final isNewUser = response['is_new_user'] == true;
+      final token = response['token'];
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'OTP verified successfully!',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => ProfileSetupPage(mobileNumber: widget.phoneNumber),
+          builder: (context) => ProfileSetupPage(
+            mobileNumber: widget.phoneNumber,
+            isNewUser: isNewUser,
+            token: token,
+            userData: response['user'],
+          ),
         ),
         (route) => false,
       );
-    });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            response['message'] ?? 'Invalid or expired OTP',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
-  void _handleResend() {
-    if (!_canResend) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'OTP sent successfully!',
-          style: GoogleFonts.poppins(),
+  Future<void> _handleResend() async {
+    if (!_canResend || _isResending) return;
+
+    setState(() => _isResending = true);
+
+    final response = await ApiService.sendOTP(widget.phoneNumber);
+
+    if (!mounted) return;
+
+    setState(() => _isResending = false);
+
+    if (response['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'OTP resent successfully!',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.success,
         ),
-        backgroundColor: AppColors.success,
-      ),
-    );
-    
-    _startResendTimer();
+      );
+      _startResendTimer();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            response['message'] ?? 'Failed to resend OTP. Try again later.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -290,25 +352,26 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
 
   Widget _buildResendSection() {
     return Center(
-      child: RichText(
-        text: TextSpan(
-          text: 'Didn\'t receive the OTP? ',
-          style: GoogleFonts.poppins(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
-          children: [
-            TextSpan(
-              text: _canResend 
-                  ? 'Resend' 
-                  : 'Resend in ${_resendTimer}s',
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _canResend ? AppColors.primary : AppColors.textSecondary,
-              ),
+      child: InkWell(
+        onTap: _handleResend,
+        child: RichText(
+          text: TextSpan(
+            text: 'Didn\'t receive the OTP? ',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: AppColors.textSecondary,
             ),
-          ],
+            children: [
+              TextSpan(
+                text: _canResend ? (_isResending ? 'Sending...' : 'Resend') : 'Resend in ${_resendTimer}s',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _canResend ? AppColors.primary : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

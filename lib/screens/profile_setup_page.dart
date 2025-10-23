@@ -3,12 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'exam_selection_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   final String mobileNumber;
+  final bool isNewUser;
+  final String? token;
+  final Map<String, dynamic>? userData;
   
-  const ProfileSetupPage({Key? key, required this.mobileNumber}) : super(key: key);
+  const ProfileSetupPage({
+    Key? key,
+    required this.mobileNumber,
+    this.isNewUser = true,
+    this.token,
+    this.userData,
+  }) : super(key: key);
 
   @override
   State<ProfileSetupPage> createState() => _ProfileSetupPageState();
@@ -28,22 +38,58 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userName', _nameController.text.trim());
-      await prefs.setString('userMobile', widget.mobileNumber);
-      await prefs.setBool('isProfileComplete', true);
-      await prefs.setBool('isLoggedIn', true);
-      
-      setState(() => _isLoading = false);
-      
-      // Navigate to exam selection
-      if (mounted) {
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+
+        if (widget.isNewUser) {
+          final response = await ApiService.createUser(
+            mobile: widget.mobileNumber,
+            name: _nameController.text.trim(),
+          );
+
+          if (response['success'] == true) {
+            final user = response['user'];
+            final token = response['token'];
+
+            await prefs.setInt('userId', user['id']);
+            await prefs.setString('userName', user['name']);
+            await prefs.setString('userMobile', user['mobile']);
+            await prefs.setString('token', token);
+            await prefs.setBool('isLoggedIn', true);
+          } else {
+            throw response['message'] ?? 'Failed to create profile';
+          }
+        } else {
+          final user = widget.userData;
+          if (user != null) {
+            await prefs.setInt('userId', user['id']);
+            await prefs.setString('userName', user['name']);
+            await prefs.setString('userMobile', user['mobile']);
+            await prefs.setString('token', widget.token ?? '');
+            await prefs.setBool('isLoggedIn', true);
+          }
+        }
+
+        setState(() => _isLoading = false);
+
+        if (!mounted) return;
+
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const ExamSelectionPage()),
           (route) => false,
+        );
+      } catch (e) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString(),
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }

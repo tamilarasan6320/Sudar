@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'otp_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -22,22 +23,50 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
-      // Simulate API call
-      Future.delayed(const Duration(seconds: 1), () {
-        setState(() => _isLoading = false);
+
+      final response = await ApiService.sendOTP(_phoneController.text.trim());
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response['success'] == true) {
+        final otp = response['otp'];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              otp != null
+                  ? 'OTP sent successfully! (Dev OTP: $otp)'
+                  : 'OTP sent successfully!'
+                  ,
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationPage(
-              phoneNumber: _phoneController.text,
+              phoneNumber: _phoneController.text.trim(),
             ),
           ),
         );
-      });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] ?? 'Failed to send OTP. Please try again.',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -314,5 +343,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
 }
+
 
 

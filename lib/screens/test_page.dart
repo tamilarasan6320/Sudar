@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'test_results_page.dart';
 
 class TestPage extends StatefulWidget {
   final String testTitle;
   final String category;
+  final int sessionId;
   
   const TestPage({
     Key? key,
     required this.testTitle,
     required this.category,
+    required this.sessionId,
   }) : super(key: key);
 
   @override
@@ -23,39 +27,10 @@ class _TestPageState extends State<TestPage> {
   int _currentQuestionIndex = 0;
   int _timeRemaining = 3600; // 60 minutes in seconds
   Timer? _timer;
+  bool _isLoading = true;
+  String? _errorMessage;
   
-  final List<Question> _questions = [
-    Question(
-      id: 1,
-      text: 'Which of the following is the capital of Tamil Nadu?',
-      options: ['Chennai', 'Coimbatore', 'Madurai', 'Salem'],
-      correctAnswer: 0,
-    ),
-    Question(
-      id: 2,
-      text: 'Who wrote the Tamil epic "Silappatikaram"?',
-      options: ['Thiruvalluvar', 'Ilango Adigal', 'Kambar', 'Avvaiyar'],
-      correctAnswer: 1,
-    ),
-    Question(
-      id: 3,
-      text: 'What is the chemical formula of water?',
-      options: ['H2O', 'CO2', 'O2', 'H2SO4'],
-      correctAnswer: 0,
-    ),
-    Question(
-      id: 4,
-      text: 'In which year did India gain independence?',
-      options: ['1945', '1946', '1947', '1948'],
-      correctAnswer: 2,
-    ),
-    Question(
-      id: 5,
-      text: 'What is 15% of 200?',
-      options: ['25', '30', '35', '40'],
-      correctAnswer: 1,
-    ),
-  ];
+  List<Question> _questions = [];
   
   final Map<int, int> _selectedAnswers = {};
   final Set<int> _markedForReview = {};
@@ -63,13 +38,71 @@ class _TestPageState extends State<TestPage> {
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _loadQuestions();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  Future<void> _loadQuestions() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await ApiService.getQuestions(sessionId: widget.sessionId);
+      
+      if (mounted) {
+        if (response['success'] == true) {
+          final questionsData = response['questions'] as List;
+          
+          if (questionsData.isEmpty) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'This test has no questions yet. Please contact the administrator.';
+            });
+            return;
+          }
+
+          setState(() {
+            _questions = questionsData.map((q) {
+              // Parse options from JSON string if needed
+              List<String> options = [];
+              if (q['option_a'] != null) options.add(q['option_a']);
+              if (q['option_b'] != null) options.add(q['option_b']);
+              if (q['option_c'] != null) options.add(q['option_c']);
+              if (q['option_d'] != null) options.add(q['option_d']);
+              
+              // Determine correct answer index
+              String correctOption = (q['correct_answer'] ?? 'a').toString().toLowerCase();
+              int correctIndex = {'a': 0, 'b': 1, 'c': 2, 'd': 3}[correctOption] ?? 0;
+              
+              return Question(
+                id: q['id'] is int ? q['id'] : int.parse(q['id'].toString()),
+                text: q['question_text'] ?? q['question'] ?? '',
+                options: options,
+                correctAnswer: correctIndex,
+                explanation: q['explanation'],
+              );
+            }).toList();
+            
+            _isLoading = false;
+            // Start timer after questions are loaded
+            _startTimer();
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = response['message'] ?? 'Failed to load questions';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error loading questions: $e';
+        });
+      }
+    }
   }
 
   void _startTimer() {
@@ -83,6 +116,12 @@ class _TestPageState extends State<TestPage> {
         _submitTest();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   String _formatTime(int seconds) {
@@ -190,6 +229,80 @@ class _TestPageState extends State<TestPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading state
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: ThemeHelper.backgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: ThemeHelper.cardColor(context),
+          elevation: 1,
+          title: Text(
+            'Loading Test...',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: ThemeHelper.textPrimary(context),
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    // Show error state
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: ThemeHelper.backgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: ThemeHelper.cardColor(context),
+          elevation: 1,
+          title: Text(
+            widget.testTitle,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: ThemeHelper.textPrimary(context),
+            ),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  child: Text(
+                    'Go Back',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Show test with questions
     final currentQuestion = _questions[_currentQuestionIndex];
     
     return Scaffold(
@@ -509,12 +622,14 @@ class Question {
   final String text;
   final List<String> options;
   final int correctAnswer;
+  final String? explanation;
 
   Question({
     required this.id,
     required this.text,
     required this.options,
     required this.correctAnswer,
+    this.explanation,
   });
 }
 

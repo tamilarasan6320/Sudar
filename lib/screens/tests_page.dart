@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'test_page.dart';
 
 class TestsPage extends StatefulWidget {
@@ -13,21 +14,54 @@ class TestsPage extends StatefulWidget {
 
 class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _allSessions = [];
+  List<Map<String, dynamic>> _categories = [];
   
-  final List<String> _categories = [
-    'All',
-    'Previous Year',
-    'Tamil',
-    'Science',
-    'Social',
-    'Aptitude',
-    'Current Affairs',
-  ];
-
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _categories.length, vsync: this);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Load test categories
+      final categoriesResponse = await ApiService.getTestCategories();
+      
+      // Load all question sessions
+      final sessionsResponse = await ApiService.getQuestionSessions();
+      
+      if (mounted) {
+        setState(() {
+          if (categoriesResponse['success'] == true) {
+            _categories = List<Map<String, dynamic>>.from(categoriesResponse['categories'] ?? []);
+            // Add "All" category at the beginning
+            _categories.insert(0, {'id': 0, 'name': 'All'});
+          } else {
+            _categories = [{'id': 0, 'name': 'All'}];
+          }
+          
+          if (sessionsResponse['success'] == true) {
+            _allSessions = List<Map<String, dynamic>>.from(sessionsResponse['sessions'] ?? []);
+          }
+          
+          _isLoading = false;
+          // Initialize tab controller after categories are loaded
+          _tabController = TabController(length: _categories.length, vsync: this);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _categories = [{'id': 0, 'name': 'All'}];
+          _tabController = TabController(length: 1, vsync: this);
+        });
+      }
+    }
   }
 
   @override
@@ -38,6 +72,27 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 1,
+          title: Text(
+            'All Tests',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -70,7 +125,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
               ),
-              tabs: _categories.map((category) => Tab(text: category)).toList(),
+              tabs: _categories.map((category) => Tab(text: category['name'])).toList(),
             ),
           ),
         ),
@@ -82,93 +137,77 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildTestList(String category) {
-    return ListView(
+  Widget _buildTestList(Map<String, dynamic> category) {
+    // Filter sessions by category
+    List<Map<String, dynamic>> filteredSessions;
+    if (category['id'] == 0) {
+      // Show all sessions
+      filteredSessions = _allSessions;
+    } else {
+      // Filter by category
+      filteredSessions = _allSessions
+          .where((session) => session['test_category_id'] == category['id'])
+          .toList();
+    }
+
+    if (filteredSessions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment_outlined, size: 64, color: AppColors.textLight),
+            const SizedBox(height: 16),
+            Text(
+              'No tests available',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
       padding: const EdgeInsets.all(16),
-      children: [
-        _buildTestCard(
-          title: 'TNPSC Group 1 - Full Mock Test',
-          questions: 200,
-          duration: '180 min',
-          difficulty: 'Hard',
-          difficultyColor: AppColors.error,
-          category: 'Previous Year Papers',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'Tamil Grammar - Practice Test',
-          questions: 50,
-          duration: '45 min',
-          difficulty: 'Medium',
-          difficultyColor: AppColors.warning,
-          category: 'Tamil Language',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'General Science - Mock Test',
-          questions: 75,
-          duration: '60 min',
-          difficulty: 'Medium',
-          difficultyColor: AppColors.warning,
-          category: 'General Science',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'Indian History - Quick Test',
-          questions: 30,
-          duration: '30 min',
-          difficulty: 'Easy',
-          difficultyColor: AppColors.success,
-          category: 'Social Science',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'Aptitude & Reasoning - Practice',
-          questions: 40,
-          duration: '40 min',
-          difficulty: 'Medium',
-          difficultyColor: AppColors.warning,
-          category: 'Aptitude',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'Current Affairs - 2024',
-          questions: 25,
-          duration: '25 min',
-          difficulty: 'Easy',
-          difficultyColor: AppColors.success,
-          category: 'Current Affairs',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'TNPSC Group 2 - Full Mock Test',
-          questions: 200,
-          duration: '180 min',
-          difficulty: 'Hard',
-          difficultyColor: AppColors.error,
-          category: 'Previous Year Papers',
-        ),
-        const SizedBox(height: 12),
-        _buildTestCard(
-          title: 'Tamil Literature - Advanced',
-          questions: 60,
-          duration: '50 min',
-          difficulty: 'Hard',
-          difficultyColor: AppColors.error,
-          category: 'Tamil Language',
-        ),
-      ],
+      itemCount: filteredSessions.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final session = filteredSessions[index];
+        return _buildTestCard(session);
+      },
     );
   }
 
-  Widget _buildTestCard({
-    required String title,
-    required int questions,
-    required String duration,
-    required String difficulty,
-    required Color difficultyColor,
-    required String category,
-  }) {
+  Widget _buildTestCard(Map<String, dynamic> session) {
+    final title = session['name'] ?? 'Unnamed Test';
+    final description = session['description'] ?? '';
+    final totalQuestions = session['actual_question_count'] ?? session['total_questions'] ?? 0;
+    final duration = session['duration'] ?? 60;
+    final difficulty = (session['difficulty'] ?? 'medium').toString();
+    final categoryName = session['category_name'] ?? '';
+    final sessionId = session['id'];
+    
+    // Determine difficulty color
+    Color difficultyColor;
+    String difficultyText;
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        difficultyColor = AppColors.success;
+        difficultyText = 'Easy';
+        break;
+      case 'hard':
+        difficultyColor = AppColors.error;
+        difficultyText = 'Hard';
+        break;
+      case 'medium':
+      default:
+        difficultyColor = AppColors.warning;
+        difficultyText = 'Medium';
+        break;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: ThemeHelper.cardColor(context),
@@ -179,15 +218,28 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TestPage(
-                  testTitle: title,
-                  category: category,
+            if (totalQuestions > 0) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TestPage(
+                    testTitle: title,
+                    category: categoryName,
+                    sessionId: sessionId,
+                  ),
                 ),
-              ),
-            );
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'This test has no questions yet',
+                    style: GoogleFonts.poppins(),
+                  ),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -210,21 +262,55 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
                               color: ThemeHelper.textPrimary(context),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: difficultyColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              difficulty,
+                          if (description.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              description,
                               style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: difficultyColor,
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ],
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: difficultyColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  difficultyText,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: difficultyColor,
+                                  ),
+                                ),
+                              ),
+                              if (categoryName.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    categoryName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -251,7 +337,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
                     Icon(Icons.quiz_outlined, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
                     Text(
-                      '$questions Questions',
+                      '$totalQuestions Questions',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -261,7 +347,7 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
                     Icon(Icons.timer_outlined, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
                     Text(
-                      duration,
+                      '$duration min',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -279,4 +365,3 @@ class _TestsPageState extends State<TestsPage> with SingleTickerProviderStateMix
     );
   }
 }
-

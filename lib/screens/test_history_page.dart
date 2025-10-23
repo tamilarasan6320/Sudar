@@ -1,10 +1,109 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 
-class TestHistoryPage extends StatelessWidget {
+class TestHistoryPage extends StatefulWidget {
   const TestHistoryPage({Key? key}) : super(key: key);
+
+  @override
+  State<TestHistoryPage> createState() => _TestHistoryPageState();
+}
+
+class _TestHistoryPageState extends State<TestHistoryPage> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _testHistory = [];
+  double _avgScore = 0;
+  int _totalTests = 0;
+  int _passedTests = 0;
+  double _totalTime = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTestHistory();
+  }
+
+  Future<void> _loadTestHistory() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('userId');
+      
+      if (userId != null) {
+        final response = await ApiService.getTestHistory(userId: userId);
+        
+        if (response['success'] == true) {
+          final history = List<Map<String, dynamic>>.from(response['history'] ?? []);
+          
+          double totalScore = 0;
+          int passed = 0;
+          double totalTimeHours = 0;
+          
+          for (var test in history) {
+            final percentage = (test['percentage'] ?? 0).toDouble();
+            totalScore += percentage;
+            if (percentage >= 50) passed++;
+            
+            // Calculate time if available (assuming time_taken in minutes)
+            if (test['time_taken'] != null) {
+              totalTimeHours += (test['time_taken'] / 60);
+            }
+          }
+          
+          if (mounted) {
+            setState(() {
+              _testHistory = history;
+              _totalTests = history.length;
+              _avgScore = history.isNotEmpty ? totalScore / history.length : 0;
+              _passedTests = passed;
+              _totalTime = totalTimeHours;
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } catch (e) {
+      print('Error loading test history: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Unknown date';
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inHours < 24) {
+        return '${difference.inHours} hours ago';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else if (difference.inDays < 14) {
+        return '1 week ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,141 +126,117 @@ class TestHistoryPage extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list, color: AppColors.textPrimary),
-            onPressed: () {},
+            icon: Icon(Icons.refresh, color: ThemeHelper.textPrimary(context)),
+            onPressed: _loadTestHistory,
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Overall Stats Card
-            _buildOverallStatsCard(),
-            
-            const SizedBox(height: 24),
-            
-            // Time Period Selector
-            _buildTimePeriodSelector(context),
-            
-            const SizedBox(height: 20),
-            
-            // Recent Tests Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Tests',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: ThemeHelper.textPrimary(context),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Overall Stats Card
+                  _buildOverallStatsCard(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Time Period Selector
+                  _buildTimePeriodSelector(context),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Recent Tests Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Recent Tests',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeHelper.textPrimary(context),
+                        ),
+                      ),
+                      Text(
+                        '$_totalTests Total',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  '24 Total',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Test History Items - Dynamic from API
+                  if (_testHistory.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(40),
+                      decoration: BoxDecoration(
+                        color: ThemeHelper.cardColor(context),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(Icons.assignment_outlined, size: 48, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No test history yet',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Start taking tests to see your history',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ..._testHistory.map((test) {
+                      final percentage = (test['percentage'] ?? 0).toDouble();
+                      final score = test['score'] ?? 0;
+                      final totalQuestions = test['total_questions'] ?? 0;
+                      final status = percentage >= 75 
+                          ? 'Excellent' 
+                          : percentage >= 50 
+                              ? 'Passed' 
+                              : 'Average';
+                      final statusColor = percentage >= 75 
+                          ? AppColors.success 
+                          : percentage >= 50 
+                              ? AppColors.warning 
+                              : AppColors.error;
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildTestHistoryCard(
+                          context,
+                          test['session_name'] ?? 'Test',
+                          '$score/$totalQuestions',
+                          '${percentage.toStringAsFixed(0)}%',
+                          status,
+                          _formatDate(test['completed_at']),
+                          statusColor,
+                          percentage.toInt(),
+                        ),
+                      );
+                    }).toList(),
+                ],
+              ),
             ),
-            
-            const SizedBox(height: 12),
-            
-            // Test History Items
-            _buildTestHistoryCard(
-              context,
-              'TNPSC Group 1 - Mock Test 12',
-              '42/50',
-              '84%',
-              'Passed',
-              '2 hours ago',
-              AppColors.success,
-              85,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'TNPSC Group 2 - Practice Set 7',
-              '38/50',
-              '76%',
-              'Passed',
-              '5 hours ago',
-              AppColors.success,
-              72,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'Current Affairs - Weekly Test',
-              '25/30',
-              '83%',
-              'Passed',
-              'Yesterday',
-              AppColors.success,
-              90,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'TNPSC Group 4 - Mock Test 5',
-              '32/50',
-              '64%',
-              'Average',
-              '2 days ago',
-              AppColors.warning,
-              55,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'Tamil Language - Grammar Test',
-              '28/35',
-              '80%',
-              'Passed',
-              '3 days ago',
-              AppColors.success,
-              78,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'Aptitude & Reasoning - Set 2',
-              '30/45',
-              '67%',
-              'Average',
-              '4 days ago',
-              AppColors.warning,
-              60,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'General Science - Full Test',
-              '45/50',
-              '90%',
-              'Excellent',
-              '5 days ago',
-              AppColors.success,
-              95,
-            ),
-            const SizedBox(height: 12),
-            _buildTestHistoryCard(
-              context,
-              'Indian History - Mock Test',
-              '35/40',
-              '88%',
-              'Passed',
-              '1 week ago',
-              AppColors.success,
-              88,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -194,7 +269,7 @@ class TestHistoryPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '78.5%',
+            '${_avgScore.toStringAsFixed(1)}%',
             style: GoogleFonts.poppins(
               fontSize: 48,
               fontWeight: FontWeight.bold,
@@ -203,7 +278,7 @@ class TestHistoryPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '↑ 5.2% improvement',
+            _totalTests > 0 ? 'Based on $_totalTests tests' : 'No tests yet',
             style: GoogleFonts.poppins(
               fontSize: 13,
               color: Colors.white.withOpacity(0.9),
@@ -215,9 +290,9 @@ class TestHistoryPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem('24', 'Tests', Icons.assignment_outlined),
-              _buildStatItem('18', 'Passed', Icons.check_circle_outline),
-              _buildStatItem('18.5h', 'Time', Icons.access_time),
+              _buildStatItem('$_totalTests', 'Tests', Icons.assignment_outlined),
+              _buildStatItem('$_passedTests', 'Passed', Icons.check_circle_outline),
+              _buildStatItem('${_totalTime.toStringAsFixed(1)}h', 'Time', Icons.access_time),
             ],
           ),
         ],
@@ -469,4 +544,3 @@ class TestHistoryPage extends StatelessWidget {
     );
   }
 }
-

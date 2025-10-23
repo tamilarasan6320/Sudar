@@ -5,7 +5,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'http://localhost/MockTest/api';
+  static const String baseUrl = 'http://localhost/Mock_test/api';
   static const Duration timeout = Duration(seconds: 30);
 
   static Map<String, String> get headers => {

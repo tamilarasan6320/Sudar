@@ -52,7 +52,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             final user = response['user'];
             final token = response['token'];
 
-            await prefs.setInt('userId', user['id']);
+            // Convert id to int (handles both String and int types)
+            final userId = user['id'] is int ? user['id'] : int.parse(user['id'].toString());
+            
+            await prefs.setInt('userId', userId);
             await prefs.setString('userName', user['name']);
             await prefs.setString('userMobile', user['mobile']);
             await prefs.setString('token', token);
@@ -63,7 +66,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         } else {
           final user = widget.userData;
           if (user != null) {
-            await prefs.setInt('userId', user['id']);
+            // Convert id to int (handles both String and int types)
+            final userId = user['id'] is int ? user['id'] : int.parse(user['id'].toString());
+            
+            await prefs.setInt('userId', userId);
             await prefs.setString('userName', user['name']);
             await prefs.setString('userMobile', user['mobile']);
             await prefs.setString('token', widget.token ?? '');

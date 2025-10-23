@@ -141,26 +141,118 @@ function toggleSidebar() {
 }
 
 // Dashboard
-function loadDashboard() {
-    const activities = [
-        { icon: 'fa-user-plus', color: '#6C63FF', title: 'New user registered', subtitle: 'Rajesh Kumar joined TNPSC Group 4', time: '2 minutes ago' },
-        { icon: 'fa-check-circle', color: '#4ECDC4', title: 'Test completed', subtitle: 'Priya completed Tamil Language Test', time: '15 minutes ago' },
-        { icon: 'fa-plus-circle', color: '#FFD93D', title: 'New questions added', subtitle: '45 questions added to General Science', time: '1 hour ago' }
-    ];
+async function loadDashboard() {
+    try {
+        // Fetch dashboard statistics from API
+        const response = await fetch(`${API_BASE_URL}/admin/get_dashboard_stats.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.stats;
+            
+            // Update stats cards
+            document.getElementById('totalUsers').textContent = stats.total_users || 0;
+            document.getElementById('totalExams').textContent = stats.total_exams || 0;
+            document.getElementById('totalQuestions').textContent = stats.total_questions || 0;
+            document.getElementById('testsTaken').textContent = stats.total_results || 0;
+            
+            // Load recent activity from API data
+            const activities = [];
+            
+            // Add recent user registrations
+            if (data.recent_users && data.recent_users.length > 0) {
+                const latestUser = data.recent_users[0];
+                const timeAgo = getTimeAgo(latestUser.created_at);
+                activities.push({
+                    icon: 'fa-user-plus',
+                    color: '#6C63FF',
+                    title: 'New user registered',
+                    subtitle: `${latestUser.name} joined TNPSC Group 4`,
+                    time: timeAgo
+                });
+            }
+            
+            // Add recent test completions
+            if (data.recent_results && data.recent_results.length > 0) {
+                const latestResult = data.recent_results[0];
+                const timeAgo = getTimeAgo(latestResult.submitted_at);
+                activities.push({
+                    icon: 'fa-check-circle',
+                    color: '#4ECDC4',
+                    title: 'Test completed',
+                    subtitle: `${latestResult.user_name} completed ${latestResult.test_name}`,
+                    time: timeAgo
+                });
+            }
+            
+            // Add general info
+            if (stats.total_questions > 0) {
+                activities.push({
+                    icon: 'fa-plus-circle',
+                    color: '#FFD93D',
+                    title: 'Questions available',
+                    subtitle: `${stats.total_questions} questions in question bank`,
+                    time: 'Updated recently'
+                });
+            }
+            
+            // Render activities
+            const activityList = document.getElementById('activityList');
+            if (activities.length > 0) {
+                activityList.innerHTML = activities.map(activity => `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: ${activity.color};">
+                            <i class="fas ${activity.icon}"></i>
+                        </div>
+                        <div class="activity-details">
+                            <strong>${activity.title}</strong>
+                            <span>${activity.subtitle}</span><br>
+                            <small style="color: #95a5a6;">${activity.time}</small>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                activityList.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: #6C63FF;">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div class="activity-details">
+                            <strong>Welcome to TNPSC Admin Panel</strong>
+                            <span>Start by adding exam categories and questions</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            console.log('Dashboard loaded successfully:', stats);
+        } else {
+            console.error('Failed to load dashboard:', data.message);
+            showError('Failed to load dashboard statistics');
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showError('Error connecting to database. Please check your connection.');
+    }
+}
+
+// Helper function to calculate time ago
+function getTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
     
-    const activityList = document.getElementById('activityList');
-    activityList.innerHTML = activities.map(activity => `
-        <div class="activity-item">
-            <div class="activity-icon" style="background: ${activity.color};">
-                <i class="fas ${activity.icon}"></i>
-            </div>
-            <div class="activity-details">
-                <strong>${activity.title}</strong>
-                <span>${activity.subtitle}</span><br>
-                <small style="color: #95a5a6;">${activity.time}</small>
-            </div>
-        </div>
-    `).join('');
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + ' days ago';
+    return date.toLocaleDateString();
+}
+
+// Helper function to show errors
+function showError(message) {
+    // You can implement a toast notification here
+    console.error(message);
 }
 
 // Users CRUD
@@ -200,24 +292,51 @@ async function loadUsers() {
     }
 }
 
-function saveUser() {
-    const user = {
-        id: users.length + 1,
+async function saveUser() {
+    const form = document.getElementById('userForm');
+    const isEditMode = form.dataset.editMode === 'true';
+    const userId = form.dataset.userId;
+    
+    const userData = {
         name: document.getElementById('userName').value,
         email: document.getElementById('userEmail').value,
         mobile: document.getElementById('userMobile').value,
-        exam: document.getElementById('userExam').value,
-        language: document.getElementById('userLanguage').value,
-        status: 'active'
+        district: document.getElementById('userDistrict')?.value || '',
+        education: document.getElementById('userEducation')?.value || '',
+        age: document.getElementById('userAge')?.value || null,
+        language: document.getElementById('userLanguage').value
     };
     
-    users.push(user);
-    loadUsers();
-    closeModal('userModal');
-    showNotification('User added successfully!', 'success');
+    // If editing, add the user ID
+    if (isEditMode) {
+        userData.id = userId;
+    }
     
-    // Reset form
-    document.getElementById('userForm').reset();
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/crud.php`, {
+            method: isEditMode ? 'PUT' : 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadUsers();
+            closeModal('userModal');
+            showNotification(isEditMode ? 'User updated successfully!' : 'User added successfully!', 'success');
+            form.reset();
+            delete form.dataset.userId;
+            delete form.dataset.editMode;
+        } else {
+            showNotification(data.message || `Failed to ${isEditMode ? 'update' : 'add'} user`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showNotification('Error saving user', 'error');
+    }
 }
 
 function viewUser(id) {
@@ -627,21 +746,66 @@ function closeViewUserModal() {
     }
 }
 
-function editUser(id) {
-    const user = users.find(u => u.id === id);
-    document.getElementById('userName').value = user.name;
-    document.getElementById('userEmail').value = user.email;
-    document.getElementById('userMobile').value = user.mobile || '';
-    document.getElementById('userExam').value = user.exam;
-    document.getElementById('userLanguage').value = user.language;
-    openModal('userModal');
+async function editUser(id) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/get_details.php?id=${id}`);
+        const data = await response.json();
+        
+        if (data.success && data.user) {
+            const user = data.user;
+            document.getElementById('userName').value = user.name;
+            document.getElementById('userEmail').value = user.email || '';
+            document.getElementById('userMobile').value = user.mobile;
+            
+            if (document.getElementById('userDistrict')) {
+                document.getElementById('userDistrict').value = user.district || '';
+            }
+            if (document.getElementById('userEducation')) {
+                document.getElementById('userEducation').value = user.education || '';
+            }
+            if (document.getElementById('userAge')) {
+                document.getElementById('userAge').value = user.age || '';
+            }
+            
+            document.getElementById('userLanguage').value = user.language;
+            
+            // Store user ID for update
+            document.getElementById('userForm').dataset.userId = id;
+            document.getElementById('userForm').dataset.editMode = 'true';
+            
+            openModal('userModal');
+        } else {
+            showNotification('Failed to load user details', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading user:', error);
+        showNotification('Error loading user details', 'error');
+    }
 }
 
-function deleteUser(id) {
-    if (confirm('Are you sure you want to delete this user?')) {
-        users = users.filter(u => u.id !== id);
-        loadUsers();
-        showNotification('User deleted successfully!', 'success');
+async function deleteUser(id) {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadUsers();
+                showNotification('User deleted successfully!', 'success');
+            } else {
+                showNotification(data.message || 'Failed to delete user', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            showNotification('Error deleting user', 'error');
+        }
     }
 }
 
@@ -850,39 +1014,77 @@ async function loadExamCategories() {
     }
 }
 
-function saveExamCategory() {
-    const category = {
-        id: examCategories.length + 1,
-        title: document.getElementById('examCategoryTitle').value,
+async function saveExamCategory() {
+    const categoryData = {
         name: document.getElementById('examCategoryName').value,
         description: document.getElementById('examCategoryDescription').value,
-        icon: document.getElementById('examCategoryIcon').value || '?',
-        color: document.getElementById('examCategoryColor').value
+        icon: document.getElementById('examCategoryIcon').value || '?'
     };
     
-    examCategories.push(category);
-    loadExamCategories();
-    closeModal('examCategoryModal');
-    showNotification('Exam category added successfully!', 'success');
-    document.getElementById('examCategoryForm').reset();
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(categoryData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadExamCategories();
+            closeModal('examCategoryModal');
+            showNotification('Exam category added successfully!', 'success');
+            document.getElementById('examCategoryForm').reset();
+        } else {
+            showNotification(data.message || 'Failed to add exam category', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding exam category:', error);
+        showNotification('Error adding exam category', 'error');
+    }
 }
 
-function editExamCategory(id) {
+async function editExamCategory(id) {
     const cat = examCategories.find(c => c.id === id);
-    document.getElementById('examCategoryTitle').value = cat.title;
-    document.getElementById('examCategoryName').value = cat.name;
-    document.getElementById('examCategoryDescription').value = cat.description;
-    document.getElementById('examCategoryIcon').value = cat.icon;
-    document.getElementById('examCategoryColor').value = cat.color;
-    openModal('examCategoryModal');
+    if (cat) {
+        document.getElementById('examCategoryName').value = cat.name;
+        document.getElementById('examCategoryDescription').value = cat.description || '';
+        document.getElementById('examCategoryIcon').value = cat.icon || '';
+        
+        // Store category ID for update
+        document.getElementById('examCategoryForm').dataset.categoryId = id;
+        document.getElementById('examCategoryForm').dataset.editMode = 'true';
+        
+        openModal('examCategoryModal');
+    }
 }
 
-function deleteExamCategory(id) {
-    if (confirm('Are you sure you want to delete this exam category?')) {
-        examCategories = examCategories.filter(c => c.id !== id);
-        loadExamCategories();
-        populateExamCategoryDropdown();
-        showNotification('Exam category deleted successfully!', 'success');
+async function deleteExamCategory(id) {
+    if (confirm('Are you sure you want to delete this exam category? This will also delete all related test categories and questions.')) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadExamCategories();
+                populateExamCategoryDropdown();
+                showNotification('Exam category deleted successfully!', 'success');
+            } else {
+                showNotification(data.message || 'Failed to delete exam category', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting exam category:', error);
+            showNotification('Error deleting exam category', 'error');
+        }
     }
 }
 
@@ -892,7 +1094,7 @@ function populateExamCategoryDropdown() {
     if (dropdown) {
         const currentValue = dropdown.value;
         dropdown.innerHTML = '<option value="">-- Select Exam Category --</option>' + 
-            examCategories.map(cat => `<option value="${cat.title}">${cat.title}</option>`).join('');
+            examCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
         if (currentValue) {
             dropdown.value = currentValue;
         }
@@ -922,7 +1124,11 @@ async function loadTestCategories() {
                     </td>
                 </tr>
             `).join('');
-            document.getElementById('totalTests').textContent = testCategories.length;
+            // Update total count if element exists
+            const totalTestsElement = document.getElementById('totalTests');
+            if (totalTestsElement) {
+                totalTestsElement.textContent = testCategories.length;
+            }
         } else {
             console.error('Failed to load test categories:', data.message);
         }
@@ -932,44 +1138,97 @@ async function loadTestCategories() {
     }
 }
 
-function saveTestCategory() {
-    const category = {
-        id: testCategories.length + 1,
+async function saveTestCategory() {
+    const form = document.getElementById('testCategoryForm');
+    const isEditMode = form.dataset.editMode === 'true';
+    const categoryId = form.dataset.categoryId;
+    
+    const categoryData = {
         name: document.getElementById('testCategoryName').value,
-        examCategory: document.getElementById('testCategoryExam').value,
+        exam_category_id: document.getElementById('testCategoryExam').value,
         description: document.getElementById('testCategoryDescription').value,
         icon: document.getElementById('testCategoryIcon').value || 'fas fa-tag',
         color: document.getElementById('testCategoryColor').value
     };
     
-    if (!category.examCategory) {
+    if (!categoryData.exam_category_id) {
         showNotification('Please select an exam category!', 'error');
         return;
     }
     
-    testCategories.push(category);
-    loadTestCategories();
-    closeModal('testCategoryModal');
-    showNotification('Test category added successfully!', 'success');
-    document.getElementById('testCategoryForm').reset();
+    if (isEditMode) {
+        categoryData.id = categoryId;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/test_categories/crud.php`, {
+            method: isEditMode ? 'PUT' : 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(categoryData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadTestCategories();
+            populateSessionDropdowns();
+            closeModal('testCategoryModal');
+            showNotification(isEditMode ? 'Test category updated successfully!' : 'Test category added successfully!', 'success');
+            form.reset();
+            delete form.dataset.categoryId;
+            delete form.dataset.editMode;
+        } else {
+            showNotification(data.message || 'Failed to save test category', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving test category:', error);
+        showNotification('Error saving test category', 'error');
+    }
 }
 
-function editTestCategory(id) {
+async function editTestCategory(id) {
     const cat = testCategories.find(c => c.id === id);
-    document.getElementById('testCategoryName').value = cat.name;
-    document.getElementById('testCategoryExam').value = cat.examCategory;
-    document.getElementById('testCategoryDescription').value = cat.description;
-    document.getElementById('testCategoryIcon').value = cat.icon;
-    document.getElementById('testCategoryColor').value = cat.color;
-    openModal('testCategoryModal');
+    if (cat) {
+        document.getElementById('testCategoryName').value = cat.name;
+        document.getElementById('testCategoryExam').value = cat.exam_category_id || cat.examCategory;
+        document.getElementById('testCategoryDescription').value = cat.description || '';
+        document.getElementById('testCategoryIcon').value = cat.icon || '';
+        document.getElementById('testCategoryColor').value = cat.color || '#6C63FF';
+        
+        // Store category ID for update
+        document.getElementById('testCategoryForm').dataset.categoryId = id;
+        document.getElementById('testCategoryForm').dataset.editMode = 'true';
+        
+        openModal('testCategoryModal');
+    }
 }
 
-function deleteTestCategory(id) {
-    if (confirm('Are you sure you want to delete this test category?')) {
-        testCategories = testCategories.filter(c => c.id !== id);
-        loadTestCategories();
-        populateSessionDropdowns();
-        showNotification('Test category deleted successfully!', 'success');
+async function deleteTestCategory(id) {
+    if (confirm('Are you sure you want to delete this test category? This will also delete all related question sessions.')) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/test_categories/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadTestCategories();
+                populateSessionDropdowns();
+                showNotification('Test category deleted successfully!', 'success');
+            } else {
+                showNotification(data.message || 'Failed to delete test category', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting test category:', error);
+            showNotification('Error deleting test category', 'error');
+        }
     }
 }
 
@@ -980,12 +1239,12 @@ function populateSessionDropdowns() {
     
     if (examDropdown) {
         examDropdown.innerHTML = '<option value="">-- Select Exam Category --</option>' + 
-            examCategories.map(cat => `<option value="${cat.title}">${cat.title}</option>`).join('');
+            examCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
     }
     
     if (testDropdown) {
         testDropdown.innerHTML = '<option value="">-- Select Test Category --</option>' + 
-            testCategories.map(cat => `<option value="${cat.name}" data-exam="${cat.examCategory}">${cat.name}</option>`).join('');
+            testCategories.map(cat => `<option value="${cat.id}" data-exam="${cat.exam_category_id}">${cat.name}</option>`).join('');
     }
 }
 
@@ -998,9 +1257,9 @@ function filterTestCategories() {
         return;
     }
     
-    const filteredCategories = testCategories.filter(cat => cat.examCategory === selectedExam);
+    const filteredCategories = testCategories.filter(cat => String(cat.exam_category_id) === String(selectedExam));
     testDropdown.innerHTML = '<option value="">-- Select Test Category --</option>' + 
-        filteredCategories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('');
+        filteredCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
 }
 
 // Question Sessions CRUD
@@ -1038,51 +1297,104 @@ async function loadQuestionSessions() {
     }
 }
 
-function saveQuestionSession() {
-    const session = {
-        id: questionSessions.length + 1,
+async function saveQuestionSession() {
+    const form = document.getElementById('questionSessionForm');
+    const isEditMode = form.dataset.editMode === 'true';
+    const sessionId = form.dataset.sessionId;
+    
+    const sessionData = {
         name: document.getElementById('sessionName').value,
-        examCategory: document.getElementById('sessionExamCategory').value,
-        testCategory: document.getElementById('sessionTestCategory').value,
-        time: parseInt(document.getElementById('sessionTime').value),
-        totalQuestions: parseInt(document.getElementById('sessionTotalQuestions').value),
+        exam_category_id: document.getElementById('sessionExamCategory').value,
+        test_category_id: document.getElementById('sessionTestCategory').value,
+        time_limit: parseInt(document.getElementById('sessionTime').value),
+        total_questions: parseInt(document.getElementById('sessionTotalQuestions').value),
         status: document.getElementById('sessionStatus').value
     };
     
-    if (!session.examCategory || !session.testCategory) {
+    if (!sessionData.exam_category_id || !sessionData.test_category_id) {
         showNotification('Please select exam category and test category!', 'error');
         return;
     }
     
-    questionSessions.push(session);
-    loadQuestionSessions();
-    closeModal('questionSessionModal');
-    showNotification('Question session added successfully!', 'success');
-    document.getElementById('questionSessionForm').reset();
+    if (isEditMode) {
+        sessionData.id = sessionId;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/sessions/crud.php`, {
+            method: isEditMode ? 'PUT' : 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sessionData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadQuestionSessions();
+            loadSessionCards();
+            closeModal('questionSessionModal');
+            showNotification(isEditMode ? 'Question session updated successfully!' : 'Question session added successfully!', 'success');
+            form.reset();
+            delete form.dataset.sessionId;
+            delete form.dataset.editMode;
+        } else {
+            showNotification(data.message || 'Failed to save question session', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving question session:', error);
+        showNotification('Error saving question session', 'error');
+    }
 }
 
 // Removed - using viewSessionQuestions instead
 
-function editQuestionSession(id) {
+async function editQuestionSession(id) {
     const session = questionSessions.find(s => s.id === id);
-    document.getElementById('sessionName').value = session.name;
-    document.getElementById('sessionExamCategory').value = session.examCategory;
-    filterTestCategories();
-    setTimeout(() => {
-        document.getElementById('sessionTestCategory').value = session.testCategory;
-    }, 100);
-    document.getElementById('sessionTime').value = session.time;
-    document.getElementById('sessionTotalQuestions').value = session.totalQuestions;
-    document.getElementById('sessionStatus').value = session.status;
-    openModal('questionSessionModal');
+    if (session) {
+        document.getElementById('sessionName').value = session.name;
+        document.getElementById('sessionExamCategory').value = session.exam_category_id || session.examCategory;
+        filterTestCategories();
+        setTimeout(() => {
+            document.getElementById('sessionTestCategory').value = session.test_category_id || session.testCategory;
+        }, 100);
+        document.getElementById('sessionTime').value = session.time_limit || session.time;
+        document.getElementById('sessionTotalQuestions').value = session.total_questions || session.totalQuestions;
+        document.getElementById('sessionStatus').value = session.status;
+        
+        // Store session ID for update
+        document.getElementById('questionSessionForm').dataset.sessionId = id;
+        document.getElementById('questionSessionForm').dataset.editMode = 'true';
+        
+        openModal('questionSessionModal');
+    }
 }
 
-function deleteQuestionSession(id) {
-    if (confirm('Are you sure you want to delete this question session?')) {
-        questionSessions = questionSessions.filter(s => s.id !== id);
-        loadQuestionSessions();
-        loadSessionCards();
-        showNotification('Question session deleted successfully!', 'success');
+async function deleteQuestionSession(id) {
+    if (confirm('Are you sure you want to delete this question session? This will also delete all related questions.')) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/sessions/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadQuestionSessions();
+                loadSessionCards();
+                showNotification('Question session deleted successfully!', 'success');
+            } else {
+                showNotification(data.message || 'Failed to delete question session', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting question session:', error);
+            showNotification('Error deleting question session', 'error');
+        }
     }
 }
 
@@ -1107,20 +1419,24 @@ function loadSessionCards() {
     
     grid.innerHTML = questionSessions.map(session => {
         // Calculate actual uploaded questions for this session
-        const actualQuestionCount = questions.filter(q => q.sessionId === session.id).length;
+        const actualQuestionCount = session.actual_question_count || questions.filter(q => q.sessionId === session.id).length;
+        const examCategory = session.exam_category_name || 'N/A';
+        const testCategory = session.category_name || 'N/A';
+        const duration = session.duration || 0;
+        const status = session.is_active ? 'ACTIVE' : 'INACTIVE';
         
         return `
         <div class="session-card" onclick="openUploadForSession(${session.id})" style="background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden;">
-            <div style="position: absolute; top: 0; right: 0; width: 80px; height: 80px; background: linear-gradient(135deg, ${getSessionColor(session.examCategory)} 0%, ${getSessionColor(session.examCategory)}dd 100%); border-radius: 0 0 0 80px; opacity: 0.1;"></div>
+            <div style="position: absolute; top: 0; right: 0; width: 80px; height: 80px; background: linear-gradient(135deg, ${getSessionColor(examCategory)} 0%, ${getSessionColor(examCategory)}dd 100%); border-radius: 0 0 0 80px; opacity: 0.1;"></div>
             
             <div style="position: relative; z-index: 1;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
-                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, ${getSessionColor(session.examCategory)} 0%, ${getSessionColor(session.examCategory)}dd 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">
+                    <div style="width: 50px; height: 50px; background: linear-gradient(135deg, ${getSessionColor(examCategory)} 0%, ${getSessionColor(examCategory)}dd 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: bold;">
                         <i class="fas fa-clipboard-list"></i>
                     </div>
                     <div style="flex: 1;">
                         <h3 style="margin: 0; font-size: 18px; color: #333;">${session.name}</h3>
-                        <span class="badge badge-primary" style="margin-top: 5px; display: inline-block;">${session.status}</span>
+                        <span class="badge badge-${status === 'ACTIVE' ? 'success' : 'secondary'}" style="margin-top: 5px; display: inline-block;">${status}</span>
                     </div>
                 </div>
                 
@@ -1129,17 +1445,17 @@ function loadSessionCards() {
                         <div>
                             <i class="fas fa-book" style="color: #6C63FF;"></i> 
                             <strong>Exam:</strong><br>
-                            <span style="color: #666;">${session.examCategory}</span>
+                            <span style="color: #666;">${examCategory}</span>
                         </div>
                         <div>
                             <i class="fas fa-tag" style="color: #FF6B6B;"></i> 
                             <strong>Category:</strong><br>
-                            <span style="color: #666;">${session.testCategory}</span>
+                            <span style="color: #666;">${testCategory}</span>
                         </div>
                         <div>
                             <i class="fas fa-clock" style="color: #4ECDC4;"></i> 
                             <strong>Duration:</strong><br>
-                            <span style="color: #666;">${session.time} minutes</span>
+                            <span style="color: #666;">${duration} minutes</span>
                         </div>
                         <div>
                             <i class="fas fa-question-circle" style="color: #FFD93D;"></i> 

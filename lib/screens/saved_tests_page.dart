@@ -2,12 +2,78 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
+import 'test_page.dart';
 
-class SavedTestsPage extends StatelessWidget {
+class SavedTestsPage extends StatefulWidget {
   const SavedTestsPage({Key? key}) : super(key: key);
 
   @override
+  State<SavedTestsPage> createState() => _SavedTestsPageState();
+}
+
+class _SavedTestsPageState extends State<SavedTestsPage> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _testSessions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTestSessions();
+  }
+
+  Future<void> _loadTestSessions() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final response = await ApiService.getQuestionSessions();
+      
+      if (response['success'] == true) {
+        final sessions = List<Map<String, dynamic>>.from(response['sessions'] ?? []);
+        
+        if (mounted) {
+          setState(() {
+            _testSessions = sessions;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } catch (e) {
+      print('Error loading test sessions: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _getDifficulty(int? questionCount) {
+    if (questionCount == null) return 'Medium';
+    if (questionCount <= 20) return 'Easy';
+    if (questionCount <= 50) return 'Medium';
+    return 'Hard';
+  }
+
+  Color _getDifficultyColor(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return Colors.green;
+      case 'Hard':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final totalSessions = _testSessions.length;
+    final notStarted = _testSessions.where((s) => (s['is_active'] ?? 1) == 1).length;
+    final inProgress = 0; // We don't track progress yet
+    
     return Scaffold(
       backgroundColor: ThemeHelper.backgroundColor(context),
       appBar: AppBar(
@@ -26,105 +92,98 @@ class SavedTestsPage extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Summary Card
-            _buildSummaryCard(),
-            
-            const SizedBox(height: 24),
-            
-            // Filter Tabs
-            _buildFilterTabs(context),
-            
-            const SizedBox(height: 20),
-            
-            // Saved Tests List
-            Text(
-              'Your Saved Tests',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: ThemeHelper.textPrimary(context),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Summary Card
+                  _buildSummaryCard(totalSessions, notStarted, inProgress),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Filter Tabs
+                  _buildFilterTabs(context),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Saved Tests List
+                  Text(
+                    'Your Saved Tests',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeHelper.textPrimary(context),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Dynamic test sessions from API
+                  if (_testSessions.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(40),
+                      decoration: BoxDecoration(
+                        color: ThemeHelper.cardColor(context),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(Icons.bookmark_outline, size: 48, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No tests available yet',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Check back later for new tests',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ..._testSessions.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final session = entry.value;
+                      final questionCount = session['question_count'] ?? 0;
+                      final difficulty = _getDifficulty(questionCount);
+                      final difficultyColor = _getDifficultyColor(difficulty);
+                      final isNew = index < 2; // Mark first 2 as new
+                      
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildSavedTestCard(
+                          context,
+                          session['name'] ?? 'Test',
+                          session['description'] ?? 'Test Session',
+                          '$questionCount Questions',
+                          '${(questionCount * 1.2).toInt()} Minutes', // Estimate 1.2 min per question
+                          difficulty,
+                          difficultyColor,
+                          isNew,
+                          session['id'],
+                        ),
+                      );
+                    }).toList(),
+                ],
               ),
             ),
-            
-            const SizedBox(height: 12),
-            
-            _buildSavedTestCard(
-              context,
-              'TNPSC Group 1 - Mock Test 15',
-              'Tamil, History, Geography',
-              '50 Questions',
-              '60 Minutes',
-              'Medium',
-              Colors.orange,
-              true,
-            ),
-            const SizedBox(height: 12),
-            _buildSavedTestCard(
-              context,
-              'TNPSC Group 2 - Practice Set 8',
-              'General Science, Aptitude',
-              '40 Questions',
-              '45 Minutes',
-              'Easy',
-              Colors.green,
-              false,
-            ),
-            const SizedBox(height: 12),
-            _buildSavedTestCard(
-              context,
-              'TNPSC Group 4 - Full Mock Test',
-              'All Subjects',
-              '100 Questions',
-              '120 Minutes',
-              'Hard',
-              Colors.red,
-              false,
-            ),
-            const SizedBox(height: 12),
-            _buildSavedTestCard(
-              context,
-              'Current Affairs - Weekly Test',
-              'Current Affairs, GK',
-              '30 Questions',
-              '30 Minutes',
-              'Easy',
-              Colors.green,
-              true,
-            ),
-            const SizedBox(height: 12),
-            _buildSavedTestCard(
-              context,
-              'Tamil Language - Grammar Test',
-              'Tamil Grammar, Literature',
-              '35 Questions',
-              '40 Minutes',
-              'Medium',
-              Colors.orange,
-              false,
-            ),
-            const SizedBox(height: 12),
-            _buildSavedTestCard(
-              context,
-              'Aptitude & Reasoning - Set 3',
-              'Logical Reasoning, Quantitative',
-              '45 Questions',
-              '50 Minutes',
-              'Medium',
-              Colors.orange,
-              true,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(int total, int notStarted, int inProgress) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -145,11 +204,11 @@ class SavedTestsPage extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('12', 'Saved Tests', Icons.bookmark),
+          _buildStatItem('$total', 'Saved Tests', Icons.bookmark),
           Container(width: 1, height: 40, color: Colors.white24),
-          _buildStatItem('8', 'Not Started', Icons.pending_outlined),
+          _buildStatItem('$notStarted', 'Not Started', Icons.pending_outlined),
           Container(width: 1, height: 40, color: Colors.white24),
-          _buildStatItem('4', 'In Progress', Icons.play_circle_outline),
+          _buildStatItem('$inProgress', 'In Progress', Icons.play_circle_outline),
         ],
       ),
     );
@@ -228,6 +287,7 @@ class SavedTestsPage extends StatelessWidget {
     String difficulty,
     Color difficultyColor,
     bool isNew,
+    int sessionId,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -282,6 +342,8 @@ class SavedTestsPage extends StatelessWidget {
               fontSize: 13,
               color: AppColors.textSecondary,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 12),
           Row(
@@ -298,7 +360,11 @@ class SavedTestsPage extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Remove feature coming soon!')),
+                    );
+                  },
                   icon: const Icon(Icons.bookmark_remove, size: 18),
                   label: Text(
                     'Remove',
@@ -316,7 +382,18 @@ class SavedTestsPage extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TestPage(
+                          testTitle: title,
+                          category: subjects,
+                          sessionId: sessionId,
+                        ),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.play_arrow, size: 18),
                   label: Text(
                     'Start Test',
@@ -363,4 +440,3 @@ class SavedTestsPage extends StatelessWidget {
     );
   }
 }
-

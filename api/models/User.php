@@ -117,6 +117,15 @@ class User {
     }
 
     public function delete() {
+        // Hard delete - actually removes from database
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $this->id, PDO::PARAM_INT);
+        return $stmt->execute();
+    }
+    
+    public function softDelete() {
+        // Soft delete - marks as inactive
         $query = "UPDATE " . $this->table_name . " SET is_active = 0 WHERE id = ?";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->id, PDO::PARAM_INT);

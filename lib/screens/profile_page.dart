@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/theme_service.dart';
+import '../services/api_service.dart';
 import 'performance_page.dart';
 import 'login_page.dart';
 import 'saved_tests_page.dart';
@@ -20,19 +21,111 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String _userName = 'Loading...';
   String _userMobile = '';
+  int _testsTaken = 0;
+  int _userRank = 0;
+  double _avgScore = 0;
+  int _savedTestsCount = 0;
+  bool _isLoadingStats = true;
   
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadStats();
+    _loadSavedTestsCount();
   }
   
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('userId');
+    
+    // Try to load fresh data from API first
+    if (userId != null) {
+      try {
+        final response = await ApiService.getUserProfile(userId);
+        if (response['success'] == true && response['user'] != null) {
+          final user = response['user'];
+          setState(() {
+            _userName = user['name'] ?? 'User';
+            _userMobile = user['mobile'] ?? '';
+          });
+          // Update SharedPreferences with fresh data
+          await prefs.setString('userName', _userName);
+          await prefs.setString('userMobile', _userMobile);
+          return;
+        }
+      } catch (e) {
+        // If API fails, fall back to SharedPreferences
+      }
+    }
+    
+    // Fallback to SharedPreferences
     setState(() {
       _userName = prefs.getString('userName') ?? 'User';
       _userMobile = prefs.getString('userMobile') ?? '';
     });
+  }
+
+  Future<void> _loadStats() async {
+    setState(() => _isLoadingStats = true);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('userId');
+      
+      if (userId != null) {
+        // Load test history
+        final historyResponse = await ApiService.getTestHistory(userId: userId);
+        if (historyResponse['success'] == true) {
+          final history = List<Map<String, dynamic>>.from(historyResponse['history'] ?? []);
+          double totalScore = 0;
+          for (var test in history) {
+            totalScore += (test['percentage'] ?? 0).toDouble();
+          }
+          
+          setState(() {
+            _testsTaken = history.length;
+            _avgScore = history.isNotEmpty ? totalScore / history.length : 0;
+          });
+        }
+        
+        // Load rankings
+        final rankingsResponse = await ApiService.getRankings();
+        if (rankingsResponse['success'] == true) {
+          final rankings = List<Map<String, dynamic>>.from(rankingsResponse['rankings'] ?? []);
+          final userRanking = rankings.indexWhere((r) => r['user_id'] == userId);
+          if (userRanking != -1) {
+            setState(() {
+              _userRank = userRanking + 1;
+            });
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() => _isLoadingStats = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingStats = false);
+      }
+    }
+  }
+
+  Future<void> _loadSavedTestsCount() async {
+    try {
+      final response = await ApiService.getQuestionSessions();
+      if (response['success'] == true) {
+        final sessions = List<Map<String, dynamic>>.from(response['sessions'] ?? []);
+        if (mounted) {
+          setState(() {
+            _savedTestsCount = sessions.length;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading saved tests count: $e');
+    }
   }
 
   // Edit Profile Picture function
@@ -712,11 +805,26 @@ class _ProfilePageState extends State<ProfilePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildProfileStat('24', 'Tests', textPrimary, textSecondary),
+                      _buildProfileStat(
+                        _isLoadingStats ? '...' : '$_testsTaken', 
+                        'Tests', 
+                        textPrimary, 
+                        textSecondary
+                      ),
                       Container(width: 1, height: 40, color: borderColor),
-                      _buildProfileStat('#142', 'Rank', textPrimary, textSecondary),
+                      _buildProfileStat(
+                        _isLoadingStats ? '...' : (_userRank > 0 ? '#$_userRank' : '--'), 
+                        'Rank', 
+                        textPrimary, 
+                        textSecondary
+                      ),
                       Container(width: 1, height: 40, color: borderColor),
-                      _buildProfileStat('78%', 'Avg Score', textPrimary, textSecondary),
+                      _buildProfileStat(
+                        _isLoadingStats ? '...' : '${_avgScore.toStringAsFixed(0)}%', 
+                        'Avg Score', 
+                        textPrimary, 
+                        textSecondary
+                      ),
                     ],
                   ),
                 ],
@@ -749,7 +857,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildMenuItem(
                     icon: Icons.bookmark_outline,
                     title: 'Saved Tests',
-                    subtitle: '12 tests saved',
+                    subtitle: '$_savedTestsCount tests saved',
                     onTap: _openSavedTests,
                   ),
                   const Divider(height: 24),

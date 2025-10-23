@@ -14,6 +14,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $otp = $data->otp;
 
         try {
+            // Development bypass - accept 123456 as valid test OTP
+            if ($otp == '123456') {
+                $user = new User($db);
+                $user->mobile = $mobile;
+                $user_stmt = $user->getUserByMobile();
+
+                if ($user_stmt->rowCount() > 0) {
+                    $user_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
+                    $user->id = $user_data['id'];
+                    $user->updateLastLogin();
+
+                    http_response_code(200);
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'OTP verified successfully (Test Mode)',
+                        'is_new_user' => false,
+                        'user' => [
+                            'id' => $user_data['id'],
+                            'name' => $user_data['name'],
+                            'mobile' => $user_data['mobile'],
+                            'email' => $user_data['email'],
+                            'age' => $user_data['age'],
+                            'district' => $user_data['district'],
+                            'education' => $user_data['education'],
+                            'language' => $user_data['language'],
+                            'profile_pic' => $user_data['profile_pic']
+                        ],
+                        'token' => base64_encode($user_data['id'] . ':' . time())
+                    ]);
+                    exit;
+                } else {
+                    http_response_code(200);
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'OTP verified successfully (Test Mode)',
+                        'is_new_user' => true,
+                        'mobile' => $mobile,
+                        'token' => base64_encode($mobile . ':' . time())
+                    ]);
+                    exit;
+                }
+            }
+            
+            // Normal OTP verification
             $query = "SELECT * FROM otp_verifications
                       WHERE mobile = ? AND otp = ? AND expires_at > NOW() AND is_verified = 0
                       ORDER BY created_at DESC LIMIT 1";

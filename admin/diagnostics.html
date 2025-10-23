@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP Configuration Diagnostics</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #ccc;
+        }
+        .status-card.ok { border-left-color: #28a745; }
+        .status-card.warning { border-left-color: #ffc107; }
+        .status-card.error { border-left-color: #dc3545; }
+        .check-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-ok { background: #d4edda; color: #155724; }
+        .badge-error { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fix-section {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #ffc107;
+        }
+        .fix-section h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        .fix-section ol {
+            margin-left: 20px;
+            line-height: 2;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 PHP Configuration Diagnostics</h1>
+        <p class="subtitle">Checking why the scraper can't fetch content...</p>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Running diagnostics...</p>
+        </div>
+        
+        <div id="results" style="display: none;">
+            <div class="status-card" id="overallStatus">
+                <h2>Overall Status: <span id="statusText"></span></h2>
+            </div>
+            
+            <h3 style="margin: 30px 0 15px 0; color: #333;">📋 PHP Configuration</h3>
+            <div id="phpConfig"></div>
+            
+            <h3 style="margin: 30px 0 15px 0; color: #333;">🔌 Extensions</h3>
+            <div id="extensions"></div>
+            
+            <h3 style="margin: 30px 0 15px 0; color: #333;">🌐 Network Tests</h3>
+            <div id="networkTests"></div>
+            
+            <div id="fixSection" style="display: none;"></div>
+            
+            <div style="text-align: center; margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
+                <button class="btn" onclick="runDiagnostics()">🔄 Run Again</button>
+                <a href="test_specific_url.html" class="btn">🧪 Test Scraper</a>
+                <a href="scraper_hub.html" class="btn">🏠 Scraper Hub</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function runDiagnostics() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            try {
+                const response = await fetch('php/check_config.php');
+                const data = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+                
+                displayResults(data);
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('overallStatus').className = 'status-card error';
+                document.getElementById('overallStatus').innerHTML = `
+                    <h2>❌ Fatal Error</h2>
+                    <p>Cannot connect to PHP backend: ${error.message}</p>
+                    <p style="margin-top: 15px;">Make sure XAMPP Apache is running!</p>
+                `;
+            }
+        }
+        
+        function displayResults(data) {
+            // Overall status
+            const statusCard = document.getElementById('overallStatus');
+            statusCard.className = 'status-card ' + data.overall_status;
+            
+            let statusEmoji = data.overall_status === 'ok' ? '✅' : 
+                            data.overall_status === 'warning' ? '⚠️' : '❌';
+            document.getElementById('statusText').textContent = 
+                statusEmoji + ' ' + data.overall_status.toUpperCase();
+            
+            // PHP Config
+            document.getElementById('phpConfig').innerHTML = `
+                <div class="check-item">
+                    <span>PHP Version</span>
+                    <span class="status-badge badge-ok">${data.php_version}</span>
+                </div>
+                <div class="check-item">
+                    <span>Max Execution Time</span>
+                    <span class="status-badge ${data.max_execution_time >= 30 ? 'badge-ok' : 'badge-warning'}">${data.max_execution_time}s</span>
+                </div>
+                <div class="check-item">
+                    <span>Memory Limit</span>
+                    <span class="status-badge badge-ok">${data.memory_limit}</span>
+                </div>
+                <div class="check-item">
+                    <span>allow_url_fopen</span>
+                    <span class="status-badge ${data.allow_url_fopen ? 'badge-ok' : 'badge-error'}">
+                        ${data.allow_url_fopen ? '✓ Enabled' : '✗ Disabled'}
+                    </span>
+                </div>
+            `;
+            
+            // Extensions
+            let extHtml = '';
+            for (const [ext, loaded] of Object.entries(data.extensions)) {
+                extHtml += `
+                    <div class="check-item">
+                        <span>${ext}</span>
+                        <span class="status-badge ${loaded ? 'badge-ok' : 'badge-error'}">
+                            ${loaded ? '✓ Loaded' : '✗ Not Loaded'}
+                        </span>
+                    </div>
+                `;
+            }
+            document.getElementById('extensions').innerHTML = extHtml;
+            
+            // Network Tests
+            let networkHtml = '';
+            
+            if (data.curl_test) {
+                networkHtml += `
+                    <div class="check-item">
+                        <div>
+                            <strong>cURL Test</strong><br>
+                            <small style="color: #666;">Testing civilserviceaspirants.in</small>
+                        </div>
+                        <span class="status-badge ${data.curl_test.success ? 'badge-ok' : 'badge-error'}">
+                            ${data.curl_test.success ? '✓ Success' : '✗ Failed'}
+                            (HTTP ${data.curl_test.http_code})
+                        </span>
+                    </div>
+                `;
+                if (data.curl_test.error) {
+                    networkHtml += `
+                        <div class="check-item" style="background: #f8d7da;">
+                            <small style="color: #721c24;"><strong>Error:</strong> ${data.curl_test.error}</small>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (data.file_get_contents_test) {
+                networkHtml += `
+                    <div class="check-item">
+                        <div>
+                            <strong>file_get_contents Test</strong><br>
+                            <small style="color: #666;">Testing google.com</small>
+                        </div>
+                        <span class="status-badge ${data.file_get_contents_test.success ? 'badge-ok' : 'badge-error'}">
+                            ${data.file_get_contents_test.success ? '✓ Success' : '✗ Failed'}
+                        </span>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('networkTests').innerHTML = networkHtml;
+            
+            // Show fixes if there are issues
+            if (data.issues && data.issues.length > 0) {
+                showFixes(data.issues, data);
+            }
+        }
+        
+        function showFixes(issues, data) {
+            const fixSection = document.getElementById('fixSection');
+            fixSection.style.display = 'block';
+            
+            let fixHtml = '<div class="fix-section"><h3>🔧 How to Fix</h3>';
+            
+            if (!data.extensions.curl) {
+                fixHtml += `
+                    <h4>Enable cURL Extension:</h4>
+                    <ol>
+                        <li>Open XAMPP Control Panel</li>
+                        <li>Click "Config" next to Apache → "php.ini"</li>
+                        <li>Find this line: <code class="code-block">;extension=curl</code></li>
+                        <li>Remove the semicolon: <code class="code-block">extension=curl</code></li>
+                        <li>Save and restart Apache</li>
+                    </ol>
+                `;
+            }
+            
+            if (!data.allow_url_fopen) {
+                fixHtml += `
+                    <h4>Enable allow_url_fopen:</h4>
+                    <ol>
+                        <li>Open php.ini (same as above)</li>
+                        <li>Find: <code class="code-block">allow_url_fopen = Off</code></li>
+                        <li>Change to: <code class="code-block">allow_url_fopen = On</code></li>
+                        <li>Save and restart Apache</li>
+                    </ol>
+                `;
+            }
+            
+            if (data.curl_test && !data.curl_test.success) {
+                fixHtml += `
+                    <h4>Network Connection Issue:</h4>
+                    <ul>
+                        <li>Check your internet connection</li>
+                        <li>Try opening <a href="https://civilserviceaspirants.in" target="_blank">civilserviceaspirants.in</a> in browser</li>
+                        <li>Check firewall settings</li>
+                        <li>Try disabling SSL verification (already done in code)</li>
+                    </ul>
+                `;
+            }
+            
+            fixHtml += '</div>';
+            fixSection.innerHTML = fixHtml;
+        }
+        
+        // Run diagnostics on load
+        window.addEventListener('DOMContentLoaded', runDiagnostics);
+    </script>
+</body>
+</html>
+
+

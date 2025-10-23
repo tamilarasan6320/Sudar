@@ -1,10 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 
-class ProgressPage extends StatelessWidget {
+class ProgressPage extends StatefulWidget {
   const ProgressPage({Key? key}) : super(key: key);
+
+  @override
+  State<ProgressPage> createState() => _ProgressPageState();
+}
+
+class _ProgressPageState extends State<ProgressPage> {
+  bool _isLoading = true;
+  int _testsTaken = 0;
+  double _avgScore = 0.0;
+  List<Map<String, dynamic>> _testHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgressData();
+  }
+
+  Future<void> _loadProgressData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('userId');
+      
+      if (userId != null) {
+        final response = await ApiService.getTestHistory(userId: userId);
+        
+        if (response['success'] == true) {
+          final history = List<Map<String, dynamic>>.from(response['history'] ?? []);
+          
+          double totalScore = 0;
+          for (var test in history) {
+            totalScore += (test['percentage'] ?? 0).toDouble();
+          }
+          
+          if (mounted) {
+            setState(() {
+              _testHistory = history;
+              _testsTaken = history.length;
+              _avgScore = history.isNotEmpty ? totalScore / history.length : 0;
+              _isLoading = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Unknown date';
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inDays == 0) {
+        return 'Today';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +127,7 @@ class ProgressPage extends StatelessWidget {
                         child: _buildStatItem(context,
                           icon: Icons.assignment_turned_in_rounded,
                           label: 'Tests Taken',
-                          value: '24',
+                          value: _isLoading ? '...' : '$_testsTaken',
                           isWhite: true,
                         ),
                       ),
@@ -62,7 +136,7 @@ class ProgressPage extends StatelessWidget {
                         child: _buildStatItem(context,
                           icon: Icons.trending_up_rounded,
                           label: 'Avg Score',
-                          value: '78%',
+                          value: _isLoading ? '...' : '${_avgScore.toStringAsFixed(0)}%',
                           isWhite: true,
                         ),
                       ),
@@ -77,7 +151,7 @@ class ProgressPage extends StatelessWidget {
                         child: _buildStatItem(context,
                           icon: Icons.emoji_events_rounded,
                           label: 'Rank',
-                          value: '#142',
+                          value: _isLoading ? '...' : '--',
                           isWhite: true,
                         ),
                       ),
@@ -86,7 +160,7 @@ class ProgressPage extends StatelessWidget {
                         child: _buildStatItem(context,
                           icon: Icons.local_fire_department_rounded,
                           label: 'Streak',
-                          value: '7 days',
+                          value: _isLoading ? '...' : '0 days',
                           isWhite: true,
                         ),
                       ),
@@ -123,28 +197,36 @@ class ProgressPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Column(
-                children: [
-                  _buildPerformanceBar(context, 'Previous Year Papers', 0.85, AppColors.primary),
-                  const SizedBox(height: 16),
-                  _buildPerformanceBar(context, 'Tamil Language', 0.72, const Color(0xFF9C27B0)),
-                  const SizedBox(height: 16),
-                  _buildPerformanceBar(context, 'General Science', 0.68, const Color(0xFF00BCD4)),
-                  const SizedBox(height: 16),
-                  _buildPerformanceBar(context, 'Social Science', 0.75, const Color(0xFF4CAF50)),
-                  const SizedBox(height: 16),
-                  _buildPerformanceBar(context, 'Aptitude', 0.80, AppColors.secondary),
-                  const SizedBox(height: 16),
-                  _buildPerformanceBar(context, 'Current Affairs', 0.65, const Color(0xFFFF5722)),
-                ],
-              ),
+              child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _testHistory.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'No performance data yet',
+                          style: GoogleFonts.poppins(color: Colors.grey[600]),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Text(
+                          'Performance data based on ${_testHistory.length} tests',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
             ),
             
             const SizedBox(height: 24),
             
-            // Recent Activity
+            // Recent Tests
             Text(
-              'Recent Activity',
+              'Recent Tests',
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -154,44 +236,70 @@ class ProgressPage extends StatelessWidget {
             
             const SizedBox(height: 12),
             
-            _buildActivityCard(context,
-              title: 'TNPSC Group 1 - Mock Test',
-              date: 'Today, 10:30 AM',
-              score: 85,
-              questions: 50,
-              icon: Icons.check_circle,
-              iconColor: AppColors.success,
-            ),
+            // Show test history from API
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_testHistory.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.assignment_outlined, size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No test history yet',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Start taking tests to see your progress',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._testHistory.map((test) {
+                final percentage = (test['percentage'] ?? 0).toDouble();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildActivityCard(context,
+                    title: test['session_name'] ?? 'Test',
+                    date: _formatDate(test['completed_at']),
+                    score: percentage.toInt(),
+                    questions: test['total_questions'] ?? 0,
+                    icon: percentage >= 50 ? Icons.check_circle : Icons.cancel,
+                    iconColor: percentage >= 75 ? AppColors.success : percentage >= 50 ? AppColors.warning : AppColors.error,
+                  ),
+                );
+              }).toList(),
             
-            const SizedBox(height: 12),
+            if (!_isLoading && _testHistory.isNotEmpty)
+              const SizedBox(height: 12),
             
-            _buildActivityCard(context,
-              title: 'Tamil Grammar Practice',
-              date: 'Yesterday, 3:45 PM',
-              score: 72,
-              questions: 30,
-              icon: Icons.check_circle,
-              iconColor: AppColors.success,
-            ),
-            
-            const SizedBox(height: 12),
-            
-            _buildActivityCard(context,
-              title: 'General Science Quiz',
-              date: '2 days ago',
-              score: 68,
-              questions: 40,
-              icon: Icons.check_circle,
-              iconColor: AppColors.warning,
-            ),
-            
-            const SizedBox(height: 12),
-            
-            _buildActivityCard(context,
-              title: 'Current Affairs - 2024',
-              date: '3 days ago',
-              score: 78,
-              questions: 25,
+            if (false) // This is a placeholder - remove completely
+              _buildActivityCard(context,
+              title: 'Placeholder',
+              date: 'Never',
+              score: 0,
+              questions: 0,
               icon: Icons.check_circle,
               iconColor: AppColors.success,
             ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'test_page.dart';
 import 'tests_page.dart';
 import 'progress_page.dart';
@@ -20,6 +22,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   late String _currentExam;
+  bool _isLoadingStats = true;
+  bool _isLoadingCategories = true;
+  int _testsTaken = 0;
+  double _avgScore = 0.0;
+  int _userRank = 0;
+  List<Map<String, dynamic>> _recentTests = [];
+  List<Map<String, dynamic>> _testCategories = [];
   
   final List<String> _examOptions = [
     'TNPSC Group 1',
@@ -34,6 +43,70 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _currentExam = widget.selectedExam ?? 'TNPSC Group 1';
+    _loadUserStats();
+  }
+
+  Future<void> _loadUserStats() async {
+    setState(() {
+      _isLoadingStats = true;
+      _isLoadingCategories = true;
+    });
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('userId');
+      
+      // Load test categories with session counts
+      final categoriesResponse = await ApiService.getTestCategories();
+      if (categoriesResponse['success'] == true) {
+        final categories = List<Map<String, dynamic>>.from(categoriesResponse['categories'] ?? []);
+        _testCategories = categories;
+      }
+      
+      if (userId != null) {
+        // Load test history
+        final historyResponse = await ApiService.getTestHistory(userId: userId);
+        
+        if (historyResponse['success'] == true) {
+          final history = List<Map<String, dynamic>>.from(historyResponse['history'] ?? []);
+          
+          // Calculate stats
+          _testsTaken = history.length;
+          if (history.isNotEmpty) {
+            double totalScore = 0;
+            for (var test in history) {
+              totalScore += (test['percentage'] ?? 0).toDouble();
+            }
+            _avgScore = totalScore / history.length;
+          }
+          _recentTests = history.take(3).toList();
+        }
+        
+        // Load rankings to get user rank
+        final rankingsResponse = await ApiService.getRankings();
+        if (rankingsResponse['success'] == true) {
+          final rankings = List<Map<String, dynamic>>.from(rankingsResponse['rankings'] ?? []);
+          final userRanking = rankings.indexWhere((r) => r['user_id'] == userId);
+          if (userRanking != -1) {
+            _userRank = userRanking + 1;
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+          _isLoadingCategories = false;
+        });
+      }
+    }
   }
 
   @override
@@ -264,7 +337,7 @@ class _HomePageState extends State<HomePage> {
           child: _buildStatCard(
             icon: Icons.quiz_rounded,
             label: 'Tests Taken',
-            value: '24',
+            value: _isLoadingStats ? '...' : '$_testsTaken',
             color: AppColors.primary,
           ),
         ),
@@ -273,7 +346,7 @@ class _HomePageState extends State<HomePage> {
           child: _buildStatCard(
             icon: Icons.trending_up_rounded,
             label: 'Avg Score',
-            value: '78%',
+            value: _isLoadingStats ? '...' : '${_avgScore.toStringAsFixed(0)}%',
             color: AppColors.success,
           ),
         ),
@@ -282,7 +355,7 @@ class _HomePageState extends State<HomePage> {
           child: _buildStatCard(
             icon: Icons.emoji_events_rounded,
             label: 'Rank',
-            value: '#142',
+            value: _isLoadingStats ? '...' : (_userRank > 0 ? '#$_userRank' : '--'),
             color: AppColors.warning,
           ),
         ),
@@ -357,15 +430,8 @@ class _HomePageState extends State<HomePage> {
                 label: 'Start Test',
                 color: AppColors.primary,
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TestPage(
-                        testTitle: 'Quick Practice Test',
-                        category: _currentExam,
-                      ),
-                    ),
-                  );
+                  // Navigate to Tests page to select a test
+                  setState(() => _selectedIndex = 1);
                 },
               ),
             ),
@@ -456,7 +522,9 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                setState(() => _selectedIndex = 1); // Go to Tests page
+              },
               child: Text(
                 'View All',
                 style: GoogleFonts.poppins(
@@ -469,86 +537,78 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: 'Previous Year Papers',
-          subtitle: '50 Tests Available',
-          icon: Icons.history_edu_rounded,
-          color: AppColors.primary,
-          progress: 0.64,
-          completed: 32,
-          total: 50,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: 'Tamil Language Section',
-          subtitle: '45 Tests Available',
-          icon: Icons.translate_rounded,
-          color: const Color(0xFF9C27B0),
-          progress: 0.40,
-          completed: 18,
-          total: 45,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: 'General Science',
-          subtitle: '60 Tests Available',
-          icon: Icons.science_rounded,
-          color: const Color(0xFF00BCD4),
-          progress: 0.20,
-          completed: 12,
-          total: 60,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: 'Social Science',
-          subtitle: '55 Tests Available',
-          icon: Icons.public_rounded,
-          color: const Color(0xFF4CAF50),
-          progress: 0.35,
-          completed: 19,
-          total: 55,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: 'Aptitude & Mental Ability',
-          subtitle: '40 Tests Available',
-          icon: Icons.psychology_rounded,
-          color: AppColors.secondary,
-          progress: 0.50,
-          completed: 20,
-          total: 40,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: 'Current Affairs',
-          subtitle: '30 Tests Available',
-          icon: Icons.newspaper_rounded,
-          color: const Color(0xFFFF5722),
-          progress: 0.30,
-          completed: 9,
-          total: 30,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: '10th / SSLC Level Tests',
-          subtitle: '35 Tests Available',
-          icon: Icons.school_outlined,
-          color: AppColors.warning,
-          progress: 0.25,
-          completed: 9,
-          total: 35,
-        ),
-        const SizedBox(height: 12),
-        _buildCategoryCard(
-          title: '12th / HSC Level Tests',
-          subtitle: '40 Tests Available',
-          icon: Icons.menu_book_rounded,
-          color: const Color(0xFF673AB7),
-          progress: 0.15,
-          completed: 6,
-          total: 40,
-        ),
+        if (_isLoadingCategories)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (_testCategories.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Text(
+                'No test categories available',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          )
+        else
+          ..._testCategories.take(5).map((category) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildCategoryCardFromData(category),
+            );
+          }).toList(),
       ],
+    );
+  }
+
+  Widget _buildCategoryCardFromData(Map<String, dynamic> category) {
+    final name = category['name'] ?? 'Unknown';
+    final sessionsCount = category['sessions_count'] ?? 0;
+    final completedCount = category['completed_count'] ?? 0;
+    final progress = sessionsCount > 0 ? completedCount / sessionsCount : 0.0;
+    
+    // Assign icon and color based on category name
+    IconData icon;
+    Color color;
+    
+    if (name.contains('Tamil')) {
+      icon = Icons.translate_rounded;
+      color = const Color(0xFF9C27B0);
+    } else if (name.contains('Science')) {
+      icon = Icons.science_rounded;
+      color = const Color(0xFF00BCD4);
+    } else if (name.contains('Social') || name.contains('History')) {
+      icon = Icons.public_rounded;
+      color = const Color(0xFF4CAF50);
+    } else if (name.contains('Aptitude') || name.contains('Mental')) {
+      icon = Icons.psychology_rounded;
+      color = AppColors.secondary;
+    } else if (name.contains('Current')) {
+      icon = Icons.newspaper_rounded;
+      color = const Color(0xFFFF5722);
+    } else if (name.contains('Previous') || name.contains('Year')) {
+      icon = Icons.history_edu_rounded;
+      color = AppColors.primary;
+    } else {
+      icon = Icons.book_outlined;
+      color = AppColors.primary;
+    }
+    
+    return _buildCategoryCard(
+      title: name,
+      subtitle: '$sessionsCount Tests Available',
+      icon: icon,
+      color: color,
+      progress: progress,
+      completed: completedCount,
+      total: sessionsCount,
     );
   }
 
@@ -571,15 +631,8 @@ class _HomePageState extends State<HomePage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TestPage(
-                  testTitle: title,
-                  category: _currentExam,
-                ),
-              ),
-            );
+            // Navigate to Tests page to see all tests in this category
+            setState(() => _selectedIndex = 1);
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -671,34 +724,77 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(height: 12),
-        _buildRecentTestCard(
-          title: 'General Knowledge - Test 12',
-          date: 'Completed on Oct 10, 2025',
-          score: 85,
-          totalQuestions: 100,
-          status: 'Passed',
-          statusColor: AppColors.success,
-        ),
-        const SizedBox(height: 12),
-        _buildRecentTestCard(
-          title: 'Tamil Language - Test 8',
-          date: 'Completed on Oct 8, 2025',
-          score: 72,
-          totalQuestions: 100,
-          status: 'Passed',
-          statusColor: AppColors.success,
-        ),
-        const SizedBox(height: 12),
-        _buildRecentTestCard(
-          title: 'Aptitude - Test 15',
-          date: 'Completed on Oct 5, 2025',
-          score: 45,
-          totalQuestions: 100,
-          status: 'Failed',
-          statusColor: AppColors.error,
-        ),
+        if (_isLoadingStats)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (_recentTests.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                children: [
+                  Icon(Icons.assignment_outlined, size: 48, color: AppColors.textLight),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No tests taken yet',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _selectedIndex = 1); // Go to Tests page
+                    },
+                    child: Text(
+                      'Start Your First Test',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ..._recentTests.map((test) {
+            final percentage = (test['percentage'] ?? 0).toDouble();
+            final isPassed = percentage >= 50;
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildRecentTestCard(
+                title: test['test_name'] ?? 'Test',
+                date: 'Completed on ${_formatDate(test['submitted_at'])}',
+                score: test['correct'] ?? 0,
+                totalQuestions: test['total_questions'] ?? 0,
+                status: isPassed ? 'Passed' : 'Failed',
+                statusColor: isPassed ? AppColors.success : AppColors.error,
+              ),
+            );
+          }).toList(),
       ],
     );
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return 'Unknown';
+    try {
+      final date = DateTime.parse(dateStr);
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   Widget _buildRecentTestCard({

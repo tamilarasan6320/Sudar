@@ -21,10 +21,14 @@ class QuestionSession {
     }
 
     public function getAll($test_category_id = null) {
-        $query = "SELECT qs.*, tc.name AS category_name,
+        $query = "SELECT qs.*, 
+                  tc.name AS category_name,
+                  tc.exam_category_id,
+                  ec.name AS exam_category_name,
                   (SELECT COUNT(*) FROM questions WHERE session_id = qs.id) AS actual_question_count
                   FROM " . $this->table_name . " qs
                   LEFT JOIN test_categories tc ON qs.test_category_id = tc.id
+                  LEFT JOIN exam_categories ec ON tc.exam_category_id = ec.id
                   WHERE qs.is_active = 1";
 
         if ($test_category_id) {
@@ -44,10 +48,14 @@ class QuestionSession {
     }
 
     public function getById() {
-        $query = "SELECT qs.*, tc.name AS category_name,
+        $query = "SELECT qs.*, 
+                  tc.name AS category_name,
+                  tc.exam_category_id,
+                  ec.name AS exam_category_name,
                   (SELECT COUNT(*) FROM questions WHERE session_id = qs.id) AS actual_question_count
                   FROM " . $this->table_name . " qs
                   LEFT JOIN test_categories tc ON qs.test_category_id = tc.id
+                  LEFT JOIN exam_categories ec ON tc.exam_category_id = ec.id
                   WHERE qs.id = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $this->id, PDO::PARAM_INT);

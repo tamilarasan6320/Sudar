@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 Get Working OTP - TNPSC Mock Test</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .step {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        .step h2 {
+            color: #764ba2;
+            margin-top: 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin: 20px 0;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        #result {
+            background: #4CAF50;
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            margin: 20px 0;
+        }
+        #otp-display {
+            font-size: 48px;
+            font-weight: bold;
+            letter-spacing: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .mobile {
+            font-size: 24px;
+            color: #333;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        .info {
+            background: #2196F3;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .highlight {
+            background: yellow;
+            padding: 2px 5px;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Get Your Working OTP</h1>
+        
+        <div class="info">
+            <strong>📱 Your Mobile Number:</strong> 9384938434<br>
+            <strong>⏰ OTP Valid For:</strong> 10 minutes<br>
+            <strong>🎯 Use This OTP In:</strong> Your Flutter App (http://localhost:8888)
+        </div>
+        
+        <div class="step">
+            <h2>📝 Instructions:</h2>
+            <ol style="line-height: 2;">
+                <li><strong>Click the button below</strong> to generate a fresh OTP</li>
+                <li><strong>Copy the 6-digit code</strong> that appears</li>
+                <li><strong>Go to your Flutter app:</strong> <a href="http://localhost:8888" target="_blank">http://localhost:8888</a></li>
+                <li><strong>Enter mobile:</strong> <span class="highlight">9384938434</span> (NO +91!)</li>
+                <li><strong>Click CONTINUE</strong></li>
+                <li><strong>Enter the OTP</strong> from this page</li>
+                <li><strong>Click SUBMIT</strong></li>
+                <li><strong>✅ SUCCESS!</strong> You should now proceed to the home page!</li>
+            </ol>
+        </div>
+        
+        <button onclick="generateOTP()">🔄 Generate Fresh OTP</button>
+        
+        <div id="result">
+            <h2>✅ Your OTP is Ready!</h2>
+            <div id="otp-display">------</div>
+            <p>Mobile: <span class="mobile">9384938434</span></p>
+            <p>⏰ Valid for 10 minutes</p>
+            <hr style="border: 1px solid white; margin: 20px 0;">
+            <p style="font-size: 14px;">
+                💡 <strong>Pro Tip:</strong> Copy this OTP and use it within 10 minutes!<br>
+                If it expires, just click "Generate Fresh OTP" again.
+            </p>
+        </div>
+        
+        <div id="error" class="error"></div>
+        
+        <div class="step">
+            <h2>🐛 Troubleshooting:</h2>
+            <ul style="line-height: 2;">
+                <li><strong>Still says "Invalid OTP"?</strong> Generate a NEW OTP and use it immediately</li>
+                <li><strong>Mobile number wrong?</strong> Make sure it's exactly: <span class="highlight">9384938434</span></li>
+                <li><strong>Has +91 prefix?</strong> Remove it! Use only 10 digits</li>
+                <li><strong>XAMPP running?</strong> Apache and MySQL must be green</li>
+            </ul>
+        </div>
+        
+        <div class="info">
+            <strong>🎉 After OTP Works:</strong><br>
+            You'll see the home page → Select exams → Choose subjects → Take tests!
+        </div>
+    </div>
+    
+    <script>
+        async function generateOTP() {
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const otpDisplay = document.getElementById('otp-display');
+            
+            // Hide previous results
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            otpDisplay.textContent = '⏳ Generating...';
+            resultDiv.style.display = 'block';
+            
+            try {
+                // Call API to generate OTP
+                const response = await fetch('http://localhost/Mock_test/api/auth/send_otp.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mobile: '9384938434'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.otp) {
+                    // Show OTP
+                    otpDisplay.textContent = data.otp;
+                    resultDiv.style.display = 'block';
+                    
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(data.otp).then(() => {
+                        console.log('OTP copied to clipboard!');
+                    });
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        alert('✅ OTP Generated: ' + data.otp + '\n\n📋 Copied to clipboard!\n\nNow go to your Flutter app and use this OTP.');
+                    }, 500);
+                } else {
+                    throw new Error(data.message || 'Failed to generate OTP');
+                }
+            } catch (error) {
+                errorDiv.textContent = '❌ Error: ' + error.message + '\n\nMake sure XAMPP is running!';
+                errorDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+            }
+        }
+        
+        // Auto-generate OTP on page load
+        window.onload = function() {
+            setTimeout(() => {
+                generateOTP();
+            }, 500);
+        };
+    </script>
+</body>
+</html>
+

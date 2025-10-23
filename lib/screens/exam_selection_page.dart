@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 import 'home_page.dart';
 
 class ExamSelectionPage extends StatefulWidget {
@@ -12,35 +13,58 @@ class ExamSelectionPage extends StatefulWidget {
 }
 
 class _ExamSelectionPageState extends State<ExamSelectionPage> {
-  String? _selectedExam = 'TNPSC Group 4'; // Auto-select Group 4
+  String? _selectedExam;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _examCategories = [];
 
-  final List<Map<String, String>> _tnpscExams = [
-    {
-      'title': 'TNPSC Group 4',
-      'subtitle': 'Combined Civil Services Examination - IV (Primary)',
-      'icon': '4',
-    },
-    {
-      'title': 'TNPSC Group 1',
-      'subtitle': 'Combined Civil Services Examination - I',
-      'icon': '1',
-    },
-    {
-      'title': 'TNPSC Group 2',
-      'subtitle': 'Combined Civil Services Examination - II',
-      'icon': '2',
-    },
-    {
-      'title': 'TNPSC Group 2A',
-      'subtitle': 'Combined Civil Services Examination - II A',
-      'icon': '2A',
-    },
-    {
-      'title': 'TNPSC VAO',
-      'subtitle': 'Village Administrative Officer',
-      'icon': 'VAO',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadExamCategories();
+  }
+
+  Future<void> _loadExamCategories() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final response = await ApiService.getExamCategories();
+      
+      if (response['success'] == true) {
+        final categories = List<Map<String, dynamic>>.from(response['categories'] ?? []);
+        
+        if (mounted) {
+          setState(() {
+            _examCategories = categories;
+            // Auto-select TNPSC Group 4 if available
+            final group4 = categories.firstWhere(
+              (cat) => cat['name'].toString().contains('Group 4'),
+              orElse: () => categories.isNotEmpty ? categories.first : {},
+            );
+            _selectedExam = group4.isNotEmpty ? group4['name'] : null;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _getIconText(String examName) {
+    if (examName.contains('Group 1')) return '1';
+    if (examName.contains('Group 2A')) return '2A';
+    if (examName.contains('Group 2')) return '2';
+    if (examName.contains('Group 4')) return '4';
+    if (examName.contains('TNUSRB')) return 'PO';
+    if (examName.contains('VAO')) return 'VAO';
+    return examName.substring(0, 1).toUpperCase();
+  }
 
   void _handleContinue() {
     if (_selectedExam != null) {
@@ -84,36 +108,57 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
         elevation: 0,
         backgroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 600),
-                margin: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 16 : 40,
-                  vertical: 24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : _examCategories.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 64, color: AppColors.textLight),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No exam categories available',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
                   children: [
-                    // Header Section
-                    _buildHeader(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          margin: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 16 : 40,
+                            vertical: 24,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header Section
+                              _buildHeader(),
 
-                    const SizedBox(height: 32),
+                              const SizedBox(height: 32),
 
-                    // Exam List
-                    _buildExamList(),
+                              // Exam List
+                              _buildExamList(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Continue Button (Fixed at bottom)
+                    _buildBottomButton(),
                   ],
                 ),
-              ),
-            ),
-          ),
-
-          // Continue Button (Fixed at bottom)
-          _buildBottomButton(),
-        ],
-      ),
     );
   }
 
@@ -144,16 +189,19 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
 
   Widget _buildExamList() {
     return Column(
-      children: _tnpscExams.map((exam) {
-        final isSelected = _selectedExam == exam['title'];
+      children: _examCategories.map((exam) {
+        final title = exam['name'] ?? 'Unknown Exam';
+        final description = exam['description'] ?? '';
+        final isSelected = _selectedExam == title;
+        
         return _buildExamCard(
-          title: exam['title']!,
-          subtitle: exam['subtitle']!,
-          icon: exam['icon']!,
+          title: title,
+          subtitle: description,
+          icon: _getIconText(title),
           isSelected: isSelected,
           onTap: () {
             setState(() {
-              _selectedExam = exam['title'];
+              _selectedExam = title;
             });
           },
         );

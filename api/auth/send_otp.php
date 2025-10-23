@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($data->mobile) && preg_match('/^[0-9]{10}$/', $data->mobile)) {
         $mobile = $data->mobile;
         $otp = rand(100000, 999999);
-        $expires_at = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+        // Fix timezone issue - use current timestamp + 10 minutes
+        $expires_at = date('Y-m-d H:i:s', time() + (10 * 60));
 
         try {
             $delete_query = "DELETE FROM otp_verifications WHERE mobile = ?";

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TNPSC Mock Test - API Testing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        
+        .api-section {
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .api-section h2 {
+            color: #764ba2;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .api-section h2::before {
+            content: '🔌';
+            font-size: 1.5rem;
+        }
+        
+        .test-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-group h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .response pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.9rem;
+            color: #333;
+        }
+        
+        .success {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+        
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .status-success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-error {
+            background: #f44336;
+            color: white;
+        }
+        
+        .test-all-btn {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            font-size: 1.2rem;
+            padding: 15px 40px;
+            display: block;
+            margin: 30px auto;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 TNPSC Mock Test - API Testing Suite</h1>
+        
+        <button class="test-all-btn" onclick="testAllAPIs()">🧪 Test All APIs</button>
+        
+        <div class="loading" id="mainLoading">
+            <div class="spinner"></div>
+            <p>Testing APIs...</p>
+        </div>
+        
+        <!-- Authentication APIs -->
+        <div class="api-section">
+            <h2>Authentication APIs</h2>
+            
+            <div class="test-group">
+                <h3>1. Send OTP</h3>
+                <div class="input-group">
+                    <label>Mobile Number:</label>
+                    <input type="text" id="otpMobile" value="9876543210" placeholder="Enter 10-digit mobile number">
+                </div>
+                <button onclick="sendOTP()">Send OTP</button>
+                <div class="response" id="sendOTPResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>2. Verify OTP</h3>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Mobile Number:</label>
+                        <input type="text" id="verifyMobile" value="9876543210">
+                    </div>
+                    <div class="input-group">
+                        <label>OTP:</label>
+                        <input type="text" id="verifyOTP" value="1234" placeholder="Enter OTP">
+                    </div>
+                </div>
+                <button onclick="verifyOTP()">Verify OTP</button>
+                <div class="response" id="verifyOTPResponse" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <!-- User APIs -->
+        <div class="api-section">
+            <h2>User Management APIs</h2>
+            
+            <div class="test-group">
+                <h3>3. Create User</h3>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Mobile:</label>
+                        <input type="text" id="createMobile" value="9876543210">
+                    </div>
+                    <div class="input-group">
+                        <label>Name:</label>
+                        <input type="text" id="createName" value="Test User">
+                    </div>
+                    <div class="input-group">
+                        <label>Email:</label>
+                        <input type="email" id="createEmail" value="test@example.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Age:</label>
+                        <input type="number" id="createAge" value="25">
+                    </div>
+                </div>
+                <button onclick="createUser()">Create User</button>
+                <div class="response" id="createUserResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>4. Get User Profile</h3>
+                <div class="input-group">
+                    <label>User ID:</label>
+                    <input type="number" id="profileUserId" value="1" placeholder="Enter user ID">
+                </div>
+                <button onclick="getUserProfile()">Get Profile</button>
+                <div class="response" id="profileResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>5. Update User</h3>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>User ID:</label>
+                        <input type="number" id="updateUserId" value="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Name:</label>
+                        <input type="text" id="updateName" value="Updated Name">
+                    </div>
+                </div>
+                <button onclick="updateUser()">Update User</button>
+                <div class="response" id="updateUserResponse" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <!-- Test/Exam APIs -->
+        <div class="api-section">
+            <h2>Test & Exam APIs</h2>
+            
+            <div class="test-group">
+                <h3>6. Get Exam Categories</h3>
+                <button onclick="getExamCategories()">Get Exam Categories</button>
+                <div class="response" id="examCategoriesResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>7. Get Test Categories</h3>
+                <div class="input-group">
+                    <label>Exam ID (optional):</label>
+                    <input type="number" id="examId" value="1" placeholder="Enter exam ID or leave empty">
+                </div>
+                <button onclick="getTestCategories()">Get Test Categories</button>
+                <div class="response" id="testCategoriesResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>8. Get Question Sessions</h3>
+                <div class="input-group">
+                    <label>Category ID (optional):</label>
+                    <input type="number" id="categoryId" value="1" placeholder="Enter category ID">
+                </div>
+                <button onclick="getQuestionSessions()">Get Sessions</button>
+                <div class="response" id="sessionsResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>9. Get Questions</h3>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Session ID:</label>
+                        <input type="number" id="sessionId" value="1" placeholder="Enter session ID">
+                    </div>
+                    <div class="input-group">
+                        <label>Language:</label>
+                        <select id="language">
+                            <option value="en">English</option>
+                            <option value="ta">Tamil</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="getQuestions()">Get Questions</button>
+                <div class="response" id="questionsResponse" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <!-- Test Results APIs -->
+        <div class="api-section">
+            <h2>Test Results & Rankings APIs</h2>
+            
+            <div class="test-group">
+                <h3>10. Get Test History</h3>
+                <div class="input-group">
+                    <label>User ID:</label>
+                    <input type="number" id="historyUserId" value="1" placeholder="Enter user ID">
+                </div>
+                <button onclick="getTestHistory()">Get History</button>
+                <div class="response" id="historyResponse" style="display:none;"></div>
+            </div>
+            
+            <div class="test-group">
+                <h3>11. Get Rankings</h3>
+                <div class="input-group">
+                    <label>Session ID (optional):</label>
+                    <input type="number" id="rankingSessionId" value="" placeholder="Leave empty for all">
+                </div>
+                <button onclick="getRankings()">Get Rankings</button>
+                <div class="response" id="rankingsResponse" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost/Mock_test/api';
+        
+        function displayResponse(elementId, data, success = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = success ? 'response success' : 'response error';
+            
+            const badge = success ? 
+                '<span class="status-badge status-success">✓ Success</span>' : 
+                '<span class="status-badge status-error">✗ Error</span>';
+            
+            element.innerHTML = badge + '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+        
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+                const data = await response.json();
+                return { success: true, data };
+            } catch (error) {
+                return { success: false, data: { error: error.message } };
+            }
+        }
+        
+        // Authentication APIs
+        async function sendOTP() {
+            const mobile = document.getElementById('otpMobile').value;
+            const result = await makeRequest(`${API_BASE}/auth/send_otp.php`, {
+                method: 'POST',
+                body: JSON.stringify({ mobile })
+            });
+            displayResponse('sendOTPResponse', result.data, result.success);
+        }
+        
+        async function verifyOTP() {
+            const mobile = document.getElementById('verifyMobile').value;
+            const otp = document.getElementById('verifyOTP').value;
+            const result = await makeRequest(`${API_BASE}/auth/verify_otp.php`, {
+                method: 'POST',
+                body: JSON.stringify({ mobile, otp })
+            });
+            displayResponse('verifyOTPResponse', result.data, result.success);
+        }
+        
+        // User APIs
+        async function createUser() {
+            const data = {
+                mobile: document.getElementById('createMobile').value,
+                name: document.getElementById('createName').value,
+                email: document.getElementById('createEmail').value,
+                age: parseInt(document.getElementById('createAge').value)
+            };
+            const result = await makeRequest(`${API_BASE}/users/create.php`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            displayResponse('createUserResponse', result.data, result.success);
+        }
+        
+        async function getUserProfile() {
+            const userId = document.getElementById('profileUserId').value;
+            const result = await makeRequest(`${API_BASE}/users/get_profile.php?user_id=${userId}`);
+            displayResponse('profileResponse', result.data, result.success);
+        }
+        
+        async function updateUser() {
+            const data = {
+                user_id: parseInt(document.getElementById('updateUserId').value),
+                name: document.getElementById('updateName').value
+            };
+            const result = await makeRequest(`${API_BASE}/users/update.php`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+            displayResponse('updateUserResponse', result.data, result.success);
+        }
+        
+        // Test/Exam APIs
+        async function getExamCategories() {
+            const result = await makeRequest(`${API_BASE}/tests/get_exam_categories.php`);
+            displayResponse('examCategoriesResponse', result.data, result.success);
+        }
+        
+        async function getTestCategories() {
+            const examId = document.getElementById('examId').value;
+            const url = examId ? 
+                `${API_BASE}/tests/get_categories.php?exam_id=${examId}` : 
+                `${API_BASE}/tests/get_categories.php`;
+            const result = await makeRequest(url);
+            displayResponse('testCategoriesResponse', result.data, result.success);
+        }
+        
+        async function getQuestionSessions() {
+            const categoryId = document.getElementById('categoryId').value;
+            const url = categoryId ? 
+                `${API_BASE}/tests/get_sessions.php?category_id=${categoryId}` : 
+                `${API_BASE}/tests/get_sessions.php`;
+            const result = await makeRequest(url);
+            displayResponse('sessionsResponse', result.data, result.success);
+        }
+        
+        async function getQuestions() {
+            const sessionId = document.getElementById('sessionId').value;
+            const language = document.getElementById('language').value;
+            const result = await makeRequest(
+                `${API_BASE}/tests/get_questions.php?session_id=${sessionId}&language=${language}`
+            );
+            displayResponse('questionsResponse', result.data, result.success);
+        }
+        
+        // Results APIs
+        async function getTestHistory() {
+            const userId = document.getElementById('historyUserId').value;
+            const result = await makeRequest(`${API_BASE}/tests/get_history.php?user_id=${userId}`);
+            displayResponse('historyResponse', result.data, result.success);
+        }
+        
+        async function getRankings() {
+            const sessionId = document.getElementById('rankingSessionId').value;
+            const url = sessionId ? 
+                `${API_BASE}/tests/get_rankings.php?session_id=${sessionId}` : 
+                `${API_BASE}/tests/get_rankings.php`;
+            const result = await makeRequest(url);
+            displayResponse('rankingsResponse', result.data, result.success);
+        }
+        
+        // Test All APIs
+        async function testAllAPIs() {
+            const loading = document.getElementById('mainLoading');
+            loading.classList.add('active');
+            
+            console.log('🧪 Starting comprehensive API tests...');
+            
+            // Test all APIs in sequence
+            await sendOTP();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await verifyOTP();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await createUser();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getUserProfile();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await updateUser();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getExamCategories();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getTestCategories();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getQuestionSessions();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getQuestions();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getTestHistory();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await getRankings();
+            
+            loading.classList.remove('active');
+            
+            alert('✅ All API tests completed! Check the results below.');
+            console.log('✅ All API tests completed!');
+        }
+    </script>
+</body>
+</html>
+

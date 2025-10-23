@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/api_service.dart';
 import 'profile_setup_page.dart';
+import 'exam_selection_page.dart';
 import 'dart:async';
 
 class OTPVerificationPage extends StatefulWidget {
@@ -113,18 +115,42 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         ),
       );
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProfileSetupPage(
-            mobileNumber: widget.phoneNumber,
-            isNewUser: isNewUser,
-            token: token,
-            userData: response['user'],
+      if (isNewUser) {
+        // New user - go to profile setup
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfileSetupPage(
+              mobileNumber: widget.phoneNumber,
+              isNewUser: isNewUser,
+              token: token,
+              userData: response['user'],
+            ),
           ),
-        ),
-        (route) => false,
-      );
+          (route) => false,
+        );
+      } else {
+        // Existing user - save data and go to exam selection
+        final prefs = await SharedPreferences.getInstance();
+        final user = response['user'];
+        
+        // Convert id to int (handles both String and int types)
+        final userId = user['id'] is int ? user['id'] : int.parse(user['id'].toString());
+        
+        await prefs.setInt('userId', userId);
+        await prefs.setString('userName', user['name']);
+        await prefs.setString('userMobile', user['mobile']);
+        await prefs.setString('token', token);
+        await prefs.setBool('isLoggedIn', true);
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ExamSelectionPage(),
+          ),
+          (route) => false,
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

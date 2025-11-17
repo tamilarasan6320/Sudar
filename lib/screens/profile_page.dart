@@ -10,6 +10,14 @@ import 'performance_page.dart';
 import 'login_page.dart';
 import 'saved_tests_page.dart';
 import 'test_history_page.dart';
+import 'about_page.dart';
+import 'privacy_policy_page.dart';
+import 'edit_profile_page.dart';
+import 'notifications_settings_page.dart';
+import 'language_settings_page.dart';
+import 'theme_settings_page.dart';
+import 'help_faq_page.dart';
+import 'feedback_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -204,480 +212,71 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Edit Profile function
-  void _editProfile() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String newName = _userName;
-        return AlertDialog(
-          title: Text('Edit Profile', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                controller: TextEditingController(text: _userName),
-                onChanged: (value) => newName = value,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Mobile Number',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                controller: TextEditingController(text: _userMobile),
-                keyboardType: TextInputType.phone,
-                enabled: false,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: GoogleFonts.poppins()),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('userName', newName);
-                if (!mounted) return;
-                setState(() {
-                  _userName = newName;
-                });
-                Navigator.pop(context);
-                _showMessage('Profile updated successfully!');
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: Text('Save', style: GoogleFonts.poppins(color: Colors.white)),
-            ),
-          ],
-        );
-      },
+  void _editProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EditProfilePage()),
     );
+    if (result != null && mounted) {
+      setState(() {
+        _userName = result;
+      });
+    }
   }
 
   // Notifications function
   void _openNotifications() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Notifications', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SwitchListTile(
-              title: Text('Test Reminders', style: GoogleFonts.poppins()),
-              subtitle: Text('Get notified about upcoming tests', style: GoogleFonts.poppins(fontSize: 12)),
-              value: true,
-              onChanged: (value) {
-                Navigator.pop(context);
-                _showMessage('Test reminders ${value ? "enabled" : "disabled"}');
-              },
-            ),
-            SwitchListTile(
-              title: Text('Performance Updates', style: GoogleFonts.poppins()),
-              subtitle: Text('Receive performance insights', style: GoogleFonts.poppins(fontSize: 12)),
-              value: false,
-              onChanged: (value) {
-                Navigator.pop(context);
-                _showMessage('Performance updates ${value ? "enabled" : "disabled"}');
-              },
-            ),
-            SwitchListTile(
-              title: Text('New Content', style: GoogleFonts.poppins()),
-              subtitle: Text('Notify when new tests are added', style: GoogleFonts.poppins(fontSize: 12)),
-              value: true,
-              onChanged: (value) {
-                Navigator.pop(context);
-                _showMessage('New content notifications ${value ? "enabled" : "disabled"}');
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificationsSettingsPage()),
     );
   }
 
   // Language function
   void _changeLanguage() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Change Language', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile(
-              title: Row(
-                children: [
-                  const Text('🇺🇸', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 12),
-                  Text('English', style: GoogleFonts.poppins()),
-                ],
-              ),
-              value: 'en',
-              groupValue: 'en',
-              onChanged: (value) {
-                Navigator.pop(context);
-                _showMessage('Language set to English');
-              },
-            ),
-            RadioListTile(
-              title: Row(
-                children: [
-                  const Text('🇮🇳', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 12),
-                  Text('தமிழ் (Tamil)', style: GoogleFonts.poppins()),
-                ],
-              ),
-              value: 'ta',
-              groupValue: 'en',
-              onChanged: (value) {
-                Navigator.pop(context);
-                _showMessage('Tamil language coming soon!');
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LanguageSettingsPage()),
     );
   }
 
   // Theme function
   void _changeTheme() {
-    final themeService = Provider.of<ThemeService>(context, listen: false);
-    final currentMode = themeService.themeMode;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Choose Theme', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RadioListTile<ThemeMode>(
-                  title: Row(
-                    children: [
-                      const Icon(Icons.light_mode, size: 20),
-                      const SizedBox(width: 12),
-                      Text('Light Mode', style: GoogleFonts.poppins()),
-                    ],
-                  ),
-                  value: ThemeMode.light,
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      themeService.setThemeMode(value);
-                      Navigator.pop(context);
-                      _showMessage('Light mode enabled');
-                    }
-                  },
-                ),
-                RadioListTile<ThemeMode>(
-                  title: Row(
-                    children: [
-                      const Icon(Icons.dark_mode, size: 20),
-                      const SizedBox(width: 12),
-                      Text('Dark Mode', style: GoogleFonts.poppins()),
-                    ],
-                  ),
-                  value: ThemeMode.dark,
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      themeService.setThemeMode(value);
-                      Navigator.pop(context);
-                      _showMessage('Dark mode enabled');
-                    }
-                  },
-                ),
-                RadioListTile<ThemeMode>(
-                  title: Row(
-                    children: [
-                      const Icon(Icons.brightness_auto, size: 20),
-                      const SizedBox(width: 12),
-                      Text('System Default', style: GoogleFonts.poppins()),
-                    ],
-                  ),
-                  value: ThemeMode.system,
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      themeService.setThemeMode(value);
-                      Navigator.pop(context);
-                      _showMessage('System default enabled');
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ThemeSettingsPage()),
     );
   }
 
   // Help & FAQ function
   void _openHelp() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Help & FAQ', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildFAQItem('How do I take a test?', 'Go to Tests tab and select any test to begin.'),
-              const SizedBox(height: 12),
-              _buildFAQItem('Can I review my answers?', 'Yes, after completing a test you can review all answers.'),
-              const SizedBox(height: 12),
-              _buildFAQItem('How is my score calculated?', 'Each correct answer gives you points. Check test details for marking scheme.'),
-              const SizedBox(height: 12),
-              _buildFAQItem('How do I track my progress?', 'Visit the Progress tab to see detailed analytics.'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.poppins()),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showMessage('Opening help center...');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text('More Help', style: GoogleFonts.poppins(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFAQItem(String question, String answer) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          question,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          answer,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HelpFAQPage()),
     );
   }
 
   // Send Feedback function
   void _sendFeedback() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        String feedback = '';
-        return AlertDialog(
-          title: Text('Send Feedback', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'We\'d love to hear your thoughts!',
-                style: GoogleFonts.poppins(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Your Feedback',
-                  hintText: 'Tell us what you think...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                maxLines: 4,
-                onChanged: (value) => feedback = value,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: GoogleFonts.poppins()),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                if (feedback.isNotEmpty) {
-                  _showMessage('Thank you for your feedback!');
-                } else {
-                  _showMessage('Please enter your feedback');
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: Text('Submit', style: GoogleFonts.poppins(color: Colors.white)),
-            ),
-          ],
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const FeedbackPage()),
     );
   }
 
   // About function
   void _openAbout() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('About', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-              ),
-              child: const Icon(Icons.school, color: Colors.white, size: 40),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'TNPSC Mock Test',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Version 1.0.0',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your comprehensive platform for TNPSC exam preparation with mock tests and performance analytics.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '© 2025 TNPSC Mock Test',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: AppColors.textLight,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AboutPage()),
     );
   }
 
   // Privacy Policy function
   void _openPrivacyPolicy() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Privacy Policy', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Data Collection',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'We collect and store your test performance data, profile information, and app usage statistics to improve your experience.',
-                style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Data Usage',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your data is used solely for providing personalized test recommendations and performance analytics.',
-                style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Data Security',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'We implement industry-standard security measures to protect your personal information.',
-                style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.poppins()),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showMessage('Opening full privacy policy...');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text('Read Full', style: GoogleFonts.poppins(color: Colors.white)),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
     );
   }
 
@@ -982,7 +581,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildMenuItem(
                     icon: Icons.info_outline,
                     title: 'About',
-                    subtitle: 'Version 1.0.0',
+                    subtitle: 'App information',
                     onTap: _openAbout,
                   ),
                   const Divider(height: 24),

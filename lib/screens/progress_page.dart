@@ -16,7 +16,13 @@ class _ProgressPageState extends State<ProgressPage> {
   bool _isLoading = true;
   int _testsTaken = 0;
   double _avgScore = 0.0;
+  int _rank = 0;
+  int _streak = 0;
   List<Map<String, dynamic>> _testHistory = [];
+  List<Map<String, dynamic>> _performanceTrend = [];
+  List<Map<String, dynamic>> _strengths = [];
+  List<Map<String, dynamic>> _weaknesses = [];
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -25,36 +31,105 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 
   Future<void> _loadProgressData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('userId');
       
-      if (userId != null) {
-        final response = await ApiService.getTestHistory(userId: userId);
+      print('ProgressPage: Loading data for userId: $userId');
+      
+      if (userId == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'User not logged in. Please login again.';
+          });
+        }
+        return;
+      }
+      
+      // Load analytics data
+      final analyticsResponse = await ApiService.getProgressAnalytics(userId: userId);
+      print('ProgressPage: Analytics response: ${analyticsResponse['success']}');
+      print('ProgressPage: Analytics data: $analyticsResponse');
+      
+      // Load test history
+      final historyResponse = await ApiService.getTestHistory(userId: userId);
+      print('ProgressPage: History response: ${historyResponse['success']}');
+      print('ProgressPage: History count: ${historyResponse['count'] ?? 0}');
+      
+      if (mounted) {
+        if (analyticsResponse['success'] == true) {
+          final analytics = analyticsResponse;
+          final overallStats = analytics['overall_stats'] ?? {};
+          print('ProgressPage: Overall stats: $overallStats');
+          
+          setState(() {
+            _testsTaken = (overallStats['total_tests'] ?? 0) as int;
+            _avgScore = ((overallStats['avg_score'] ?? 0) as num).toDouble();
+            _rank = (analytics['rank'] ?? 0) as int;
+            _streak = (analytics['streak'] ?? 0) as int;
+            
+            print('ProgressPage: Tests taken: $_testsTaken, Avg score: $_avgScore, Rank: $_rank, Streak: $_streak');
+            
+            final trendList = analytics['performance_trend'] ?? [];
+            _performanceTrend = trendList is List 
+              ? List<Map<String, dynamic>>.from(trendList.map((e) => e as Map<String, dynamic>))
+              : [];
+            
+            final strengthsList = analytics['strengths'] ?? [];
+            _strengths = strengthsList is List
+              ? List<Map<String, dynamic>>.from(strengthsList.map((e) => e as Map<String, dynamic>))
+              : [];
+            
+            final weaknessesList = analytics['weaknesses'] ?? [];
+            _weaknesses = weaknessesList is List
+              ? List<Map<String, dynamic>>.from(weaknessesList.map((e) => e as Map<String, dynamic>))
+              : [];
+            
+            print('ProgressPage: Trend items: ${_performanceTrend.length}, Strengths: ${_strengths.length}, Weaknesses: ${_weaknesses.length}');
+            _errorMessage = null;
+          });
+        } else {
+          final errorMsg = analyticsResponse['message'] ?? 'Failed to load analytics';
+          print('ProgressPage: Analytics failed: $errorMsg');
+          setState(() {
+            _errorMessage = 'API Error: $errorMsg';
+          });
+        }
         
-        if (response['success'] == true) {
-          final history = List<Map<String, dynamic>>.from(response['history'] ?? []);
-          
-          double totalScore = 0;
-          for (var test in history) {
-            totalScore += (test['percentage'] ?? 0).toDouble();
-          }
-          
-          if (mounted) {
+        if (historyResponse['success'] == true) {
+          final historyList = historyResponse['history'] ?? [];
+          final List<Map<String, dynamic>> history = historyList is List
+            ? List<Map<String, dynamic>>.from(historyList.map((e) => e as Map<String, dynamic>))
+            : <Map<String, dynamic>>[];
+          print('ProgressPage: Loaded ${history.length} test history items');
+          setState(() {
+            _testHistory = history;
+          });
+        } else {
+          final errorMsg = historyResponse['message'] ?? 'Failed to load history';
+          print('ProgressPage: History failed: $errorMsg');
+          if (_errorMessage == null) {
             setState(() {
-              _testHistory = history;
-              _testsTaken = history.length;
-              _avgScore = history.isNotEmpty ? totalScore / history.length : 0;
-              _isLoading = false;
+              _errorMessage = 'History Error: $errorMsg';
             });
           }
         }
+        
+        setState(() => _isLoading = false);
       }
     } catch (e) {
+      print('ProgressPage: Error loading data: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Connection error: $e\n\nMake sure:\n1. XAMPP Apache is running\n2. API is accessible at http://localhost/MockTest/api';
+        });
       }
     }
   }
@@ -95,12 +170,45 @@ class _ProgressPageState extends State<ProgressPage> {
             color: ThemeHelper.textPrimary(context),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadProgressData,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Error Message
+            if (_errorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.error),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Overall Stats Card
             Container(
               padding: const EdgeInsets.all(20),
@@ -151,7 +259,7 @@ class _ProgressPageState extends State<ProgressPage> {
                         child: _buildStatItem(context,
                           icon: Icons.emoji_events_rounded,
                           label: 'Rank',
-                          value: _isLoading ? '...' : '--',
+                          value: _isLoading ? '...' : _rank > 0 ? '#$_rank' : '--',
                           isWhite: true,
                         ),
                       ),
@@ -160,7 +268,7 @@ class _ProgressPageState extends State<ProgressPage> {
                         child: _buildStatItem(context,
                           icon: Icons.local_fire_department_rounded,
                           label: 'Streak',
-                          value: _isLoading ? '...' : '0 days',
+                          value: _isLoading ? '...' : '$_streak ${_streak == 1 ? 'day' : 'days'}',
                           isWhite: true,
                         ),
                       ),
@@ -185,6 +293,7 @@ class _ProgressPageState extends State<ProgressPage> {
             const SizedBox(height: 12),
             
             Container(
+              height: 200,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -199,23 +308,36 @@ class _ProgressPageState extends State<ProgressPage> {
               ),
               child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _testHistory.isEmpty
+                : _performanceTrend.isEmpty
                   ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text(
-                          'No performance data yet',
-                          style: GoogleFonts.poppins(color: Colors.grey[600]),
-                        ),
+                      child: Text(
+                        'No performance data yet',
+                        style: GoogleFonts.poppins(color: Colors.grey[600]),
                       ),
                     )
                   : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Performance data based on ${_testHistory.length} tests',
+                          'Performance Trend',
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: ThemeHelper.textPrimary(context),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: List<Widget>.generate(_performanceTrend.length, (index) {
+                              final item = _performanceTrend[index];
+                              final score = ((item['score'] ?? 0) as num).toDouble();
+                              final height = (score / 100).clamp(0.0, 1.0);
+                              final label = index < 7 ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] : 'T${index + 1}';
+                              return _buildChartBar(label, height, score);
+                            }),
                           ),
                         ),
                       ],
@@ -276,20 +398,21 @@ class _ProgressPageState extends State<ProgressPage> {
                 ),
               )
             else
-              ..._testHistory.map((test) {
-                final percentage = (test['percentage'] ?? 0).toDouble();
+              ...List<Widget>.generate(_testHistory.length, (index) {
+                final test = _testHistory[index];
+                final percentage = ((test['percentage'] ?? 0) as num).toDouble();
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _buildActivityCard(context,
-                    title: test['session_name'] ?? 'Test',
-                    date: _formatDate(test['completed_at']),
+                    title: (test['session_name'] ?? test['test_name'] ?? 'Test').toString(),
+                    date: _formatDate(test['completed_at']?.toString() ?? test['submitted_at']?.toString()),
                     score: percentage.toInt(),
-                    questions: test['total_questions'] ?? 0,
+                    questions: (test['total_questions'] ?? 0) as int,
                     icon: percentage >= 50 ? Icons.check_circle : Icons.cancel,
                     iconColor: percentage >= 75 ? AppColors.success : percentage >= 50 ? AppColors.warning : AppColors.error,
                   ),
                 );
-              }).toList(),
+              }),
             
             if (!_isLoading && _testHistory.isNotEmpty)
               const SizedBox(height: 12),
@@ -341,9 +464,27 @@ class _ProgressPageState extends State<ProgressPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        _buildTag('Aptitude', AppColors.success),
-                        const SizedBox(height: 6),
-                        _buildTag('History', AppColors.success),
+                        if (_strengths.isEmpty)
+                          Text(
+                            'No strengths yet',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          )
+                        else
+                          ...List<Widget>.generate(_strengths.length, (index) {
+                            final strength = _strengths[index];
+                            final name = (strength['name'] ?? 'Unknown').toString();
+                            final avgScore = ((strength['avg_score'] ?? 0) as num).toDouble();
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: _buildTag(
+                                '$name (${avgScore.toStringAsFixed(0)}%)',
+                                AppColors.success,
+                              ),
+                            );
+                          }),
                       ],
                     ),
                   ),
@@ -370,9 +511,27 @@ class _ProgressPageState extends State<ProgressPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        _buildTag('Current Affairs', AppColors.error),
-                        const SizedBox(height: 6),
-                        _buildTag('Science', AppColors.error),
+                        if (_weaknesses.isEmpty)
+                          Text(
+                            'No areas to improve',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          )
+                        else
+                          ...List<Widget>.generate(_weaknesses.length, (index) {
+                            final weakness = _weaknesses[index];
+                            final name = (weakness['name'] ?? 'Unknown').toString();
+                            final avgScore = ((weakness['avg_score'] ?? 0) as num).toDouble();
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: _buildTag(
+                                '$name (${avgScore.toStringAsFixed(0)}%)',
+                                AppColors.error,
+                              ),
+                            );
+                          }),
                       ],
                     ),
                   ),
@@ -546,6 +705,43 @@ class _ProgressPageState extends State<ProgressPage> {
           color: color,
         ),
       ),
+    );
+  }
+
+  Widget _buildChartBar(String label, double value, double score) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          score.toStringAsFixed(0),
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: 28,
+          height: 100 * value,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            color: AppColors.textLight,
+          ),
+        ),
+      ],
     );
   }
 }

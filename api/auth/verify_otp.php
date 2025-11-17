@@ -14,8 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $otp = $data->otp;
 
         try {
-            // Development bypass - accept 123456 as valid test OTP
-            if ($otp == '123456') {
+            // Development bypass - accept 111111 as valid test OTP (always works)
+            if ($otp == '111111') {
                 $user = new User($db);
                 $user->mobile = $mobile;
                 $user_stmt = $user->getUserByMobile();

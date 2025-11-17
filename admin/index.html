@@ -44,6 +44,10 @@
                 <i class="fas fa-clipboard-check"></i>
                 <span>Test Results</span>
             </a>
+            <a href="#languages" class="nav-item" onclick="showPage('languages')">
+                <i class="fas fa-language"></i>
+                <span>Languages</span>
+            </a>
             <a href="#rankings" class="nav-item" onclick="showPage('rankings')">
                 <i class="fas fa-trophy"></i>
                 <span>User Rankings</span>
@@ -421,6 +425,20 @@
             </div>
         </div>
 
+        <!-- Languages Page -->
+        <div id="languages" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-language"></i> Languages</h2>
+                <button class="btn btn-primary" onclick="openModal('languageModal')">
+                    <i class="fas fa-plus"></i> Add Language
+                </button>
+            </div>
+
+            <div class="grid" id="languagesGrid">
+                <!-- Languages will be loaded here -->
+            </div>
+        </div>
+
         <!-- Settings Page -->
         <div id="settings" class="page">
             <div class="page-header">
@@ -430,7 +448,10 @@
 
             <!-- Settings Tabs -->
             <div style="display: flex; border-bottom: 2px solid #e0e0e0; margin: 20px 0;">
-                <button class="settings-tab active" onclick="switchSettingsTab('privacy')" id="privacyTab" style="flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid #6C63FF; transition: all 0.3s;">
+                <button class="settings-tab active" onclick="switchSettingsTab('about')" id="aboutTab" style="flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid #6C63FF; transition: all 0.3s;">
+                    <i class="fas fa-info-circle"></i> About
+                </button>
+                <button class="settings-tab" onclick="switchSettingsTab('privacy')" id="privacyTab" style="flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s;">
                     <i class="fas fa-shield-alt"></i> Privacy Policy
                 </button>
                 <button class="settings-tab" onclick="switchSettingsTab('terms')" id="termsTab" style="flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s;">
@@ -438,8 +459,56 @@
                 </button>
             </div>
 
+            <!-- About Section -->
+            <div id="aboutSection" class="settings-section" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3><i class="fas fa-info-circle"></i> About</h3>
+                    <button class="btn btn-primary" onclick="saveAbout()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">App Name</label>
+                    <input type="text" id="aboutAppName" placeholder="TNPSC Mock Test" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <i class="fas fa-info-circle"></i> The name of your application as it will appear to users
+                    </small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">App Version</label>
+                    <input type="text" id="aboutAppVersion" placeholder="1.0.0" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <i class="fas fa-info-circle"></i> Current version number (e.g., 1.0.0, 2.1.3)
+                    </small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Description</label>
+                    <textarea id="aboutDescription" rows="10" style="width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px; line-height: 1.6;" placeholder="Enter app description here..."></textarea>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <i class="fas fa-info-circle"></i> A brief description of what your app does and its main features. This will be displayed in the About page.
+                    </small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Contact Email</label>
+                    <input type="email" id="aboutContactEmail" placeholder="support@tnpscmocktest.com" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <i class="fas fa-info-circle"></i> Support email address for users to contact you (optional)
+                    </small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Contact Phone</label>
+                    <input type="tel" id="aboutContactPhone" placeholder="+91 XXXXX XXXXX" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <i class="fas fa-info-circle"></i> Support phone number for users to contact you (optional)
+                    </small>
+                </div>
+                <small style="color: #666; display: block; margin-top: 10px;">
+                    <i class="fas fa-info-circle"></i> This information will be displayed to users in the mobile app
+                </small>
+            </div>
+
             <!-- Privacy Policy Section -->
-            <div id="privacySection" class="settings-section" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <div id="privacySection" class="settings-section" style="display: none; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3><i class="fas fa-shield-alt"></i> Privacy Policy</h3>
                     <button class="btn btn-primary" onclick="savePrivacyPolicy()">
@@ -448,8 +517,21 @@
                 </div>
                 <textarea id="privacyPolicyText" rows="15" style="width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px; line-height: 1.6;" placeholder="Enter your privacy policy here..."></textarea>
                 <small style="color: #666; display: block; margin-top: 10px;">
-                    <i class="fas fa-info-circle"></i> This will be displayed to users in the mobile app
+                    <i class="fas fa-info-circle"></i> This will be displayed to users in the mobile app. Include information about data collection, usage, security, and user rights. You can format with line breaks for better readability.
                 </small>
+                <div style="margin-top: 15px; padding: 15px; background: #f0f7ff; border-left: 4px solid #6C63FF; border-radius: 4px;">
+                    <strong style="color: #333; display: block; margin-bottom: 8px;">Example Structure:</strong>
+                    <div style="color: #666; font-size: 13px; line-height: 1.6;">
+                        <strong>1. Data Collection</strong><br>
+                        We collect and store your test performance data, profile information, and app usage statistics...<br><br>
+                        <strong>2. Data Usage</strong><br>
+                        Your data is used solely for providing personalized test recommendations...<br><br>
+                        <strong>3. Data Security</strong><br>
+                        We implement industry-standard security measures...<br><br>
+                        <strong>4. User Rights</strong><br>
+                        You have the right to access, modify, or delete your personal data...
+                    </div>
+                </div>
             </div>
 
             <!-- Terms & Conditions Section -->
@@ -462,8 +544,21 @@
                 </div>
                 <textarea id="termsConditionsText" rows="15" style="width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px; line-height: 1.6;" placeholder="Enter your terms & conditions here..."></textarea>
                 <small style="color: #666; display: block; margin-top: 10px;">
-                    <i class="fas fa-info-circle"></i> This will be displayed to users in the mobile app
+                    <i class="fas fa-info-circle"></i> This will be displayed to users in the mobile app. Include terms of service, user responsibilities, limitations of liability, and other legal terms.
                 </small>
+                <div style="margin-top: 15px; padding: 15px; background: #f0f7ff; border-left: 4px solid #6C63FF; border-radius: 4px;">
+                    <strong style="color: #333; display: block; margin-bottom: 8px;">Example Structure:</strong>
+                    <div style="color: #666; font-size: 13px; line-height: 1.6;">
+                        <strong>1. Acceptance of Terms</strong><br>
+                        By using this app, you agree to these terms and conditions...<br><br>
+                        <strong>2. User Responsibilities</strong><br>
+                        Users are responsible for maintaining the confidentiality of their account...<br><br>
+                        <strong>3. Service Availability</strong><br>
+                        We strive to provide continuous service but cannot guarantee...<br><br>
+                        <strong>4. Limitation of Liability</strong><br>
+                        The app is provided "as is" without warranties...
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -734,10 +829,6 @@
             <div class="modal-body">
                 <form id="examCategoryForm">
                     <div class="form-group">
-                        <label>Category Title *</label>
-                        <input type="text" id="examCategoryTitle" placeholder="TNPSC Group 4" required>
-                    </div>
-                    <div class="form-group">
                         <label>Exam Name *</label>
                         <input type="text" id="examCategoryName" placeholder="Combined Civil Services Examination - IV" required>
                     </div>
@@ -758,6 +849,52 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('examCategoryModal')">Cancel</button>
                 <button class="btn btn-primary" onclick="saveExamCategory()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Language Modal -->
+    <div id="languageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Language</h2>
+                <span class="close" onclick="closeModal('languageModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="languageForm">
+                    <div class="form-group">
+                        <label>Exam Category *</label>
+                        <select id="languageExamCategory" required>
+                            <option value="">Select Exam Category</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Language Name *</label>
+                        <input type="text" id="languageName" placeholder="English" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Language Code *</label>
+                        <input type="text" id="languageCode" placeholder="en" required maxlength="10">
+                        <small style="color: #666; display: block; margin-top: 5px;">ISO code (e.g., en, ta, hi)</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Icon/Emoji</label>
+                        <input type="text" id="languageIcon" placeholder="🌐" value="🌐">
+                        <small style="color: #666; display: block; margin-top: 5px;">Use emoji or icon</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Display Order</label>
+                        <input type="number" id="languageDisplayOrder" placeholder="0" value="0" min="0">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="languageIsActive" checked style="width: auto;">
+                        <label for="languageIsActive" style="margin: 0;">Active</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('languageModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveLanguage()">Save</button>
             </div>
         </div>
     </div>
@@ -868,14 +1005,21 @@
                 <form id="csvUploadForm">
                     <input type="hidden" id="selectedSessionId">
                     
+                    <!-- Warning Notice -->
+                    <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                        <strong style="color: #856404;"><i class="fas fa-exclamation-triangle"></i> Important Notice:</strong>
+                        <p style="margin: 5px 0 0 0; color: #856404; font-size: 13px;">
+                            Uploading a new CSV file will <strong>replace ALL existing questions</strong> in this session. Previous questions will be permanently deleted.
+                        </p>
+                    </div>
+                    
                     <!-- Existing Questions Info -->
                     <div id="existingQuestionsInfo"></div>
                     
                     <div class="form-group">
                         <label><i class="fas fa-file-csv"></i> Upload CSV File *</label>
-                        <div style="position: relative;">
-                            <input type="file" id="csvFile" accept=".csv" style="padding: 20px; border: 3px dashed #6C63FF; border-radius: 12px; width: 100%; cursor: pointer; font-size: 16px; background: #f8f9ff;">
-                        </div>
+                        <input type="file" id="csvFile" accept=".csv" onchange="handleFileSelect(event)" name="csvFile" style="width: 100%; padding: 15px; border: 2px solid #6C63FF; border-radius: 8px; font-size: 16px; cursor: pointer; background: #f8f9ff;">
+                        <p id="fileName" style="margin-top: 10px; color: #666; font-size: 14px;">No file selected</p>
                         <small style="color: #666; display: block; margin-top: 10px; font-size: 14px;">
                             <i class="fas fa-info-circle"></i> Upload questions in <strong>English only</strong>, <strong>Tamil only</strong>, or <strong>Both languages</strong>
                         </small>
@@ -958,7 +1102,6 @@
                                 <th style="width: 50px;">No.</th>
                                 <th>Question (English & Tamil)</th>
                                 <th style="width: 100px;">Answer</th>
-                                <th style="width: 120px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="viewQuestionsTableBody"></tbody>
@@ -1084,6 +1227,6 @@
         </div>
     </div>
 
-    <script src="js/script.js"></script>
+    <script src="js/script.js?v=1761582700"></script>
 </body>
 </html>

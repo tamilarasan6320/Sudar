@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/api_service.dart';
@@ -66,8 +67,21 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
     return examName.substring(0, 1).toUpperCase();
   }
 
-  void _handleContinue() {
+  void _handleContinue() async {
     if (_selectedExam != null) {
+      // Find the selected exam's ID
+      final selectedExamData = _examCategories.firstWhere(
+        (exam) => exam['name'] == _selectedExam,
+        orElse: () => {},
+      );
+      
+      // Save selected exam to SharedPreferences
+      if (selectedExamData.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('selectedExam', _selectedExam!);
+        await prefs.setInt('selectedExamId', selectedExamData['id']);
+      }
+      
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(

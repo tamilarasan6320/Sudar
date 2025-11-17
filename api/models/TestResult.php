@@ -55,7 +55,7 @@ class TestResult {
     }
 
     public function getUserHistory($limit = 50) {
-        $query = "SELECT tr.*, qs.name AS test_name, tc.name AS category_name
+        $query = "SELECT tr.*, qs.name AS test_name, tc.name AS category_name, qs.test_category_id, tc.id AS test_category_id
                   FROM " . $this->table_name . " tr
                   LEFT JOIN question_sessions qs ON tr.session_id = qs.id
                   LEFT JOIN test_categories tc ON qs.test_category_id = tc.id
@@ -136,6 +136,27 @@ class TestResult {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':session_id', $session_id, PDO::PARAM_INT);
         return $stmt->execute();
+    }
+
+    public function getRankings($limit = 100) {
+        $query = "SELECT 
+                    tr.user_id,
+                    u.name AS user_name,
+                    u.mobile AS user_mobile,
+                    COUNT(tr.id) AS total_tests,
+                    AVG(tr.percentage) AS avg_score,
+                    SUM(tr.correct_answers) AS total_correct,
+                    SUM(tr.score) AS total_score
+                  FROM " . $this->table_name . " tr
+                  LEFT JOIN users u ON tr.user_id = u.id
+                  GROUP BY tr.user_id
+                  ORDER BY avg_score DESC, total_tests DESC
+                  LIMIT ?";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt;
     }
 }
 ?>

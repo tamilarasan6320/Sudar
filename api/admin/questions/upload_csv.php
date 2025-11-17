@@ -1,6 +1,7 @@
 <?php
 require_once '../../config/cors.php';
 require_once '../../config/database.php';
+require_once '../../admin/auth/middleware.php'; // Require authentication
 require_once '../../models/Question.php';
 require_once '../../models/QuestionSession.php';
 
@@ -58,49 +59,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $question = new Question($db);
             $question->session_id = $session_id;
+            // CSV format: questionEn,questionTa,optionAEn,optionATa,optionBEn,optionBTa,optionCEn,optionCTa,optionDEn,optionDTa,correctAnswer,explanationEn,explanationTa
             $question->question_en = !empty($data[0]) ? trim($data[0]) : null;
-            $question->option_a_en = !empty($data[1]) ? trim($data[1]) : null;
-            $question->option_b_en = !empty($data[2]) ? trim($data[2]) : null;
-            $question->option_c_en = !empty($data[3]) ? trim($data[3]) : null;
-            $question->option_d_en = !empty($data[4]) ? trim($data[4]) : null;
-            $question->correct_answer = !empty($data[5]) ? strtoupper(trim($data[5])) : 'A';
-            $question->explanation_en = !empty($data[6]) ? trim($data[6]) : null;
-            $question->question_ta = !empty($data[7]) ? trim($data[7]) : null;
-            $question->option_a_ta = !empty($data[8]) ? trim($data[8]) : null;
-            $question->option_b_ta = !empty($data[9]) ? trim($data[9]) : null;
-            $question->option_c_ta = !empty($data[10]) ? trim($data[10]) : null;
-            $question->option_d_ta = !empty($data[11]) ? trim($data[11]) : null;
+            $question->question_ta = !empty($data[1]) ? trim($data[1]) : null;
+            $question->option_a_en = !empty($data[2]) ? trim($data[2]) : null;
+            $question->option_a_ta = !empty($data[3]) ? trim($data[3]) : null;
+            $question->option_b_en = !empty($data[4]) ? trim($data[4]) : null;
+            $question->option_b_ta = !empty($data[5]) ? trim($data[5]) : null;
+            $question->option_c_en = !empty($data[6]) ? trim($data[6]) : null;
+            $question->option_c_ta = !empty($data[7]) ? trim($data[7]) : null;
+            $question->option_d_en = !empty($data[8]) ? trim($data[8]) : null;
+            $question->option_d_ta = !empty($data[9]) ? trim($data[9]) : null;
+            $question->correct_answer = !empty($data[10]) ? strtoupper(trim($data[10])) : 'A';
+            $question->explanation_en = !empty($data[11]) ? trim($data[11]) : null;
             $question->explanation_ta = !empty($data[12]) ? trim($data[12]) : null;
             $question->difficulty = 'medium';
             $question->marks = 1;
             $question->negative_marks = 0.25;
             $question->display_order = $added;
             
-            // Check if at least one language version exists
-            if (empty($question->question_en) && empty($question->question_ta)) {
-                $errors[] = "Row $row_num: Question text required in at least one language";
+            // Check if at least one language version exists with complete question
+            $hasEnglish = !empty($question->question_en) && 
+                         !empty($question->option_a_en) && 
+                         !empty($question->option_b_en) && 
+                         !empty($question->option_c_en) && 
+                         !empty($question->option_d_en);
+            
+            $hasTamil = !empty($question->question_ta) && 
+                       !empty($question->option_a_ta) && 
+                       !empty($question->option_b_ta) && 
+                       !empty($question->option_c_ta) && 
+                       !empty($question->option_d_ta);
+            
+            if (!$hasEnglish && !$hasTamil) {
+                $errors[] = "Row $row_num: Must have complete question in at least English OR Tamil (question + all 4 options)";
                 $skipped++;
                 continue;
             }
             
             // Validate correct answer
             if (!in_array($question->correct_answer, ['A', 'B', 'C', 'D'])) {
-                $errors[] = "Row $row_num: Correct answer must be A, B, C, or D";
+                $errors[] = "Row $row_num: Correct answer must be A, B, C, or D (got: '{$question->correct_answer}')";
                 $skipped++;
                 continue;
             }
             
-            // Check for duplicates
-            if ($question->checkDuplicate()) {
-                $errors[] = "Row $row_num: Duplicate question found";
+            // Check for duplicates (only if question text exists)
+            if ((!empty($question->question_en) || !empty($question->question_ta)) && $question->checkDuplicate()) {
+                $errors[] = "Row $row_num: Duplicate question found in this session";
                 $skipped++;
                 continue;
             }
             
-            if ($question->create()) {
-                $added++;
-            } else {
-                $errors[] = "Row $row_num: Failed to insert question";
+            // Try to create the question
+            try {
+                if ($question->create()) {
+                    $added++;
+                } else {
+                    $errors[] = "Row $row_num: Failed to insert question into database";
+                    $skipped++;
+                }
+            } catch (Exception $e) {
+                $errors[] = "Row $row_num: Database error - " . $e->getMessage();
                 $skipped++;
             }
         }

@@ -1,12 +1,17 @@
 <?php
+// Disable error display to prevent HTML in JSON response
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 require_once '../config/cors.php';
 require_once '../config/database.php';
 require_once '../models/TestResult.php';
 
-$database = new Database();
-$db = $database->getConnection();
+try {
+    $database = new Database();
+    $db = $database->getConnection();
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : null;
     $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 50;
 
@@ -48,11 +53,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'message' => 'User ID is required'
         ]);
     }
-} else {
-    http_response_code(405);
+    } else {
+        http_response_code(405);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Method not allowed'
+        ]);
+    }
+} catch (PDOException $e) {
+    http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Method not allowed'
+        'message' => 'Database error: ' . $e->getMessage()
+    ]);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Server error: ' . $e->getMessage()
     ]);
 }
 ?>

@@ -24,26 +24,144 @@ class _HomePageState extends State<HomePage> {
   late String _currentExam;
   bool _isLoadingStats = true;
   bool _isLoadingCategories = true;
+  bool _isLoadingExams = true;
   int _testsTaken = 0;
   double _avgScore = 0.0;
   int _userRank = 0;
   List<Map<String, dynamic>> _recentTests = [];
   List<Map<String, dynamic>> _testCategories = [];
-  
-  final List<String> _examOptions = [
-    'TNPSC Group 1',
-    'TNPSC Group 2',
-    'TNPSC Group 2A',
-    'TNPSC Group 4',
-    'TNPSC VAO',
-    'TNPSC Police',
-  ];
+  List<Map<String, dynamic>> _examCategories = [];
+  int? _selectedExamId;
 
   @override
   void initState() {
     super.initState();
-    _currentExam = widget.selectedExam ?? 'TNPSC Group 1';
+    print('🚀 HomePage initState called');
+    _initializeData();
+  }
+  
+  @override
+  void didUpdateWidget(HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    print('🔄 HomePage didUpdateWidget called');
+    // Reload data when navigating back to this page
     _loadUserStats();
+  }
+  
+  Future<void> _initializeData() async {
+    await _loadSavedExam();
+    await _loadExamCategories();
+    // Load user stats after exam is loaded (so categories are filtered correctly)
+    _loadUserStats();
+  }
+  
+  Future<void> _loadSavedExam() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedExam = prefs.getString('selectedExam');
+    if (savedExam != null) {
+      setState(() {
+        _currentExam = savedExam;
+      });
+    } else {
+      setState(() {
+        _currentExam = widget.selectedExam ?? 'Select Exam';
+      });
+    }
+  }
+  
+  Future<void> _loadExamCategories() async {
+    setState(() => _isLoadingExams = true);
+    
+    try {
+      final response = await ApiService.getExamCategories();
+      
+      if (response['success'] == true) {
+        final categories = List<Map<String, dynamic>>.from(response['categories'] ?? []);
+        final prefs = await SharedPreferences.getInstance();
+        final savedExam = prefs.getString('selectedExam');
+        final savedExamId = prefs.getInt('selectedExamId');
+        
+        if (mounted) {
+          setState(() {
+            _examCategories = categories;
+            
+            if (savedExam != null && savedExamId != null) {
+              // Verify the saved exam still exists
+              final examExists = categories.any((cat) => cat['id'] == savedExamId);
+              if (examExists) {
+                _currentExam = savedExam;
+                _selectedExamId = savedExamId;
+              } else if (categories.isNotEmpty) {
+                // Saved exam doesn't exist, select first exam
+                final firstExam = categories.first;
+                _currentExam = firstExam['name'] ?? 'Select Exam';
+                _selectedExamId = firstExam['id'];
+                _saveSelectedExam(firstExam['name'], firstExam['id']);
+              }
+            } else if (categories.isNotEmpty) {
+              // Auto-select first exam if no saved exam
+              final firstExam = categories.first;
+              _currentExam = firstExam['name'] ?? 'Select Exam';
+              _selectedExamId = firstExam['id'];
+              _saveSelectedExam(firstExam['name'], firstExam['id']);
+            }
+            
+            _isLoadingExams = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoadingExams = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingExams = false);
+      }
+    }
+  }
+  
+  Future<void> _saveSelectedExam(String examName, int examId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedExam', examName);
+    await prefs.setInt('selectedExamId', examId);
+    
+    // Reload test categories for the new exam
+    await _loadTestCategories(examId);
+    
+    // Also update user's exam in database if user is logged in
+    final userId = prefs.getInt('userId');
+    if (userId != null) {
+      // Note: This would require adding exam_category_id to users table
+      // For now, we just save to SharedPreferences
+    }
+  }
+  
+  Future<void> _loadTestCategories(int? examId) async {
+    setState(() => _isLoadingCategories = true);
+    
+    try {
+      // Load test categories filtered by selected exam
+      final categoriesResponse = await ApiService.getTestCategories(examId: examId);
+      if (categoriesResponse['success'] == true) {
+        final categories = List<Map<String, dynamic>>.from(categoriesResponse['categories'] ?? []);
+        
+        if (mounted) {
+          setState(() {
+            _testCategories = categories;
+            _isLoadingCategories = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoadingCategories = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCategories = false);
+      }
+    }
   }
 
   Future<void> _loadUserStats() async {
@@ -56,19 +174,40 @@ class _HomePageState extends State<HomePage> {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('userId');
       
-      // Load test categories with session counts
-      final categoriesResponse = await ApiService.getTestCategories();
+      // Get selected exam ID to filter test categories
+      final selectedExamId = prefs.getInt('selectedExamId');
+      
+      // Load test categories filtered by selected exam
+      print('🔍 Loading test categories for exam: $selectedExamId, user: $userId');
+      final categoriesResponse = await ApiService.getTestCategories(examId: selectedExamId, userId: userId);
+      print('📥 Categories response: $categoriesResponse');
+      
       if (categoriesResponse['success'] == true) {
         final categories = List<Map<String, dynamic>>.from(categoriesResponse['categories'] ?? []);
+        print('✅ Loaded ${categories.length} categories');
+        
+        // Log each category's data
+        for (var cat in categories) {
+          print('  📁 ${cat['name']}: sessions=${cat['sessions_count'] ?? 0}, completed=${cat['completed_count'] ?? 0}');
+        }
+        
         _testCategories = categories;
+      } else {
+        print('❌ Failed to load categories: ${categoriesResponse['message']}');
       }
       
       if (userId != null) {
+        print('🔍 Loading test history for user: $userId');
+        
         // Load test history
         final historyResponse = await ApiService.getTestHistory(userId: userId);
         
+        print('📥 Test history response: $historyResponse');
+        
         if (historyResponse['success'] == true) {
           final history = List<Map<String, dynamic>>.from(historyResponse['history'] ?? []);
+          
+          print('✅ Loaded ${history.length} test results');
           
           // Calculate stats
           _testsTaken = history.length;
@@ -80,6 +219,13 @@ class _HomePageState extends State<HomePage> {
             _avgScore = totalScore / history.length;
           }
           _recentTests = history.take(3).toList();
+          
+          print('📊 Stats:');
+          print('  Tests taken: $_testsTaken');
+          print('  Average score: $_avgScore');
+          print('  Recent tests: ${_recentTests.length}');
+        } else {
+          print('❌ Failed to load test history: ${historyResponse['message']}');
         }
         
         // Load rankings to get user rank
@@ -98,14 +244,20 @@ class _HomePageState extends State<HomePage> {
           _isLoadingStats = false;
           _isLoadingCategories = false;
         });
+        print('✅ State updated - Stats: $_testsTaken, Categories: ${_testCategories.length}, Recent: ${_recentTests.length}');
       }
     } catch (e) {
+      print('❌ Error loading user stats: $e');
       if (mounted) {
         setState(() {
           _isLoadingStats = false;
           _isLoadingCategories = false;
         });
       }
+    }
+    
+    if (mounted) {
+      print('✅ Final state: Tests taken=$_testsTaken, Recent tests=${_recentTests.length}');
     }
   }
 
@@ -272,55 +424,123 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: _examOptions.length,
-                      itemBuilder: (context, index) {
-                        final exam = _examOptions[index];
-                        final isSelected = exam == _currentExam;
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              _currentExam = exam;
-                            });
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.border,
-                                width: isSelected ? 2 : 1,
+                  if (_isLoadingExams)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    )
+                  else if (_examCategories.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          children: [
+                            Icon(Icons.inbox_outlined, size: 48, color: AppColors.textLight),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No exams available',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
                               ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  exam,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 15,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                    color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: _examCategories.length,
+                        itemBuilder: (context, index) {
+                          final exam = _examCategories[index];
+                          final examName = exam['name'] ?? 'Unknown';
+                          final examId = exam['id'];
+                          final isSelected = examId == _selectedExamId;
+                          
+                          return InkWell(
+                            onTap: () async {
+                              setState(() {
+                                _currentExam = examName;
+                                _selectedExamId = examId;
+                              });
+                              Navigator.pop(context);
+                              
+                              // Save and reload categories for new exam
+                              await _saveSelectedExam(examName, examId);
+                              
+                              // Show success message
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Exam set to: $examName',
+                                      style: GoogleFonts.poppins(),
+                                    ),
+                                    backgroundColor: AppColors.success,
+                                    duration: const Duration(seconds: 2),
                                   ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : AppColors.border,
+                                  width: isSelected ? 2 : 1,
                                 ),
-                                if (isSelected)
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.primary,
-                                    size: 22,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          examName,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 15,
+                                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                            color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        if (exam['description'] != null && exam['description'].toString().isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Text(
+                                              exam['description'],
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
-                              ],
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: AppColors.primary,
+                                      size: 22,
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             );
@@ -570,9 +790,15 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildCategoryCardFromData(Map<String, dynamic> category) {
     final name = category['name'] ?? 'Unknown';
-    final sessionsCount = category['sessions_count'] ?? 0;
-    final completedCount = category['completed_count'] ?? 0;
-    final progress = sessionsCount > 0 ? completedCount / sessionsCount : 0.0;
+    final sessionsCount = (category['sessions_count'] ?? 0) is int 
+        ? category['sessions_count'] 
+        : int.tryParse(category['sessions_count']?.toString() ?? '0') ?? 0;
+    final completedCount = (category['completed_count'] ?? 0) is int
+        ? category['completed_count']
+        : int.tryParse(category['completed_count']?.toString() ?? '0') ?? 0;
+    final progress = sessionsCount > 0 ? (completedCount / sessionsCount).clamp(0.0, 1.0) : 0.0;
+    
+    print('📊 Category card: $name - Sessions: $sessionsCount, Completed: $completedCount, Progress: ${(progress * 100).toStringAsFixed(0)}%');
     
     // Assign icon and color based on category name
     IconData icon;
@@ -712,16 +938,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRecentTestsSection() {
+    print('📊 Building recent tests section: ${_recentTests.length} tests, loading: $_isLoadingStats');
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Recent Tests',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: ThemeHelper.textPrimary(context),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recent Tests',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: ThemeHelper.textPrimary(context),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.refresh, color: AppColors.primary),
+              onPressed: () {
+                print('🔄 Manual refresh triggered');
+                _loadUserStats();
+              },
+              tooltip: 'Refresh',
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (_isLoadingStats)

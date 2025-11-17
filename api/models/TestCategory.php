@@ -20,22 +20,45 @@ class TestCategory {
         $this->conn = $db;
     }
 
-    public function getAll($exam_category_id = null) {
-        $query = "SELECT tc.*, ec.name AS exam_name
-                  FROM " . $this->table_name . " tc
+    public function getAll($exam_category_id = null, $user_id = null) {
+        // Build the query with subquery for completed count
+        $query = "SELECT tc.*, 
+                         ec.name AS exam_name,
+                         COUNT(DISTINCT qs.id) AS sessions_count";
+        
+        if ($user_id) {
+            $query .= ", COALESCE((
+                             SELECT COUNT(DISTINCT tr2.session_id)
+                             FROM test_results tr2
+                             INNER JOIN question_sessions qs2 ON tr2.session_id = qs2.id
+                             WHERE qs2.test_category_id = tc.id 
+                             AND qs2.is_active = 1
+                             AND tr2.user_id = :user_id
+                         ), 0) AS completed_count";
+        } else {
+            $query .= ", 0 AS completed_count";
+        }
+        
+        $query .= " FROM " . $this->table_name . " tc
                   LEFT JOIN exam_categories ec ON tc.exam_category_id = ec.id
+                  LEFT JOIN question_sessions qs ON qs.test_category_id = tc.id AND qs.is_active = 1
                   WHERE tc.is_active = 1";
 
         if ($exam_category_id) {
             $query .= " AND tc.exam_category_id = :exam_category_id";
         }
 
-        $query .= " ORDER BY tc.display_order, tc.name";
+        $query .= " GROUP BY tc.id
+                    ORDER BY tc.display_order, tc.name";
 
         $stmt = $this->conn->prepare($query);
 
         if ($exam_category_id) {
             $stmt->bindParam(':exam_category_id', $exam_category_id, PDO::PARAM_INT);
+        }
+        
+        if ($user_id) {
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         }
 
         $stmt->execute();

@@ -10,7 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($data->mobile) && preg_match('/^[0-9]{10}$/', $data->mobile)) {
         $mobile = $data->mobile;
-        $otp = rand(100000, 999999);
+        // Default test OTP for development
+        $otp = '111111';
         // Fix timezone issue - use current timestamp + 10 minutes
         $expires_at = date('Y-m-d H:i:s', time() + (10 * 60));
 

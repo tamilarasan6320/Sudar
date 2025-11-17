@@ -34,14 +34,12 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
 
       if (response['success'] == true) {
-        final otp = response['otp'];
+        // Use OTP from response, or default test OTP '111111'
+        final otp = response['otp']?.toString() ?? '111111';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              otp != null
-                  ? 'OTP sent successfully! (Dev OTP: $otp)'
-                  : 'OTP sent successfully!'
-                  ,
+              'OTP sent successfully! (Test OTP: $otp)',
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: AppColors.success,
@@ -53,6 +51,7 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(
             builder: (context) => OTPVerificationPage(
               phoneNumber: _phoneController.text.trim(),
+              autoOTP: otp, // Pass OTP for auto-fill (default: 111111)
             ),
           ),
         );

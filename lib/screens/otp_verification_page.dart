@@ -11,10 +11,12 @@ import 'dart:async';
 
 class OTPVerificationPage extends StatefulWidget {
   final String phoneNumber;
+  final String? autoOTP; // OTP for auto-fill (development/testing)
   
   const OTPVerificationPage({
     Key? key,
     required this.phoneNumber,
+    this.autoOTP,
   }) : super(key: key);
 
   @override
@@ -40,6 +42,28 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
   void initState() {
     super.initState();
     _startResendTimer();
+    
+    // Auto-fill OTP if provided (for development/testing)
+    if (widget.autoOTP != null && widget.autoOTP!.length == 6) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _autoFillOTP(widget.autoOTP!);
+      });
+    }
+  }
+  
+  void _autoFillOTP(String otp) {
+    // Fill OTP fields
+    for (int i = 0; i < 6 && i < otp.length; i++) {
+      _otpControllers[i].text = otp[i];
+    }
+    setState(() {});
+    
+    // Auto-verify after a short delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _handleVerify();
+      }
+    });
   }
 
   @override

@@ -1,6 +1,7 @@
 <?php
 require_once '../../config/cors.php';
 require_once '../../config/database.php';
+require_once '../../admin/auth/middleware.php'; // Require authentication
 require_once '../../models/Question.php';
 require_once '../../models/QuestionSession.php';
 
@@ -116,32 +117,82 @@ if ($method === 'GET') {
     }
 
 } elseif ($method === 'DELETE') {
-    // Delete question
+    // Delete question(s)
     $data = json_decode(file_get_contents('php://input'));
     
-    if (!empty($data->id)) {
-        // Get session_id before deleting
-        $question = new Question($db);
-        $question->id = $data->id;
-        $stmt = $question->getById();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $session_id = $row['session_id'];
-        
-        if ($question->delete()) {
-            // Update session question count
-            $session = new QuestionSession($db);
-            $session->id = $session_id;
-            $session->updateQuestionCount();
+    // If session_id is provided, delete all questions in the session
+    if (!empty($data->session_id)) {
+        try {
+            $db->beginTransaction();
             
-            http_response_code(200);
-            echo json_encode(['success' => true, 'message' => 'Question deleted successfully']);
-        } else {
+            $question = new Question($db);
+            $question->session_id = $data->session_id;
+            
+            // Count questions before deleting
+            $stmt = $question->getBySession();
+            $count = $stmt->rowCount();
+            
+            // Delete all questions in the session
+            if ($question->deleteBySession()) {
+                // Update session question count
+                $session = new QuestionSession($db);
+                $session->id = $data->session_id;
+                $session->updateQuestionCount();
+                
+                $db->commit();
+                
+                http_response_code(200);
+                echo json_encode([
+                    'success' => true, 
+                    'message' => "Successfully deleted $count questions",
+                    'deleted' => $count
+                ]);
+            } else {
+                $db->rollBack();
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Failed to delete questions']);
+            }
+        } catch (Exception $e) {
+            $db->rollBack();
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Failed to delete question']);
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    } 
+    // If id is provided, delete single question
+    elseif (!empty($data->id)) {
+        try {
+            $db->beginTransaction();
+            
+            // Get session_id before deleting
+            $question = new Question($db);
+            $question->id = $data->id;
+            $stmt = $question->getById();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $session_id = $row['session_id'];
+            
+            if ($question->delete()) {
+                // Update session question count
+                $session = new QuestionSession($db);
+                $session->id = $session_id;
+                $session->updateQuestionCount();
+                
+                $db->commit();
+                
+                http_response_code(200);
+                echo json_encode(['success' => true, 'message' => 'Question deleted successfully']);
+            } else {
+                $db->rollBack();
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Failed to delete question']);
+            }
+        } catch (Exception $e) {
+            $db->rollBack();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
     } else {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'ID is required']);
+        echo json_encode(['success' => false, 'message' => 'Session ID or Question ID is required']);
     }
 
 } else {

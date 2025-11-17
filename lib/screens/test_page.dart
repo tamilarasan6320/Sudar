@@ -64,25 +64,59 @@ class _TestPageState extends State<TestPage> {
 
           setState(() {
             _questions = questionsData.map((q) {
-              // Parse options from JSON string if needed
-              List<String> options = [];
-              if (q['option_a'] != null) options.add(q['option_a']);
-              if (q['option_b'] != null) options.add(q['option_b']);
-              if (q['option_c'] != null) options.add(q['option_c']);
-              if (q['option_d'] != null) options.add(q['option_d']);
+              // Parse English options
+              List<String>? optionsEn;
+              if (q['option_a_en'] != null || q['option_b_en'] != null) {
+                optionsEn = [
+                  q['option_a_en']?.toString() ?? '',
+                  q['option_b_en']?.toString() ?? '',
+                  q['option_c_en']?.toString() ?? '',
+                  q['option_d_en']?.toString() ?? '',
+                ];
+              }
+              
+              // Parse Tamil options
+              List<String>? optionsTa;
+              if (q['option_a_ta'] != null || q['option_b_ta'] != null) {
+                optionsTa = [
+                  q['option_a_ta']?.toString() ?? '',
+                  q['option_b_ta']?.toString() ?? '',
+                  q['option_c_ta']?.toString() ?? '',
+                  q['option_d_ta']?.toString() ?? '',
+                ];
+              }
+              
+              // Get question texts
+              String? questionEn = q['question_en']?.toString();
+              String? questionTa = q['question_ta']?.toString();
               
               // Determine correct answer index
-              String correctOption = (q['correct_answer'] ?? 'a').toString().toLowerCase();
-              int correctIndex = {'a': 0, 'b': 1, 'c': 2, 'd': 3}[correctOption] ?? 0;
+              String correctOption = (q['correct_answer'] ?? 'A').toString().toUpperCase();
+              int correctIndex = {'A': 0, 'B': 1, 'C': 2, 'D': 3}[correctOption] ?? 0;
+              
+              bool hasEn = q['has_english'] == true;
+              bool hasTa = q['has_tamil'] == true;
+              
+              print('📝 Question ${q['id']}: EN="${hasEn ? 'Yes' : 'No'}", TA="${hasTa ? 'Yes' : 'No'}", correct=$correctOption');
               
               return Question(
                 id: q['id'] is int ? q['id'] : int.parse(q['id'].toString()),
-                text: q['question_text'] ?? q['question'] ?? '',
-                options: options,
+                textEn: questionEn,
+                textTa: questionTa,
+                optionsEn: optionsEn,
+                optionsTa: optionsTa,
                 correctAnswer: correctIndex,
-                explanation: q['explanation'],
+                explanationEn: q['explanation_en']?.toString(),
+                explanationTa: q['explanation_ta']?.toString(),
+                hasEnglish: hasEn,
+                hasTamil: hasTa,
               );
+            }).where((q) {
+              // Only include questions that have at least one language
+              return q.hasEnglish || q.hasTamil;
             }).toList();
+            
+            print('✅ Loaded ${_questions.length} questions out of ${questionsData.length} total');
             
             _isLoading = false;
             // Start timer after questions are loaded
@@ -163,30 +197,156 @@ class _TestPageState extends State<TestPage> {
     });
   }
 
-  void _submitTest() {
+  Future<void> _submitTest() async {
     _timer?.cancel();
     
-    int correctAnswers = 0;
-    _selectedAnswers.forEach((questionIndex, selectedAnswer) {
-      if (_questions[questionIndex].correctAnswer == selectedAnswer) {
-        correctAnswers++;
-      }
-    });
-    
-    // Navigate to results page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TestResultsPage(
-          questions: _questions,
-          selectedAnswers: _selectedAnswers,
-          correctAnswers: correctAnswers,
-          totalQuestions: _questions.length,
-          testTitle: widget.testTitle,
-          category: widget.category,
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Submitting your test...',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+    
+    try {
+      // Get user ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('userId');
+      
+      if (userId == null) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: User not logged in', style: GoogleFonts.poppins()),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      
+      // Prepare answers for API
+      final answers = _selectedAnswers.entries.map((entry) {
+        final questionIndex = entry.key;
+        final answerIndex = entry.value;
+        final question = _questions[questionIndex];
+        
+        // Convert answer index (0,1,2,3) to letter (A,B,C,D)
+        final answerLetter = String.fromCharCode(65 + answerIndex); // 65 is 'A'
+        
+        return {
+          'question_id': question.id,
+          'answer': answerLetter,
+          'time_spent': 0,
+          'marked_for_review': _markedForReview.contains(questionIndex),
+        };
+      }).toList();
+      
+      // Calculate time taken in seconds
+      final timeTaken = 3600 - _timeRemaining;
+      
+      // Get started time (current time minus time taken)
+      final now = DateTime.now();
+      final startedAt = now.subtract(Duration(seconds: timeTaken)).toIso8601String();
+      
+      print('📤 Submitting test:');
+      print('  User ID: $userId');
+      print('  Session ID: ${widget.sessionId}');
+      print('  Answers: ${answers.length}');
+      print('  Time taken: $timeTaken seconds');
+      
+      // Submit to API
+      final response = await ApiService.submitTestResult(
+        userId: userId,
+        sessionId: widget.sessionId,
+        startedAt: startedAt,
+        timeTaken: timeTaken,
+        answers: answers,
+      );
+      
+      print('📥 Submit response: $response');
+      
+      Navigator.pop(context); // Close loading dialog
+      
+      if (response['success'] == true) {
+        // Calculate correctAnswers for results page
+        int correctAnswers = 0;
+        _selectedAnswers.forEach((questionIndex, selectedAnswer) {
+          if (_questions[questionIndex].correctAnswer == selectedAnswer) {
+            correctAnswers++;
+          }
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Test submitted successfully!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        
+        // Navigate to results page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TestResultsPage(
+              questions: _questions,
+              selectedAnswers: _selectedAnswers,
+              correctAnswers: correctAnswers,
+              totalQuestions: _questions.length,
+              testTitle: widget.testTitle,
+              category: widget.category,
+            ),
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] ?? 'Failed to submit test',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading dialog
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error submitting test: $e',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _showSubmitConfirmation() {
@@ -277,6 +437,57 @@ class _TestPageState extends State<TestPage> {
                 const SizedBox(height: 16),
                 Text(
                   _errorMessage!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  child: Text(
+                    'Go Back',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Check if questions list is empty
+    if (_questions.isEmpty) {
+      return Scaffold(
+        backgroundColor: ThemeHelper.backgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: ThemeHelper.cardColor(context),
+          elevation: 1,
+          title: Text(
+            widget.testTitle,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: ThemeHelper.textPrimary(context),
+            ),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.quiz_outlined, size: 64, color: AppColors.textSecondary),
+                const SizedBox(height: 16),
+                Text(
+                  'No valid questions found in this test.\nSome questions may have empty content.',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: AppColors.textSecondary,
@@ -419,30 +630,84 @@ class _TestPageState extends State<TestPage> {
                   
                   const SizedBox(height: 20),
                   
-                  // Question Text
+                  // Question Text - Bilingual
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: ThemeHelper.cardColor(context),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: ThemeHelper.cardShadow(context),
-      ),
-                    child: Text(
-                      currentQuestion.text,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: ThemeHelper.textPrimary(context),
-                        height: 1.5,
-                      ),
+                    decoration: BoxDecoration(
+                      color: ThemeHelper.cardColor(context),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: ThemeHelper.cardShadow(context),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // English Version
+                        if (currentQuestion.hasEnglish && currentQuestion.textEn != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'English',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentQuestion.textEn!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: ThemeHelper.textPrimary(context),
+                              height: 1.5,
+                            ),
+                          ),
+                          if (currentQuestion.hasTamil) const SizedBox(height: 16),
+                        ],
+                        
+                        // Tamil Version
+                        if (currentQuestion.hasTamil && currentQuestion.textTa != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'தமிழ்',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentQuestion.textTa!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: ThemeHelper.textPrimary(context),
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   
                   const SizedBox(height: 24),
                   
-                  // Options
-                  ...List.generate(currentQuestion.options.length, (index) {
+                  // Options - Bilingual
+                  ...List.generate(4, (index) {
                     final isSelected = _selectedAnswers[_currentQuestionIndex] == index;
                     
                     return GestureDetector(
@@ -478,13 +743,36 @@ class _TestPageState extends State<TestPage> {
                             ),
                             const SizedBox(width: 16),
                             Expanded(
-                              child: Text(
-                                currentQuestion.options[index],
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // English Option
+                                  if (currentQuestion.hasEnglish && currentQuestion.optionsEn != null)
+                                    Text(
+                                      '${String.fromCharCode(65 + index)}) ${currentQuestion.optionsEn![index]}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  
+                                  // Spacing between languages
+                                  if (currentQuestion.hasEnglish && currentQuestion.hasTamil && 
+                                      currentQuestion.optionsEn != null && currentQuestion.optionsTa != null)
+                                    const SizedBox(height: 4),
+                                  
+                                  // Tamil Option
+                                  if (currentQuestion.hasTamil && currentQuestion.optionsTa != null)
+                                    Text(
+                                      '${['அ', 'ஆ', 'இ', 'ஈ'][index]}) ${currentQuestion.optionsTa![index]}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ],
@@ -619,17 +907,27 @@ class _TestPageState extends State<TestPage> {
 
 class Question {
   final int id;
-  final String text;
-  final List<String> options;
+  final String? textEn;
+  final String? textTa;
+  final List<String>? optionsEn;
+  final List<String>? optionsTa;
   final int correctAnswer;
-  final String? explanation;
+  final String? explanationEn;
+  final String? explanationTa;
+  final bool hasEnglish;
+  final bool hasTamil;
 
   Question({
     required this.id,
-    required this.text,
-    required this.options,
+    this.textEn,
+    this.textTa,
+    this.optionsEn,
+    this.optionsTa,
     required this.correctAnswer,
-    this.explanation,
+    this.explanationEn,
+    this.explanationTa,
+    required this.hasEnglish,
+    required this.hasTamil,
   });
 }
 

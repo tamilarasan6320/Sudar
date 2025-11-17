@@ -9,6 +9,7 @@ let questions = [];
 let testCategories = [];
 let questionSessions = [];
 let examCategories = [];
+let languages = [];
 let results = [];
 
 // Settings Data
@@ -85,24 +86,91 @@ let userRankings = [];
 // Test Results Data (will be generated from users and sessions)
 let testResults = [];
 
+// Admin Authentication
+let currentAdmin = null;
+
+async function checkAdminAuth() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/auth/check.php`);
+        const data = await response.json();
+        
+        if (data.success && data.authenticated) {
+            currentAdmin = data.admin;
+            updateAdminUI();
+            return true;
+        } else {
+            // Not authenticated, redirect to login
+            window.location.href = 'login.html';
+            return false;
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = 'login.html';
+        return false;
+    }
+}
+
+function updateAdminUI() {
+    if (currentAdmin) {
+        const userProfile = document.querySelector('.user-profile span');
+        if (userProfile) {
+            userProfile.textContent = currentAdmin.username;
+        }
+        
+        // Add logout button
+        const headerRight = document.querySelector('.header-right');
+        if (headerRight && !document.getElementById('logoutButton')) {
+            const logoutBtn = document.createElement('button');
+            logoutBtn.id = 'logoutButton';
+            logoutBtn.className = 'logout-button';
+            logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+            logoutBtn.onclick = handleLogout;
+            headerRight.insertBefore(logoutBtn, headerRight.firstChild);
+        }
+    }
+}
+
+async function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/logout.php`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                window.location.href = 'login.html';
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Still redirect even if API call fails
+            window.location.href = 'login.html';
+        }
+    }
+}
+
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    loadDashboard();
-    loadUsers();
-    loadExamCategories();
-    loadTestCategories();
-    loadQuestionSessions();
-    loadSessionCards();
-    loadSettings();
-    populateExamCategoryDropdown();
-    populateSessionDropdowns();
-    generateUserRankings();
-    loadRankings();
-    generateTestResults();
-    loadTestResults();
-    // Removed for now - will add one by one
-    // loadExams();
-    // loadResults();
+document.addEventListener('DOMContentLoaded', async function() {
+    // Check authentication first
+    const isAuthenticated = await checkAdminAuth();
+    
+    if (isAuthenticated) {
+        loadDashboard();
+        loadUsers();
+        loadExamCategories();
+        loadTestCategories();
+        loadQuestionSessions();
+        loadSessionCards();
+        loadSettings();
+        populateExamCategoryDropdown();
+        populateSessionDropdowns();
+        // Rankings will be loaded when Rankings page is opened (not on initial load)
+        loadTestResultsFromAPI();
+        loadTestResultsAnalytics();
+        // Removed for now - will add one by one
+        // loadExams();
+        // loadResults();
+    }
 });
 
 // Navigation
@@ -126,6 +194,7 @@ function showPage(pageName) {
         'questionSessions': 'Question Sessions',
         'addQuestion': 'Add Question',
         'testResults': 'Test Results',
+        'languages': 'Languages',
         'rankings': 'User Rankings',
         'settings': 'Settings'
         // Removed sections - will add one by one
@@ -133,6 +202,18 @@ function showPage(pageName) {
         // 'results': 'Test Results'
     };
     document.getElementById('pageTitle').textContent = titles[pageName];
+    
+    // Load data based on page
+    if (pageName === 'languages') {
+        loadLanguages();
+    } else if (pageName === 'testResults') {
+        loadTestResultsFromAPI();
+        loadTestResultsAnalytics();
+    } else if (pageName === 'dashboard') {
+        loadDashboard();
+    } else if (pageName === 'rankings') {
+        loadRankings();
+    }
 }
 
 // Toggle Sidebar
@@ -143,18 +224,46 @@ function toggleSidebar() {
 // Dashboard
 async function loadDashboard() {
     try {
-        // Fetch dashboard statistics from API
-        const response = await fetch(`${API_BASE_URL}/admin/get_dashboard_stats.php`);
+        // Fetch enhanced analytics from API
+        const period = document.getElementById('analyticsPeriod')?.value || 'week';
+        const response = await fetch(`${API_BASE_URL}/admin/analytics/dashboard.php?period=${period}`);
         const data = await response.json();
         
         if (data.success) {
-            const stats = data.stats;
+            const overview = data.overview || {};
             
             // Update stats cards
-            document.getElementById('totalUsers').textContent = stats.total_users || 0;
-            document.getElementById('totalExams').textContent = stats.total_exams || 0;
-            document.getElementById('totalQuestions').textContent = stats.total_questions || 0;
-            document.getElementById('testsTaken').textContent = stats.total_results || 0;
+            document.getElementById('totalUsers').textContent = overview.total_users || 0;
+            document.getElementById('totalExams').textContent = overview.total_exams || 0;
+            document.getElementById('totalQuestions').textContent = overview.total_questions || 0;
+            document.getElementById('testsTaken').textContent = overview.total_tests || 0;
+            
+            // Update additional stats if elements exist
+            if (document.getElementById('activeUsers')) {
+                document.getElementById('activeUsers').textContent = overview.active_users || 0;
+            }
+            if (document.getElementById('avgScore')) {
+                document.getElementById('avgScore').textContent = (overview.avg_score || 0) + '%';
+            }
+            if (document.getElementById('passRate')) {
+                document.getElementById('passRate').textContent = (overview.pass_rate || 0) + '%';
+            }
+            
+            // Load charts data if available
+            if (data.user_activity && data.user_activity.length > 0) {
+                // User activity chart data available
+                console.log('User activity data:', data.user_activity);
+            }
+            
+            if (data.test_performance && data.test_performance.length > 0) {
+                // Performance trend data available
+                console.log('Performance trend data:', data.test_performance);
+            }
+            
+            if (data.top_performers && data.top_performers.length > 0) {
+                // Top performers data available
+                console.log('Top performers:', data.top_performers);
+            }
             
             // Load recent activity from API data
             const activities = [];
@@ -186,13 +295,27 @@ async function loadDashboard() {
             }
             
             // Add general info
-            if (stats.total_questions > 0) {
+            if (overview.total_questions > 0) {
                 activities.push({
                     icon: 'fa-plus-circle',
                     color: '#FFD93D',
                     title: 'Questions available',
-                    subtitle: `${stats.total_questions} questions in question bank`,
+                    subtitle: `${overview.total_questions} questions in question bank`,
                     time: 'Updated recently'
+                });
+            }
+            
+            // Add recent activity from enhanced analytics
+            if (data.recent_activity && data.recent_activity.length > 0) {
+                data.recent_activity.slice(0, 3).forEach(activity => {
+                    const timeAgo = getTimeAgo(activity.submitted_at);
+                    activities.push({
+                        icon: 'fa-check-circle',
+                        color: activity.score >= 50 ? '#4ECDC4' : '#FF6B6B',
+                        title: 'Test completed',
+                        subtitle: `${activity.user_name} scored ${activity.score}% in ${activity.test_name}`,
+                        time: timeAgo
+                    });
                 });
             }
             
@@ -225,7 +348,7 @@ async function loadDashboard() {
                 `;
             }
             
-            console.log('Dashboard loaded successfully:', stats);
+            console.log('Dashboard loaded successfully:', overview);
         } else {
             console.error('Failed to load dashboard:', data.message);
             showError('Failed to load dashboard statistics');
@@ -881,26 +1004,11 @@ function loadQuestions() {
     `).join('');
 }
 
-function saveQuestion() {
-    const question = {
-        id: questions.length + 1,
-        text: document.getElementById('questionText').value,
-        category: document.getElementById('questionCategory').value,
-        difficulty: document.getElementById('questionDifficulty').value,
-        language: document.getElementById('questionLanguage').value,
-        optionA: document.getElementById('optionA').value,
-        optionB: document.getElementById('optionB').value,
-        optionC: document.getElementById('optionC').value,
-        optionD: document.getElementById('optionD').value,
-        correctAnswer: document.getElementById('correctAnswer').value,
-        explanation: document.getElementById('questionExplanation').value
-    };
-    
-    questions.push(question);
-    loadQuestions();
+async function saveQuestion() {
+    // This function is for the old question form - if it exists, it needs session_id
+    // For now, we'll show a message to use CSV upload instead
+    showNotification('Please use the CSV bulk upload feature to add questions to a session.', 'info');
     closeModal('questionModal');
-    showNotification('Question added successfully!', 'success');
-    document.getElementById('questionForm').reset();
 }
 
 function viewQuestion(id) {
@@ -908,20 +1016,39 @@ function viewQuestion(id) {
     alert(`Question: ${q.text}\n\nCategory: ${q.category}\nDifficulty: ${q.difficulty}\nLanguage: ${q.language}`);
 }
 
+// This function is deprecated - use editQuestion(questionId, sessionId) instead
 function editQuestion(id) {
-    const q = questions.find(qu => qu.id === id);
-    document.getElementById('questionText').value = q.text;
-    document.getElementById('questionCategory').value = q.category;
-    document.getElementById('questionDifficulty').value = q.difficulty;
-    document.getElementById('questionLanguage').value = q.language;
-    openModal('questionModal');
+    showNotification('Please use the "View Questions" feature to edit questions from a session.', 'info');
 }
 
-function deleteQuestion(id) {
+async function deleteQuestion(id) {
     if (confirm('Are you sure you want to delete this question?')) {
-        questions = questions.filter(q => q.id !== id);
-        loadQuestions();
-        showNotification('Question deleted successfully!', 'success');
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Question deleted successfully!', 'success');
+                // Reload questions if we're on a questions page
+                if (typeof loadQuestions === 'function') {
+                    loadQuestions();
+                }
+                // Reload session cards to update question counts
+                await loadSessionCards();
+            } else {
+                showNotification(data.message || 'Failed to delete question', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting question:', error);
+            showNotification('Error deleting question: ' + error.message, 'error');
+        }
     }
 }
 
@@ -1015,15 +1142,30 @@ async function loadExamCategories() {
 }
 
 async function saveExamCategory() {
+    const form = document.getElementById('examCategoryForm');
+    const nameInput = document.getElementById('examCategoryName');
+    const categoryIdInput = document.getElementById('categoryIdHidden') || document.createElement('input');
+    
     const categoryData = {
-        name: document.getElementById('examCategoryName').value,
+        name: nameInput.value,
         description: document.getElementById('examCategoryDescription').value,
         icon: document.getElementById('examCategoryIcon').value || '?'
     };
     
+    // Check if we're in edit mode by looking at stored ID
+    const storedId = form.getAttribute('data-edit-id');
+    const isEditMode = storedId && storedId !== '';
+    
+    if (isEditMode) {
+        categoryData.id = parseInt(storedId);
+    }
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`, {
-            method: 'POST',
+        const method = isEditMode ? 'PUT' : 'POST';
+        const url = `${API_BASE_URL}/admin/exam_categories/crud.php`;
+        
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -1033,29 +1175,45 @@ async function saveExamCategory() {
         const data = await response.json();
         
         if (data.success) {
-            loadExamCategories();
+            const action = isEditMode ? 'updated' : 'added';
+            
+            // Clear form and edit mode
+            form.reset();
+            form.setAttribute('data-edit-id', '');
+            document.querySelector('#examCategoryModal h2').textContent = 'Add Exam Category';
+            
+            // Close modal
             closeModal('examCategoryModal');
-            showNotification('Exam category added successfully!', 'success');
-            document.getElementById('examCategoryForm').reset();
+            
+            // Reload data
+            loadExamCategories();
+            
+            // Show notification
+            showNotification(`Exam category ${action} successfully!`, 'success');
         } else {
-            showNotification(data.message || 'Failed to add exam category', 'error');
+            showNotification(data.message || `Failed to ${isEditMode ? 'update' : 'add'} exam category`, 'error');
         }
     } catch (error) {
-        console.error('Error adding exam category:', error);
-        showNotification('Error adding exam category', 'error');
+        console.error(`Error ${isEditMode ? 'updating' : 'adding'} exam category:`, error);
+        showNotification(`Error saving exam category`, 'error');
     }
 }
 
 async function editExamCategory(id) {
     const cat = examCategories.find(c => c.id === id);
     if (cat) {
+        const form = document.getElementById('examCategoryForm');
+        
+        // Populate form
         document.getElementById('examCategoryName').value = cat.name;
         document.getElementById('examCategoryDescription').value = cat.description || '';
         document.getElementById('examCategoryIcon').value = cat.icon || '';
         
-        // Store category ID for update
-        document.getElementById('examCategoryForm').dataset.categoryId = id;
-        document.getElementById('examCategoryForm').dataset.editMode = 'true';
+        // Mark as edit mode
+        form.setAttribute('data-edit-id', id);
+        
+        // Change modal title
+        document.querySelector('#examCategoryModal h2').textContent = 'Edit Exam Category';
         
         openModal('examCategoryModal');
     }
@@ -1097,6 +1255,213 @@ function populateExamCategoryDropdown() {
             examCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
         if (currentValue) {
             dropdown.value = currentValue;
+        }
+    }
+    
+    // Also populate language modal dropdown
+    const langDropdown = document.getElementById('languageExamCategory');
+    if (langDropdown) {
+        const currentValue = langDropdown.value;
+        langDropdown.innerHTML = '<option value="">Select Exam Category</option>' + 
+            examCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+        if (currentValue) {
+            langDropdown.value = currentValue;
+        }
+    }
+}
+
+// Languages CRUD
+async function loadLanguages() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/languages/crud.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            languages = data.data;
+            displayLanguages();
+        }
+    } catch (error) {
+        console.error('Error loading languages:', error);
+        showNotification('Error loading languages', 'error');
+    }
+}
+
+function displayLanguages() {
+    const grid = document.getElementById('languagesGrid');
+    if (!grid) return;
+    
+    if (languages.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">
+                <i class="fas fa-language" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                <p style="font-size: 16px;">No languages added yet</p>
+                <p style="font-size: 14px; margin-top: 10px;">Click "Add Language" to create your first language</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Group languages by exam category
+    const grouped = {};
+    languages.forEach(lang => {
+        const examName = lang.exam_name || 'Unknown';
+        if (!grouped[examName]) {
+            grouped[examName] = [];
+        }
+        grouped[examName].push(lang);
+    });
+    
+    grid.innerHTML = '';
+    
+    Object.keys(grouped).forEach(examName => {
+        const sectionDiv = document.createElement('div');
+        sectionDiv.style.gridColumn = '1/-1';
+        sectionDiv.style.marginBottom = '20px';
+        
+        sectionDiv.innerHTML = `
+            <h3 style="font-size: 18px; margin-bottom: 15px; color: #333; border-bottom: 2px solid #6C63FF; padding-bottom: 10px;">
+                ${examName}
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                ${grouped[examName].map(lang => `
+                    <div class="card" style="padding: 20px; ${!lang.is_active ? 'opacity: 0.6; border: 2px dashed #ccc;' : ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                            <div style="font-size: 40px;">${lang.icon || '🌐'}</div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-sm btn-icon" onclick="editLanguage(${lang.id})" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-icon btn-danger" onclick="deleteLanguage(${lang.id})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 style="margin: 0 0 5px 0; font-size: 18px;">${lang.name}</h3>
+                        <p style="color: #666; font-size: 13px; margin: 0 0 10px 0;">
+                            Code: <strong>${lang.code}</strong>
+                        </p>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <span style="background: ${lang.is_active ? '#d4edda' : '#f8d7da'}; color: ${lang.is_active ? '#155724' : '#721c24'}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                ${lang.is_active ? '✅ Active' : '❌ Inactive'}
+                            </span>
+                            <span style="background: #e7f3ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                Order: ${lang.display_order}
+                            </span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        grid.appendChild(sectionDiv);
+    });
+}
+
+async function saveLanguage() {
+    const form = document.getElementById('languageForm');
+    const editId = form.getAttribute('data-edit-id');
+    const isEditMode = editId && editId !== '';
+    
+    const languageData = {
+        exam_category_id: parseInt(document.getElementById('languageExamCategory').value),
+        name: document.getElementById('languageName').value,
+        code: document.getElementById('languageCode').value,
+        icon: document.getElementById('languageIcon').value || '🌐',
+        display_order: parseInt(document.getElementById('languageDisplayOrder').value) || 0,
+        is_active: document.getElementById('languageIsActive').checked ? 1 : 0
+    };
+    
+    if (!languageData.exam_category_id || !languageData.name || !languageData.code) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    if (isEditMode) {
+        languageData.id = parseInt(editId);
+    }
+    
+    try {
+        const method = isEditMode ? 'PUT' : 'POST';
+        const response = await fetch(`${API_BASE_URL}/admin/languages/crud.php`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(languageData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const action = isEditMode ? 'updated' : 'added';
+            
+            // Clear form and edit mode
+            form.reset();
+            form.setAttribute('data-edit-id', '');
+            document.querySelector('#languageModal h2').textContent = 'Add Language';
+            
+            // Close modal
+            closeModal('languageModal');
+            
+            // Reload data
+            loadLanguages();
+            
+            // Show notification
+            showNotification(`Language ${action} successfully!`, 'success');
+        } else {
+            showNotification(data.message || `Failed to ${isEditMode ? 'update' : 'add'} language`, 'error');
+        }
+    } catch (error) {
+        console.error(`Error saving language:`, error);
+        showNotification(`Error saving language`, 'error');
+    }
+}
+
+async function editLanguage(id) {
+    const lang = languages.find(l => l.id === id);
+    if (lang) {
+        const form = document.getElementById('languageForm');
+        
+        // Populate form
+        document.getElementById('languageExamCategory').value = lang.exam_category_id;
+        document.getElementById('languageName').value = lang.name;
+        document.getElementById('languageCode').value = lang.code;
+        document.getElementById('languageIcon').value = lang.icon || '';
+        document.getElementById('languageDisplayOrder').value = lang.display_order;
+        document.getElementById('languageIsActive').checked = lang.is_active == 1;
+        
+        // Mark as edit mode
+        form.setAttribute('data-edit-id', id);
+        
+        // Change modal title
+        document.querySelector('#languageModal h2').textContent = 'Edit Language';
+        
+        openModal('languageModal');
+    }
+}
+
+async function deleteLanguage(id) {
+    if (confirm('Are you sure you want to delete this language?')) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/languages/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                loadLanguages();
+                showNotification('Language deleted successfully!', 'success');
+            } else {
+                showNotification(data.message || 'Failed to delete language', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting language:', error);
+            showNotification('Error deleting language', 'error');
         }
     }
 }
@@ -1399,7 +1764,7 @@ async function deleteQuestionSession(id) {
 }
 
 // Load Session Cards for Add Question Page
-function loadSessionCards() {
+async function loadSessionCards() {
     const grid = document.getElementById('sessionCardsGrid');
     if (!grid) return;
     
@@ -1417,9 +1782,22 @@ function loadSessionCards() {
         return;
     }
     
+    // Fetch question counts from API for all sessions
+    const sessionCounts = {};
+    for (const session of questionSessions) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php?session_id=${session.id}`);
+            const data = await response.json();
+            sessionCounts[session.id] = data.questions ? data.questions.length : 0;
+        } catch (error) {
+            console.error(`Error fetching count for session ${session.id}:`, error);
+            sessionCounts[session.id] = 0;
+        }
+    }
+    
     grid.innerHTML = questionSessions.map(session => {
-        // Calculate actual uploaded questions for this session
-        const actualQuestionCount = session.actual_question_count || questions.filter(q => q.sessionId === session.id).length;
+        // Get actual count from API
+        const actualQuestionCount = sessionCounts[session.id] || 0;
         const examCategory = session.exam_category_name || 'N/A';
         const testCategory = session.category_name || 'N/A';
         const duration = session.duration || 0;
@@ -1544,6 +1922,18 @@ function openUploadForSession(sessionId) {
         `;
     }
     
+    // Reset file input when modal opens
+    const fileInput = document.getElementById('csvFile');
+    if (fileInput) {
+        fileInput.value = '';
+        const fileNameDisplay = document.getElementById('fileName');
+        if (fileNameDisplay) {
+            fileNameDisplay.textContent = 'No file selected';
+            fileNameDisplay.style.color = '#666';
+            fileNameDisplay.style.fontWeight = 'normal';
+        }
+    }
+    
     openModal('csvUploadModal');
 }
 
@@ -1569,7 +1959,7 @@ async function viewSessionQuestions(sessionId) {
     if (sessionQuestions.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 40px;">
+                <td colspan="3" style="text-align: center; padding: 40px;">
                     <i class="fas fa-inbox" style="font-size: 48px; color: #ddd; margin-bottom: 15px; display: block;"></i>
                     <h4 style="color: #999; margin: 0;">No Questions Uploaded Yet</h4>
                     <p style="color: #bbb;">Upload questions using the CSV bulk upload feature.</p>
@@ -1578,8 +1968,8 @@ async function viewSessionQuestions(sessionId) {
         `;
     } else {
         tbody.innerHTML = sessionQuestions.map((q, index) => {
-            const hasEnglish = q.questionEn && q.questionEn.trim();
-            const hasTamil = q.questionTa && q.questionTa.trim();
+            const hasEnglish = q.question_en && q.question_en.trim();
+            const hasTamil = q.question_ta && q.question_ta.trim();
             
             let languageBadge = '';
             if (hasEnglish && hasTamil) {
@@ -1598,15 +1988,15 @@ async function viewSessionQuestions(sessionId) {
                     <div style="background: #f0f8ff; padding: 12px; border-radius: 8px; margin-bottom: ${hasTamil ? '10px' : '0'}; border-left: 4px solid #6C63FF;">
                         <div style="margin-bottom: 8px;">
                             <span class="badge badge-primary" style="font-size: 10px;">ENGLISH</span>
-                            <strong style="display: block; margin-top: 5px;">${q.questionEn}</strong>
+                            <strong style="display: block; margin-top: 5px;">${q.question_en}</strong>
                         </div>
                         <div style="font-size: 12px; color: #666;">
-                            <div>A) ${q.optionAEn}</div>
-                            <div>B) ${q.optionBEn}</div>
-                            <div>C) ${q.optionCEn}</div>
-                            <div>D) ${q.optionDEn}</div>
+                            <div>A) ${q.option_a_en || ''}</div>
+                            <div>B) ${q.option_b_en || ''}</div>
+                            <div>C) ${q.option_c_en || ''}</div>
+                            <div>D) ${q.option_d_en || ''}</div>
                         </div>
-                        ${q.explanationEn ? `<div style="margin-top: 8px; padding: 6px; background: white; border-radius: 4px; font-size: 11px;"><strong>Explanation:</strong> ${q.explanationEn}</div>` : ''}
+                        ${q.explanation_en ? `<div style="margin-top: 8px; padding: 6px; background: white; border-radius: 4px; font-size: 11px;"><strong>Explanation:</strong> ${q.explanation_en}</div>` : ''}
                     </div>
                 `;
             }
@@ -1617,15 +2007,15 @@ async function viewSessionQuestions(sessionId) {
                     <div style="background: #fff8e1; padding: 12px; border-radius: 8px; border-left: 4px solid #FFD93D;">
                         <div style="margin-bottom: 8px;">
                             <span class="badge badge-warning" style="font-size: 10px;">தமிழ்</span>
-                            <strong style="display: block; margin-top: 5px;">${q.questionTa}</strong>
+                            <strong style="display: block; margin-top: 5px;">${q.question_ta}</strong>
                         </div>
                         <div style="font-size: 12px; color: #666;">
-                            <div>அ) ${q.optionATa}</div>
-                            <div>ஆ) ${q.optionBTa}</div>
-                            <div>இ) ${q.optionCTa}</div>
-                            <div>ஈ) ${q.optionDTa}</div>
+                            <div>அ) ${q.option_a_ta || ''}</div>
+                            <div>ஆ) ${q.option_b_ta || ''}</div>
+                            <div>இ) ${q.option_c_ta || ''}</div>
+                            <div>ஈ) ${q.option_d_ta || ''}</div>
                         </div>
-                        ${q.explanationTa ? `<div style="margin-top: 8px; padding: 6px; background: white; border-radius: 4px; font-size: 11px;"><strong>விளக்கம்:</strong> ${q.explanationTa}</div>` : ''}
+                        ${q.explanation_ta ? `<div style="margin-top: 8px; padding: 6px; background: white; border-radius: 4px; font-size: 11px;"><strong>விளக்கம்:</strong> ${q.explanation_ta}</div>` : ''}
                     </div>
                 `;
             }
@@ -1638,13 +2028,7 @@ async function viewSessionQuestions(sessionId) {
                 </td>
                     <td>${content}</td>
                 <td style="text-align: center;">
-                    <span class="badge badge-success" style="font-size: 14px;">Option ${q.correctAnswer}</span>
-                </td>
-                <td style="text-align: center;">
-                        <button class="btn-icon btn-edit" onclick="editQuestion(${q.id}, ${sessionId})" title="Edit" style="background: #2196F3; margin-right: 5px;">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    <button class="btn-icon btn-delete" onclick="deleteQuestionFromView(${q.id}, ${sessionId})" title="Delete"><i class="fas fa-trash"></i></button>
+                    <span class="badge badge-success" style="font-size: 14px;">Option ${q.correct_answer || 'A'}</span>
                 </td>
             </tr>
             `;
@@ -1658,65 +2042,129 @@ async function viewSessionQuestions(sessionId) {
     }
 }
 
-function deleteQuestionFromView(questionId, sessionId) {
+async function deleteQuestionFromView(questionId, sessionId) {
     if (confirm('Are you sure you want to delete this question?')) {
-        questions = questions.filter(q => q.id !== questionId);
-        viewSessionQuestions(sessionId);
-        showNotification('Question deleted successfully!', 'success');
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: questionId })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Question deleted successfully!', 'success');
+                // Reload questions for the session
+                await viewSessionQuestions(sessionId);
+                // Reload session cards to update question counts
+                await loadSessionCards();
+            } else {
+                showNotification(data.message || 'Failed to delete question', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting question:', error);
+            showNotification('Error deleting question: ' + error.message, 'error');
+        }
     }
 }
 
-function clearSessionQuestions(sessionId) {
+async function clearSessionQuestions(sessionId) {
     const session = questionSessions.find(s => s.id === sessionId);
     if (!session) return;
     
-    const questionsCount = questions.filter(q => q.sessionId === sessionId).length;
-    
-    if (confirm(`Are you sure you want to delete all ${questionsCount} questions from "${session.name}"?\n\nThis action cannot be undone.`)) {
-        questions = questions.filter(q => q.sessionId !== sessionId);
-        showNotification(`Successfully deleted ${questionsCount} questions!`, 'success');
-        closeModal('csvUploadModal');
-        loadSessionCards(); // Refresh the cards
+    // First, get the count from the server
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php?session_id=${sessionId}`);
+        const result = await response.json();
+        const questionsCount = result.questions ? result.questions.length : 0;
+        
+        if (questionsCount === 0) {
+            showNotification('No questions to delete in this session!', 'info');
+            return;
+        }
+        
+        // Show confirmation with exact count from server
+        if (confirm(`Are you sure you want to delete all ${questionsCount} questions from "${session.name}"?\n\nThis action cannot be undone.`)) {
+            // Send delete request to API
+            const deleteResponse = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            
+            const deleteResult = await deleteResponse.json();
+            
+            if (deleteResult.success) {
+                showNotification(`✅ Successfully deleted ${questionsCount} questions!`, 'success');
+                closeModal('csvUploadModal');
+                closeModal('viewQuestionsModal'); // Close view modal if open
+                await loadSessionCards(); // Refresh the cards
+            } else {
+                showNotification(deleteResult.message || 'Failed to delete questions', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting questions:', error);
+        showNotification('Error deleting questions: ' + error.message, 'error');
     }
 }
 
-function editQuestion(questionId, sessionId) {
-    const question = questions.find(q => q.id === questionId);
-    if (!question) {
-        showNotification('Question not found!', 'error');
-        return;
+async function editQuestion(questionId, sessionId) {
+    try {
+        // Fetch question from API
+        const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php?session_id=${sessionId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            showNotification('Failed to load question', 'error');
+            return;
+        }
+        
+        const question = data.questions.find(q => q.id == questionId);
+        if (!question) {
+            showNotification('Question not found!', 'error');
+            return;
+        }
+        
+        console.log('📝 Editing question:', questionId, question);
+        
+        // Set hidden fields
+        document.getElementById('editQuestionId').value = question.id;
+        document.getElementById('editQuestionSessionId').value = sessionId;
+        
+        // Pre-fill English fields
+        document.getElementById('editQuestionEn').value = question.question_en || '';
+        document.getElementById('editOptionAEn').value = question.option_a_en || '';
+        document.getElementById('editOptionBEn').value = question.option_b_en || '';
+        document.getElementById('editOptionCEn').value = question.option_c_en || '';
+        document.getElementById('editOptionDEn').value = question.option_d_en || '';
+        document.getElementById('editExplanationEn').value = question.explanation_en || '';
+        
+        // Pre-fill Tamil fields
+        document.getElementById('editQuestionTa').value = question.question_ta || '';
+        document.getElementById('editOptionATa').value = question.option_a_ta || '';
+        document.getElementById('editOptionBTa').value = question.option_b_ta || '';
+        document.getElementById('editOptionCTa').value = question.option_c_ta || '';
+        document.getElementById('editOptionDTa').value = question.option_d_ta || '';
+        document.getElementById('editExplanationTa').value = question.explanation_ta || '';
+        
+        // Set correct answer
+        document.getElementById('editCorrectAnswer').value = question.correct_answer;
+        
+        // Open the modal
+        openModal('editQuestionModal');
+    } catch (error) {
+        console.error('Error loading question:', error);
+        showNotification('Failed to load question: ' + error.message, 'error');
     }
-    
-    console.log('📝 Editing question:', questionId, question);
-    
-    // Set hidden fields
-    document.getElementById('editQuestionId').value = question.id;
-    document.getElementById('editQuestionSessionId').value = sessionId;
-    
-    // Pre-fill English fields
-    document.getElementById('editQuestionEn').value = question.questionEn || '';
-    document.getElementById('editOptionAEn').value = question.optionAEn || '';
-    document.getElementById('editOptionBEn').value = question.optionBEn || '';
-    document.getElementById('editOptionCEn').value = question.optionCEn || '';
-    document.getElementById('editOptionDEn').value = question.optionDEn || '';
-    document.getElementById('editExplanationEn').value = question.explanationEn || '';
-    
-    // Pre-fill Tamil fields
-    document.getElementById('editQuestionTa').value = question.questionTa || '';
-    document.getElementById('editOptionATa').value = question.optionATa || '';
-    document.getElementById('editOptionBTa').value = question.optionBTa || '';
-    document.getElementById('editOptionCTa').value = question.optionCTa || '';
-    document.getElementById('editOptionDTa').value = question.optionDTa || '';
-    document.getElementById('editExplanationTa').value = question.explanationTa || '';
-    
-    // Set correct answer
-    document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-    
-    // Open the modal
-    openModal('editQuestionModal');
 }
 
-function saveEditedQuestion() {
+async function saveEditedQuestion() {
     const questionId = parseInt(document.getElementById('editQuestionId').value);
     const sessionId = parseInt(document.getElementById('editQuestionSessionId').value);
     
@@ -1750,45 +2198,76 @@ function saveEditedQuestion() {
         return;
     }
     
-    // Find and update the question
-    const questionIndex = questions.findIndex(q => q.id === questionId);
-    if (questionIndex === -1) {
-        showNotification('❌ Question not found!', 'error');
-        return;
-    }
-    
-    // Update the question object
-    questions[questionIndex] = {
-        ...questions[questionIndex],
-        questionEn: questionEn,
-        questionTa: questionTa,
-        optionAEn: optionAEn,
-        optionATa: optionATa,
-        optionBEn: optionBEn,
-        optionBTa: optionBTa,
-        optionCEn: optionCEn,
-        optionCTa: optionCTa,
-        optionDEn: optionDEn,
-        optionDTa: optionDTa,
-        correctAnswer: correctAnswer,
-        explanationEn: explanationEn,
-        explanationTa: explanationTa,
-        language: hasEnglish && hasTamil ? 'both' : hasEnglish ? 'en' : 'ta'
+    // Prepare data for API
+    const questionData = {
+        id: questionId,
+        question_en: questionEn || null,
+        question_ta: questionTa || null,
+        option_a_en: optionAEn || null,
+        option_a_ta: optionATa || null,
+        option_b_en: optionBEn || null,
+        option_b_ta: optionBTa || null,
+        option_c_en: optionCEn || null,
+        option_c_ta: optionCTa || null,
+        option_d_en: optionDEn || null,
+        option_d_ta: optionDTa || null,
+        correct_answer: correctAnswer,
+        explanation_en: explanationEn || null,
+        explanation_ta: explanationTa || null,
+        difficulty: 'medium',
+        marks: 1,
+        negative_marks: 0.25
     };
     
-    console.log('✅ Question updated:', questions[questionIndex]);
-    
-    // Close the edit modal
-    closeModal('editQuestionModal');
-    
-    // Refresh the questions view
-    viewSessionQuestions(sessionId);
-    
-    // Show success message
-    showNotification('✅ Question updated successfully!', 'success');
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(questionData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('✅ Question updated successfully!', 'success');
+            closeModal('editQuestionModal');
+            // Reload questions for the session
+            await viewSessionQuestions(sessionId);
+            // Reload session cards to update question counts
+            await loadSessionCards();
+        } else {
+            showNotification('❌ ' + (result.message || 'Failed to update question'), 'error');
+        }
+    } catch (error) {
+        console.error('Error updating question:', error);
+        showNotification('❌ Error updating question: ' + error.message, 'error');
+    }
 }
 
-function uploadCSV() {
+// Function removed - using label for="csvFile" instead which is more reliable
+
+function handleFileSelect(event) {
+    const fileInput = event.target;
+    const fileNameDisplay = document.getElementById('fileName');
+    
+    if (fileInput.files && fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const fileSize = (file.size / 1024).toFixed(2);
+        fileNameDisplay.textContent = `Selected: ${file.name} (${fileSize} KB)`;
+        fileNameDisplay.style.color = '#4CAF50';
+        fileNameDisplay.style.fontWeight = '600';
+    } else {
+        fileNameDisplay.textContent = 'No file selected';
+        fileNameDisplay.style.color = '#666';
+        fileNameDisplay.style.fontWeight = 'normal';
+    }
+}
+
+// Removed drag and drop functions - using simple file input now
+
+async function uploadCSV() {
     const sessionId = parseInt(document.getElementById('selectedSessionId').value);
     const fileInput = document.getElementById('csvFile');
     
@@ -1799,137 +2278,136 @@ function uploadCSV() {
     
     if (!fileInput.files || fileInput.files.length === 0) {
         showNotification('Please select a CSV file!', 'error');
+        fileInput.style.borderColor = '#f44336';
+        setTimeout(() => {
+            fileInput.style.borderColor = '#6C63FF';
+        }, 2000);
         return;
     }
     
     const file = fileInput.files[0];
-    const reader = new FileReader();
     
-    reader.onload = function(e) {
-        try {
-            const csv = e.target.result;
-            const lines = csv.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            
-            console.log(`📁 Starting CSV Upload for Session ID: ${sessionId}`);
-            console.log(`📄 Total CSV Lines (including header): ${lines.length}`);
-            
-            const beforeUploadCount = questions.filter(q => q.sessionId === sessionId).length;
-            console.log(`📊 Questions in session before upload: ${beforeUploadCount}`);
-            
-            let addedCount = 0;
-            let skippedCount = 0;
-            let errors = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                
-                const values = parseCSVLine(lines[i]);
-                if (values.length < 13) {
-                    skippedCount++;
-                    errors.push(`Line ${i + 1}: Insufficient columns (expected 13, got ${values.length})`);
-                    continue;
-                }
-                
-                // Clean values
-                const questionEn = values[0].trim();
-                const questionTa = values[1].trim();
-                const optionAEn = values[2].trim();
-                const optionATa = values[3].trim();
-                const optionBEn = values[4].trim();
-                const optionBTa = values[5].trim();
-                const optionCEn = values[6].trim();
-                const optionCTa = values[7].trim();
-                const optionDEn = values[8].trim();
-                const optionDTa = values[9].trim();
-                const correctAnswer = values[10].trim().toUpperCase();
-                const explanationEn = values[11].trim();
-                const explanationTa = values[12].trim();
-                
-                // Validate: Must have at least one language
-                const hasEnglish = questionEn && optionAEn && optionBEn && optionCEn && optionDEn;
-                const hasTamil = questionTa && optionATa && optionBTa && optionCTa && optionDTa;
-                
-                if (!hasEnglish && !hasTamil) {
-                    skippedCount++;
-                    errors.push(`Line ${i + 1}: Must have complete question in at least English OR Tamil`);
-                    continue;
-                }
-                
-                // Validate correct answer
-                if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
-                    skippedCount++;
-                    errors.push(`Line ${i + 1}: Invalid correct answer "${correctAnswer}" (must be A, B, C, or D)`);
-                    continue;
-                }
-                
-                // Check for duplicate questions in this session
-                const isDuplicate = questions.some(q => 
-                    q.sessionId === sessionId && (
-                        (q.questionEn && q.questionEn === questionEn) ||
-                        (q.questionTa && q.questionTa === questionTa)
-                    )
-                );
-                
-                if (isDuplicate) {
-                    skippedCount++;
-                    const dupQuestion = questionEn || questionTa;
-                    errors.push(`Line ${i + 1}: Duplicate question detected - "${dupQuestion.substring(0, 50)}..."`);
-                    console.warn(`⚠️ Line ${i + 1}: Skipped duplicate question`);
-                    continue;
-                }
-                
-                const question = {
-                    id: questions.length + 1,
-                    sessionId: sessionId,
-                    questionEn: questionEn || '',
-                    questionTa: questionTa || '',
-                    optionAEn: optionAEn || '',
-                    optionATa: optionATa || '',
-                    optionBEn: optionBEn || '',
-                    optionBTa: optionBTa || '',
-                    optionCEn: optionCEn || '',
-                    optionCTa: optionCTa || '',
-                    optionDEn: optionDEn || '',
-                    optionDTa: optionDTa || '',
-                    correctAnswer: correctAnswer,
-                    explanationEn: explanationEn || '',
-                    explanationTa: explanationTa || '',
-                    language: hasEnglish && hasTamil ? 'both' : hasEnglish ? 'en' : 'ta'
-                };
-                
-                questions.push(question);
-                addedCount++;
-                console.log(`✅ Line ${i + 1}: Added question - Language: ${question.language}, ID: ${question.id}`);
-            }
-            
-            const afterUploadCount = questions.filter(q => q.sessionId === sessionId).length;
-            console.log(`📊 Questions in session after upload: ${afterUploadCount}`);
-            console.log(`✅ Total added: ${addedCount}, Skipped: ${skippedCount}`);
-            console.log(`📝 All questions in database: ${questions.length}`);
-            
-            closeModal('csvUploadModal');
-            loadSessionCards(); // Refresh the session cards to update question counts
-            
-            if (addedCount > 0 && skippedCount === 0) {
-                showNotification(`✅ Successfully uploaded ${addedCount} questions!`, 'success');
-            } else if (addedCount > 0 && skippedCount > 0) {
-                showNotification(`⚠️ Uploaded ${addedCount} questions, skipped ${skippedCount} invalid rows. Check console for details.`, 'success');
-                console.warn('CSV Upload Errors:', errors);
-            } else {
-                showNotification(`❌ Failed to upload any questions. ${skippedCount} rows had errors.`, 'error');
-                console.error('CSV Upload Errors:', errors);
-            }
-            
-            fileInput.value = '';
-            document.getElementById('csvUploadForm').reset();
-        } catch (error) {
-            console.error('CSV parsing error:', error);
-            showNotification('Error parsing CSV file. Please check the format and try again.', 'error');
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        showNotification('Please select a CSV file!', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const uploadButton = document.querySelector('#csvUploadModal button[onclick*="uploadCSV"]');
+    const originalButtonText = uploadButton ? uploadButton.innerHTML : '';
+    if (uploadButton) {
+        uploadButton.disabled = true;
+        uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Replacing questions...';
+    }
+    
+    try {
+        // Step 1: First, clear all existing questions in this session
+        console.log(`🗑️ Clearing existing questions for Session ID: ${sessionId}`);
+        
+        const clearResponse = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+        
+        const clearResult = await clearResponse.json();
+        console.log('🗑️ Clear response:', clearResult);
+        
+        if (!clearResult.success) {
+            console.warn('Failed to clear previous questions, continuing with upload...');
         }
-    };
-    
-    reader.readAsText(file);
+        
+        // Step 2: Upload new questions from CSV
+        const formData = new FormData();
+        formData.append('csv_file', file);
+        formData.append('session_id', sessionId);
+        
+        console.log(`📁 Uploading CSV file to server for Session ID: ${sessionId}`);
+        
+        const response = await fetch(`${API_BASE_URL}/admin/questions/upload_csv.php`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        console.log('📥 Upload response:', result);
+        
+        if (result.success) {
+            const addedCount = result.added || 0;
+            const skippedCount = result.skipped || 0;
+            
+            // Refresh session cards to show updated question counts
+            await loadSessionCards();
+            
+            // Close modal
+            closeModal('csvUploadModal');
+            
+            // Reset file input
+            fileInput.value = '';
+            const fileNameDisplay = document.getElementById('fileName');
+            if (fileNameDisplay) {
+                fileNameDisplay.textContent = 'No file selected';
+                fileNameDisplay.style.color = '#666';
+                fileNameDisplay.style.fontWeight = 'normal';
+            }
+            
+            // Show success message with detailed errors
+            if (addedCount > 0 && skippedCount === 0) {
+                showNotification(`✅ Successfully replaced with ${addedCount} new questions!`, 'success');
+            } else if (addedCount > 0 && skippedCount > 0) {
+                let errorMsg = `⚠️ Uploaded ${addedCount} questions, skipped ${skippedCount} invalid rows.`;
+                if (result.errors && result.errors.length > 0) {
+                    errorMsg += '\n\nErrors:\n' + result.errors.slice(0, 5).join('\n');
+                    if (result.errors.length > 5) {
+                        errorMsg += `\n... and ${result.errors.length - 5} more errors`;
+                    }
+                }
+                showNotification(errorMsg, 'success');
+                console.warn('CSV Upload Errors:', result.errors);
+            } else {
+                let errorMsg = `❌ Failed to upload any questions. ${skippedCount} rows had errors.`;
+                if (result.errors && result.errors.length > 0) {
+                    errorMsg += '\n\nErrors:\n' + result.errors.join('\n');
+                }
+                showNotification(errorMsg, 'error');
+                console.error('CSV Upload Errors:', result.errors);
+                
+                // Also show errors in an alert for better visibility
+                if (result.errors && result.errors.length > 0) {
+                    setTimeout(() => {
+                        alert('Upload Errors:\n\n' + result.errors.join('\n'));
+                    }, 500);
+                }
+            }
+        } else {
+            let errorMsg = result.message || 'Failed to upload CSV file';
+            if (result.error) {
+                errorMsg += ': ' + result.error;
+            }
+            showNotification('❌ ' + errorMsg, 'error');
+            console.error('Upload error:', result);
+        }
+    } catch (error) {
+        console.error('CSV upload error:', error);
+        let errorMsg = 'Error uploading CSV file: ' + error.message;
+        
+        // Check if it's a network error
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMsg = '❌ Cannot connect to server. Make sure XAMPP Apache is running!';
+        }
+        
+        showNotification(errorMsg, 'error');
+    } finally {
+        // Restore button state
+        if (uploadButton) {
+            uploadButton.disabled = false;
+            uploadButton.innerHTML = originalButtonText;
+        }
+    }
 }
 
 function parseCSVLine(line) {
@@ -1955,102 +2433,169 @@ function parseCSVLine(line) {
 }
 
 function downloadCSVTemplate() {
-    const csvContent = `questionEn,questionTa,optionAEn,optionATa,optionBEn,optionBTa,optionCEn,optionCTa,optionDEn,optionDTa,correctAnswer,explanationEn,explanationTa
+    // Fetch the demo CSV file from the server
+    fetch('demo_questions.csv')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch template');
+            }
+            return response.text();
+        })
+        .then(csvContent => {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'demo_questions_template.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showNotification('✅ Demo CSV template downloaded! It includes 10 sample questions (bilingual, English-only, and Tamil-only).', 'success');
+        })
+        .catch(error => {
+            console.error('Error downloading template:', error);
+            // Fallback to inline template
+            const csvContent = `questionEn,questionTa,optionAEn,optionATa,optionBEn,optionBTa,optionCEn,optionCTa,optionDEn,optionDTa,correctAnswer,explanationEn,explanationTa
 "What is the capital of Tamil Nadu?","தமிழ்நாட்டின் தலைநகரம் எது?","Chennai","சென்னை","Mumbai","மும்பை","Delhi","டெல்லி","Kolkata","கொல்கத்தா","A","Chennai is the capital of Tamil Nadu","சென்னை தமிழ்நாட்டின் தலைநகரம்"
 "What is 2+2?","","4","","3","","5","","6","","A","2+2 equals 4",""
-"","திருக்குறள் எழுதியவர் யார்?","","திருவள்ளுவர்","","கம்பர்","","பாரதி","","இளங்கோ","A","","திருவள்ளுவர் திருக்குறளை எழுதினார்"`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'questions_template_with_examples.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    showNotification('CSV template downloaded! It includes examples for bilingual, English-only, and Tamil-only questions.', 'success');
+"Who wrote Thirukkural?","திருக்குறள் எழுதியவர் யார்?","Thiruvalluvar","திருவள்ளுவர்","Kambar","கம்பர்","Bharathi","பாரதி","Ilango","இளங்கோ","A","Thiruvalluvar wrote Thirukkural","திருவள்ளுவர் திருக்குறளை எழுதினார்"
+"","தமிழ்நாட்டின் முதல்வர் யார்?","","எம்.கே.ஸ்டாலின்","","எடப்பாடி பழனிசாமி","","ஜெயலலிதா","","என்.டி.ராமராவ்","A","","எம்.கே.ஸ்டாலின் தமிழ்நாட்டின் முதல்வர்"`;
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'questions_template.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showNotification('✅ CSV template downloaded!', 'success');
+        });
 }
 
-// Test Results Management
-function generateTestResults() {
-    // Generate comprehensive test results for users
-    testResults = [];
-    let resultId = 1;
-    
-    users.forEach(user => {
-        const testsCount = Math.floor(Math.random() * 10) + 5; // 5-15 tests per user
+// Test Results Management - API Integration
+async function loadTestResultsFromAPI() {
+    try {
+        console.log('📊 Loading test results from API...');
         
-        for (let i = 0; i < testsCount; i++) {
-            const session = questionSessions[Math.floor(Math.random() * questionSessions.length)];
-            if (!session) continue;
-            
-            const totalQuestions = parseInt(session.totalQuestions) || 50;
-            const correctAnswers = Math.floor(Math.random() * totalQuestions * 0.4) + Math.floor(totalQuestions * 0.4); // 40-80% correct
-            const percentage = ((correctAnswers / totalQuestions) * 100).toFixed(1);
-            const timeTaken = Math.floor(Math.random() * 60) + 30; // 30-90 minutes
-            
-            // Generate dates in the last 30 days
-            const daysAgo = Math.floor(Math.random() * 30);
-            const date = new Date();
-            date.setDate(date.getDate() - daysAgo);
-            
-            testResults.push({
-                id: resultId++,
-                userId: user.id,
-                userName: user.name,
-                userMobile: user.mobile,
-                examCategory: session.examCategory,
-                testCategory: session.testCategory,
-                sessionId: session.id,
-                sessionName: session.name,
-                totalQuestions: totalQuestions,
-                correctAnswers: correctAnswers,
-                wrongAnswers: totalQuestions - correctAnswers,
-                percentage: parseFloat(percentage),
-                timeTaken: timeTaken, // in minutes
-                date: date.toISOString().split('T')[0],
-                timestamp: date.getTime(),
-                status: parseFloat(percentage) >= 60 ? 'passed' : 'failed'
-            });
+        // Build query parameters from filters
+        const params = new URLSearchParams();
+        const filterUser = document.getElementById('filterUser')?.value;
+        const filterExam = document.getElementById('filterExamCategory')?.value;
+        const filterStatus = document.getElementById('filterStatus')?.value;
+        const filterDateRange = document.getElementById('filterDateRange')?.value;
+        
+        if (filterUser && filterUser !== 'all') {
+            // Get user ID from user name
+            const user = users.find(u => u.name === filterUser);
+            if (user) params.append('user_id', user.id);
         }
-    });
-    
-    // Sort by date (newest first)
-    testResults.sort((a, b) => b.timestamp - a.timestamp);
-    
-    console.log(`📊 Generated ${testResults.length} test results`);
+        
+        // Handle date range filter
+        if (filterDateRange && filterDateRange !== 'all') {
+            const today = new Date();
+            if (filterDateRange === 'today') {
+                const todayStr = today.toISOString().split('T')[0];
+                params.append('date_from', todayStr);
+                params.append('date_to', todayStr);
+            } else if (filterDateRange === 'week') {
+                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                params.append('date_from', weekAgo.toISOString().split('T')[0]);
+            } else if (filterDateRange === 'month') {
+                const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                params.append('date_from', monthAgo.toISOString().split('T')[0]);
+            }
+        }
+        
+        // Handle status filter
+        if (filterStatus && filterStatus !== 'all') {
+            if (filterStatus === 'passed') {
+                params.append('min_score', '50');
+            } else if (filterStatus === 'failed') {
+                params.append('max_score', '49.99');
+            }
+        }
+        
+        params.append('limit', '100');
+        params.append('offset', '0');
+        
+        const response = await fetch(`${API_BASE_URL}/admin/results/list.php?${params.toString()}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            testResults = data.results || [];
+            console.log(`✅ Loaded ${testResults.length} test results from API`);
+            
+            // Update stats
+            const totalAttempts = data.total || testResults.length;
+            const avgScore = testResults.length > 0 
+                ? (testResults.reduce((sum, r) => sum + (r.percentage || 0), 0) / testResults.length).toFixed(1)
+                : '0.0';
+            const passed = testResults.filter(r => (r.percentage || 0) >= 50).length;
+            const failed = testResults.filter(r => (r.percentage || 0) < 50).length;
+            
+            if (document.getElementById('totalTestAttempts')) {
+                document.getElementById('totalTestAttempts').textContent = totalAttempts;
+            }
+            if (document.getElementById('avgTestScore')) {
+                document.getElementById('avgTestScore').textContent = avgScore + '%';
+            }
+            if (document.getElementById('testsPassedCount')) {
+                document.getElementById('testsPassedCount').textContent = passed;
+            }
+            if (document.getElementById('testsFailedCount')) {
+                document.getElementById('testsFailedCount').textContent = failed;
+            }
+            
+            // Populate user filter
+            const filterUserSelect = document.getElementById('filterUser');
+            if (filterUserSelect) {
+                // Load users first if not loaded
+                if (users.length === 0) {
+                    await loadUsers();
+                }
+                filterUserSelect.innerHTML = '<option value="all">All Users</option>';
+                users.forEach(user => {
+                    filterUserSelect.innerHTML += `<option value="${user.name}">${user.name}</option>`;
+                });
+            }
+            
+            // Display results
+            displayTestResults(testResults);
+        } else {
+            console.error('❌ Failed to load test results:', data.message);
+            showNotification('Failed to load test results: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error loading test results:', error);
+        showNotification('Error loading test results: ' + error.message, 'error');
+    }
 }
 
-function loadTestResults() {
-    if (testResults.length === 0) {
-        generateTestResults();
+async function loadTestResultsAnalytics() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/results/analytics.php`);
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✅ Loaded test results analytics');
+            // Analytics data is available in data.overall, data.categories, etc.
+            // Can be used for dashboard or detailed analytics view
+        }
+    } catch (error) {
+        console.error('❌ Error loading analytics:', error);
     }
-    
-    // Calculate statistics
-    const totalAttempts = testResults.length;
-    const avgScore = (testResults.reduce((sum, r) => sum + r.percentage, 0) / totalAttempts).toFixed(1);
-    const passed = testResults.filter(r => r.percentage >= 60).length;
-    const failed = testResults.filter(r => r.percentage < 60).length;
-    
-    document.getElementById('totalTestAttempts').textContent = totalAttempts;
-    document.getElementById('avgTestScore').textContent = avgScore + '%';
-    document.getElementById('testsPassedCount').textContent = passed;
-    document.getElementById('testsFailedCount').textContent = failed;
-    
-    // Populate user filter
-    const filterUser = document.getElementById('filterUser');
-    const uniqueUsers = [...new Set(testResults.map(r => r.userName))];
-    filterUser.innerHTML = '<option value="all">All Users</option>';
-    uniqueUsers.forEach(userName => {
-        filterUser.innerHTML += `<option value="${userName}">${userName}</option>`;
-    });
-    
-    // Display all results
-    displayTestResults(testResults);
+}
+
+// Keep old function name for backward compatibility
+function loadTestResults() {
+    loadTestResultsFromAPI();
 }
 
 function displayTestResults(results) {
     const tbody = document.getElementById('testResultsTableBody');
+    
+    if (!tbody) return;
     
     if (results.length === 0) {
         tbody.innerHTML = `
@@ -2066,52 +2611,56 @@ function displayTestResults(results) {
     }
     
     tbody.innerHTML = results.map(result => {
-        const statusColor = result.status === 'passed' ? '#4CAF50' : '#FF6B6B';
-        const statusIcon = result.status === 'passed' ? 'check-circle' : 'times-circle';
+        const percentage = result.percentage || 0;
+        const status = percentage >= 50 ? 'passed' : 'failed';
+        const statusColor = status === 'passed' ? '#4CAF50' : '#FF6B6B';
+        const statusIcon = status === 'passed' ? 'check-circle' : 'times-circle';
+        const submittedDate = result.submitted_at ? new Date(result.submitted_at).toLocaleDateString() : 'N/A';
+        const timeTaken = result.time_taken ? Math.round(result.time_taken / 60) : 0; // Convert seconds to minutes
         
         return `
             <tr style="border-bottom: 1px solid #f0f0f0;">
                 <td style="padding: 15px;"><strong>#${result.id}</strong></td>
                 <td style="padding: 15px;">
                     <div>
-                        <strong style="color: #333;">${result.userName}</strong><br>
-                        <small style="color: #999;">${result.userMobile}</small>
+                        <strong style="color: #333;">${result.user_name || 'Unknown'}</strong><br>
+                        <small style="color: #999;">${result.user_mobile || ''}</small>
                     </div>
                 </td>
                 <td style="padding: 15px;">
-                    <span class="badge badge-primary" style="padding: 6px 12px;">${result.examCategory}</span>
+                    <span class="badge badge-primary" style="padding: 6px 12px;">${result.exam_name || 'N/A'}</span>
                 </td>
                 <td style="padding: 15px;">
                     <div>
-                        <strong style="color: #333;">${result.sessionName}</strong><br>
-                        <small style="color: #999;">${result.testCategory}</small>
+                        <strong style="color: #333;">${result.test_name || 'Unknown Test'}</strong><br>
+                        <small style="color: #999;">${result.category_name || 'N/A'}</small>
                     </div>
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <strong style="font-size: 16px; color: #6C63FF;">${result.correctAnswers}/${result.totalQuestions}</strong>
+                    <strong style="font-size: 16px; color: #6C63FF;">${result.correct_answers || 0}/${result.total_questions || 0}</strong>
                 </td>
                 <td style="text-align: center; padding: 15px;">
                     <div style="display: flex; flex-direction: column; align-items: center;">
-                        <strong style="font-size: 18px; color: ${statusColor};">${result.percentage}%</strong>
+                        <strong style="font-size: 18px; color: ${statusColor};">${percentage.toFixed(1)}%</strong>
                         <div style="width: 60px; height: 6px; background: #e0e0e0; border-radius: 10px; margin-top: 5px; overflow: hidden;">
-                            <div style="width: ${result.percentage}%; height: 100%; background: ${statusColor}; border-radius: 10px;"></div>
+                            <div style="width: ${Math.min(percentage, 100)}%; height: 100%; background: ${statusColor}; border-radius: 10px;"></div>
                         </div>
                     </div>
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <span style="color: #666;"><i class="fas fa-clock"></i> ${result.timeTaken} min</span>
+                    <span style="color: #666;"><i class="fas fa-clock"></i> ${timeTaken} min</span>
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <strong style="color: #666;">${result.date}</strong>
+                    <span style="color: #999; font-size: 12px;">${submittedDate}</span>
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <span class="badge" style="background: ${statusColor}; color: white; padding: 6px 12px; border-radius: 15px;">
-                        <i class="fas fa-${statusIcon}"></i> ${result.status.toUpperCase()}
+                    <span style="background: ${statusColor}20; color: ${statusColor}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                        <i class="fas fa-${statusIcon}"></i> ${status.toUpperCase()}
                     </span>
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <button class="btn-icon btn-view" onclick="viewAnswerSheet(${result.id})" title="View Answer Sheet">
-                        <i class="fas fa-eye"></i>
+                    <button class="btn btn-sm btn-primary" onclick="viewAnswerSheet(${result.id})" style="padding: 6px 12px; font-size: 12px;">
+                        <i class="fas fa-eye"></i> View
                     </button>
                 </td>
             </tr>
@@ -2120,58 +2669,8 @@ function displayTestResults(results) {
 }
 
 function filterTestResults() {
-    const filterUser = document.getElementById('filterUser').value;
-    const filterExam = document.getElementById('filterExamCategory').value;
-    const filterStatus = document.getElementById('filterStatus').value;
-    const filterDate = document.getElementById('filterDateRange').value;
-    
-    let filtered = [...testResults];
-    
-    // Filter by user
-    if (filterUser !== 'all') {
-        filtered = filtered.filter(r => r.userName === filterUser);
-    }
-    
-    // Filter by exam category
-    if (filterExam !== 'all') {
-        filtered = filtered.filter(r => r.examCategory === filterExam);
-    }
-    
-    // Filter by status
-    if (filterStatus === 'passed') {
-        filtered = filtered.filter(r => r.percentage >= 60);
-    } else if (filterStatus === 'failed') {
-        filtered = filtered.filter(r => r.percentage < 60);
-    } else if (filterStatus === 'completed') {
-        filtered = filtered.filter(r => r.status === 'passed' || r.status === 'failed');
-    }
-    
-    // Filter by date range
-    const today = new Date();
-    if (filterDate === 'today') {
-        const todayStr = today.toISOString().split('T')[0];
-        filtered = filtered.filter(r => r.date === todayStr);
-    } else if (filterDate === 'week') {
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(r => new Date(r.date) >= weekAgo);
-    } else if (filterDate === 'month') {
-        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(r => new Date(r.date) >= monthAgo);
-    }
-    
-    // Update statistics
-    if (filtered.length > 0) {
-        const avgScore = (filtered.reduce((sum, r) => sum + r.percentage, 0) / filtered.length).toFixed(1);
-        const passed = filtered.filter(r => r.percentage >= 60).length;
-        const failed = filtered.filter(r => r.percentage < 60).length;
-        
-        document.getElementById('totalTestAttempts').textContent = filtered.length;
-        document.getElementById('avgTestScore').textContent = avgScore + '%';
-        document.getElementById('testsPassedCount').textContent = passed;
-        document.getElementById('testsFailedCount').textContent = failed;
-    }
-    
-    displayTestResults(filtered);
+    // Reload from API with current filter values
+    loadTestResultsFromAPI();
 }
 
 function clearFilters() {
@@ -2189,72 +2688,142 @@ function viewAnswerSheet(resultId) {
         return;
     }
     
-    // For now, show a detailed alert (will create a modal later)
-    showNotification(`📋 Answer Sheet for ${result.userName}\n\nTest: ${result.sessionName}\nScore: ${result.correctAnswers}/${result.totalQuestions} (${result.percentage}%)\nTime: ${result.timeTaken} minutes\nStatus: ${result.status.toUpperCase()}\n\n(Detailed answer sheet modal coming soon!)`, 'success');
+    const percentage = result.percentage || 0;
+    const status = percentage >= 50 ? 'PASSED' : 'FAILED';
+    const timeTaken = result.time_taken ? Math.round(result.time_taken / 60) : 0;
+    
+    // Show detailed result info
+    alert(`📋 Test Result Details\n\n` +
+          `User: ${result.user_name || 'Unknown'}\n` +
+          `Test: ${result.test_name || 'Unknown'}\n` +
+          `Category: ${result.category_name || 'N/A'}\n` +
+          `Score: ${result.correct_answers || 0}/${result.total_questions || 0}\n` +
+          `Percentage: ${percentage.toFixed(1)}%\n` +
+          `Time Taken: ${timeTaken} minutes\n` +
+          `Status: ${status}\n` +
+          `Submitted: ${result.submitted_at ? new Date(result.submitted_at).toLocaleString() : 'N/A'}\n\n` +
+          `(Detailed answer sheet with question-by-question breakdown coming soon!)`);
 }
 
-function exportTestResults() {
-    const filterUser = document.getElementById('filterUser').value;
-    const filterExam = document.getElementById('filterExamCategory').value;
-    const filterStatus = document.getElementById('filterStatus').value;
-    
-    let filtered = [...testResults];
-    
-    // Apply same filters as display
-    if (filterUser !== 'all') filtered = filtered.filter(r => r.userName === filterUser);
-    if (filterExam !== 'all') filtered = filtered.filter(r => r.examCategory === filterExam);
-    if (filterStatus === 'passed') filtered = filtered.filter(r => r.percentage >= 60);
-    else if (filterStatus === 'failed') filtered = filtered.filter(r => r.percentage < 60);
-    
-    // Create CSV content
-    let csvContent = 'ID,User Name,Mobile,Exam Category,Test Name,Correct Answers,Total Questions,Percentage,Time Taken (min),Date,Status\n';
-    
-    filtered.forEach(result => {
-        csvContent += `${result.id},"${result.userName}","${result.userMobile}","${result.examCategory}","${result.sessionName}",${result.correctAnswers},${result.totalQuestions},${result.percentage}%,${result.timeTaken},${result.date},${result.status}\n`;
-    });
-    
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `test_results_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    showNotification(`✅ Exported ${filtered.length} test results to CSV!`, 'success');
-}
-
-// Settings Management
-function loadSettings() {
-    document.getElementById('privacyPolicyText').value = appSettings.privacyPolicy;
-    document.getElementById('termsConditionsText').value = appSettings.termsConditions;
-}
-
-function switchSettingsTab(tab) {
-    const privacyTab = document.getElementById('privacyTab');
-    const termsTab = document.getElementById('termsTab');
-    const privacySection = document.getElementById('privacySection');
-    const termsSection = document.getElementById('termsSection');
-    
-    if (tab === 'privacy') {
-        privacyTab.classList.add('active');
-        termsTab.classList.remove('active');
-        privacyTab.style.borderBottomColor = '#6C63FF';
-        termsTab.style.borderBottomColor = 'transparent';
-        privacySection.style.display = 'block';
-        termsSection.style.display = 'none';
-    } else {
-        termsTab.classList.add('active');
-        privacyTab.classList.remove('active');
-        termsTab.style.borderBottomColor = '#6C63FF';
-        privacyTab.style.borderBottomColor = 'transparent';
-        termsSection.style.display = 'block';
-        privacySection.style.display = 'none';
+async function exportTestResults() {
+    try {
+        // Build export URL with current filters
+        const filterUser = document.getElementById('filterUser')?.value;
+        const filterExam = document.getElementById('filterExamCategory')?.value;
+        const filterDateRange = document.getElementById('filterDateRange')?.value;
+        
+        let url = `${API_BASE_URL}/admin/export/reports.php?type=test_results&format=csv`;
+        
+        // Add date filters
+        if (filterDateRange && filterDateRange !== 'all') {
+            const today = new Date();
+            if (filterDateRange === 'today') {
+                const todayStr = today.toISOString().split('T')[0];
+                url += `&start_date=${todayStr}&end_date=${todayStr}`;
+            } else if (filterDateRange === 'week') {
+                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                url += `&start_date=${weekAgo.toISOString().split('T')[0]}`;
+            } else if (filterDateRange === 'month') {
+                const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                url += `&start_date=${monthAgo.toISOString().split('T')[0]}`;
+            }
+        }
+        
+        // Add user filter
+        if (filterUser && filterUser !== 'all') {
+            const user = users.find(u => u.name === filterUser);
+            if (user) {
+                url += `&user_id=${user.id}`;
+            }
+        }
+        
+        // Trigger download
+        window.open(url, '_blank');
+        showNotification('✅ Export started! CSV file will download shortly.', 'success');
+    } catch (error) {
+        console.error('Error exporting results:', error);
+        showNotification('❌ Error exporting results: ' + error.message, 'error');
     }
 }
 
-function savePrivacyPolicy() {
+// Settings Management
+async function loadSettings() {
+    try {
+        // Load about information
+        const aboutResponse = await fetch(`${API_BASE_URL}/admin/settings/crud.php?key=about`);
+        const aboutData = await aboutResponse.json();
+        if (aboutData.success && aboutData.setting) {
+            try {
+                const about = JSON.parse(aboutData.setting.setting_value || '{}');
+                document.getElementById('aboutAppName').value = about.app_name || '';
+                document.getElementById('aboutAppVersion').value = about.app_version || '';
+                document.getElementById('aboutDescription').value = about.description || '';
+                document.getElementById('aboutContactEmail').value = about.contact_email || '';
+                document.getElementById('aboutContactPhone').value = about.contact_phone || '';
+            } catch (e) {
+                // If not JSON, treat as old format
+            }
+        }
+        
+        // Load privacy policy
+        const privacyResponse = await fetch(`${API_BASE_URL}/admin/settings/crud.php?key=privacy_policy`);
+        const privacyData = await privacyResponse.json();
+        if (privacyData.success && privacyData.setting) {
+            document.getElementById('privacyPolicyText').value = privacyData.setting.setting_value || '';
+        }
+        
+        // Load terms & conditions
+        const termsResponse = await fetch(`${API_BASE_URL}/admin/settings/crud.php?key=terms_conditions`);
+        const termsData = await termsResponse.json();
+        if (termsData.success && termsData.setting) {
+            document.getElementById('termsConditionsText').value = termsData.setting.setting_value || '';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        // Fallback to default values
+        document.getElementById('privacyPolicyText').value = appSettings.privacyPolicy || '';
+        document.getElementById('termsConditionsText').value = appSettings.termsConditions || '';
+    }
+}
+
+function switchSettingsTab(tab) {
+    const aboutTab = document.getElementById('aboutTab');
+    const privacyTab = document.getElementById('privacyTab');
+    const termsTab = document.getElementById('termsTab');
+    const aboutSection = document.getElementById('aboutSection');
+    const privacySection = document.getElementById('privacySection');
+    const termsSection = document.getElementById('termsSection');
+    
+    // Remove active class from all tabs
+    if (aboutTab) aboutTab.classList.remove('active');
+    if (privacyTab) privacyTab.classList.remove('active');
+    if (termsTab) termsTab.classList.remove('active');
+    if (aboutTab) aboutTab.style.borderBottom = '3px solid transparent';
+    if (privacyTab) privacyTab.style.borderBottom = '3px solid transparent';
+    if (termsTab) termsTab.style.borderBottom = '3px solid transparent';
+    
+    // Hide all sections
+    if (aboutSection) aboutSection.style.display = 'none';
+    if (privacySection) privacySection.style.display = 'none';
+    if (termsSection) termsSection.style.display = 'none';
+    
+    // Show selected tab and section
+    if (tab === 'about' && aboutTab && aboutSection) {
+        aboutTab.classList.add('active');
+        aboutTab.style.borderBottom = '3px solid #6C63FF';
+        aboutSection.style.display = 'block';
+    } else if (tab === 'privacy' && privacyTab && privacySection) {
+        privacyTab.classList.add('active');
+        privacyTab.style.borderBottom = '3px solid #6C63FF';
+        privacySection.style.display = 'block';
+    } else if (tab === 'terms' && termsTab && termsSection) {
+        termsTab.classList.add('active');
+        termsTab.style.borderBottom = '3px solid #6C63FF';
+        termsSection.style.display = 'block';
+    }
+}
+
+async function savePrivacyPolicy() {
     const privacyText = document.getElementById('privacyPolicyText').value;
     
     if (!privacyText.trim()) {
@@ -2262,19 +2831,80 @@ function savePrivacyPolicy() {
         return;
     }
     
-    appSettings.privacyPolicy = privacyText;
-    
-    // In a real application, this would save to a database
-    // For now, we're using localStorage
     try {
-        localStorage.setItem('appSettings', JSON.stringify(appSettings));
-        showNotification('Privacy policy saved successfully!', 'success');
-    } catch (e) {
-        showNotification('Privacy policy updated in session!', 'success');
+        const response = await fetch(`${API_BASE_URL}/admin/settings/crud.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                setting_key: 'privacy_policy',
+                setting_value: privacyText,
+                setting_type: 'text',
+                description: 'Privacy Policy for the mobile app'
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('✅ Privacy policy saved successfully!', 'success');
+            appSettings.privacyPolicy = privacyText;
+        } else {
+            showNotification('❌ Failed to save: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error saving privacy policy:', error);
+        showNotification('❌ Error saving privacy policy: ' + error.message, 'error');
     }
 }
 
-function saveTermsConditions() {
+async function saveAbout() {
+    const appName = document.getElementById('aboutAppName').value;
+    const appVersion = document.getElementById('aboutAppVersion').value;
+    const description = document.getElementById('aboutDescription').value;
+    const contactEmail = document.getElementById('aboutContactEmail').value;
+    const contactPhone = document.getElementById('aboutContactPhone').value;
+    
+    if (!appName.trim()) {
+        showNotification('App name cannot be empty!', 'error');
+        return;
+    }
+    
+    try {
+        const aboutData = {
+            app_name: appName,
+            app_version: appVersion,
+            description: description,
+            contact_email: contactEmail,
+            contact_phone: contactPhone
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/admin/settings/crud.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                setting_key: 'about',
+                setting_value: JSON.stringify(aboutData),
+                setting_type: 'json',
+                description: 'About information for the mobile app'
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('✅ About information saved successfully!', 'success');
+        } else {
+            showNotification('❌ Failed to save: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error saving about:', error);
+        showNotification('❌ Error saving about: ' + error.message, 'error');
+    }
+}
+
+async function saveTermsConditions() {
     const termsText = document.getElementById('termsConditionsText').value;
     
     if (!termsText.trim()) {
@@ -2282,15 +2912,30 @@ function saveTermsConditions() {
         return;
     }
     
-    appSettings.termsConditions = termsText;
-    
-    // In a real application, this would save to a database
-    // For now, we're using localStorage
     try {
-        localStorage.setItem('appSettings', JSON.stringify(appSettings));
-        showNotification('Terms & conditions saved successfully!', 'success');
-    } catch (e) {
-        showNotification('Terms & conditions updated in session!', 'success');
+        const response = await fetch(`${API_BASE_URL}/admin/settings/crud.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                setting_key: 'terms_conditions',
+                setting_value: termsText,
+                setting_type: 'text',
+                description: 'Terms & Conditions for the mobile app'
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('✅ Terms & conditions saved successfully!', 'success');
+            appSettings.termsConditions = termsText;
+        } else {
+            showNotification('❌ Failed to save: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error saving terms & conditions:', error);
+        showNotification('❌ Error saving terms & conditions: ' + error.message, 'error');
     }
 }
 
@@ -2328,16 +2973,75 @@ function deleteResult(id) {
 
 // Modal Functions
 function openModal(modalId) {
+    // Special handling for exam category modal - reset to add mode only if not editing
+    if (modalId === 'examCategoryModal') {
+        const form = document.getElementById('examCategoryForm');
+        const editId = form.getAttribute('data-edit-id');
+        
+        // Only reset if not in edit mode
+        if (!editId || editId === '') {
+            form.reset();
+            document.querySelector('#examCategoryModal h2').textContent = 'Add Exam Category';
+        }
+    }
+    
+    // Special handling for language modal
+    if (modalId === 'languageModal') {
+        const form = document.getElementById('languageForm');
+        const editId = form.getAttribute('data-edit-id');
+        
+        // Only reset if not in edit mode
+        if (!editId || editId === '') {
+            form.reset();
+            document.querySelector('#languageModal h2').textContent = 'Add Language';
+            populateExamCategoryDropdown(); // Populate dropdown when opening
+        }
+    }
+    
     document.getElementById(modalId).classList.add('active');
 }
 
 function closeModal(modalId) {
+    // Reset exam category form when closing the modal
+    if (modalId === 'examCategoryModal') {
+        const form = document.getElementById('examCategoryForm');
+        form.reset();
+        form.setAttribute('data-edit-id', '');
+        document.querySelector('#examCategoryModal h2').textContent = 'Add Exam Category';
+    }
+    
+    // Reset language form when closing the modal
+    if (modalId === 'languageModal') {
+        const form = document.getElementById('languageForm');
+        form.reset();
+        form.setAttribute('data-edit-id', '');
+        document.querySelector('#languageModal h2').textContent = 'Add Language';
+    }
+    
     document.getElementById(modalId).classList.remove('active');
 }
 
 // Close modal on outside click
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
+        const modalId = event.target.id;
+        
+        // Reset exam category form if closing that modal
+        if (modalId === 'examCategoryModal') {
+            const form = document.getElementById('examCategoryForm');
+            form.reset();
+            form.setAttribute('data-edit-id', '');
+            document.querySelector('#examCategoryModal h2').textContent = 'Add Exam Category';
+        }
+        
+        // Reset language form if closing that modal
+        if (modalId === 'languageModal') {
+            const form = document.getElementById('languageForm');
+            form.reset();
+            form.setAttribute('data-edit-id', '');
+            document.querySelector('#languageModal h2').textContent = 'Add Language';
+        }
+        
         event.target.classList.remove('active');
     }
 }
@@ -2362,38 +3066,89 @@ function showNotification(message, type) {
 }
 
 // User Rankings Functions
-function generateUserRankings() {
-    // Generate comprehensive ranking data for each user
-    userRankings = users.map(user => {
-        const testsTaken = Math.floor(Math.random() * 50) + 25;
-        const avgScore = (Math.random() * 30 + 60).toFixed(1);
-        const highestScore = Math.min(100, parseFloat(avgScore) + Math.random() * 15).toFixed(1);
-        const currentStreak = Math.floor(Math.random() * 15) + 1;
-        const studyHours = Math.floor(Math.random() * 100) + 50;
+async function loadRankingsFromAPI() {
+    try {
+        console.log('📊 Loading rankings from API...');
         
-        return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            mobile: user.mobile,
-            exam: user.exam,
-            language: user.language,
-            testsTaken: testsTaken,
-            avgScore: parseFloat(avgScore),
-            highestScore: parseFloat(highestScore),
-            currentStreak: currentStreak,
-            studyHours: studyHours,
-            totalPoints: testsTaken * parseFloat(avgScore) // Calculate total points for ranking
-        };
-    });
-    
-    // Sort by total points (descending)
-    userRankings.sort((a, b) => b.totalPoints - a.totalPoints);
+        const response = await fetch(`${API_BASE_URL}/tests/get_rankings.php?limit=100`);
+        const data = await response.json();
+        
+        if (data.success && data.rankings) {
+            // Fetch users to get additional details (email, mobile, exam, language)
+            const usersResponse = await fetch(`${API_BASE_URL}/admin/users/list.php`);
+            const usersData = await usersResponse.json();
+            const usersMap = {};
+            
+            if (usersData.success && usersData.users) {
+                usersData.users.forEach(user => {
+                    usersMap[user.id] = user;
+                });
+            }
+            
+            // Map API rankings to expected format
+            userRankings = data.rankings.map(ranking => {
+                const user = usersMap[ranking.user_id] || {};
+                
+                return {
+                    id: ranking.user_id,
+                    name: ranking.user_name || user.name || 'Unknown',
+                    email: user.email || 'N/A',
+                    mobile: user.mobile || 'N/A',
+                    exam: user.exam_category_name || 'N/A',
+                    language: user.language || 'en',
+                    testsTaken: ranking.total_tests || 0,
+                    avgScore: parseFloat(ranking.avg_score) || 0,
+                    highestScore: parseFloat(ranking.best_score) || 0,
+                    currentStreak: 0, // Not available in API, set to 0
+                    studyHours: 0, // Not available in API, set to 0
+                    totalPoints: (ranking.total_tests || 0) * (parseFloat(ranking.avg_score) || 0),
+                    rank: ranking.rank
+                };
+            });
+            
+            // Already sorted by API, but ensure sorting by avg_score
+            userRankings.sort((a, b) => b.avgScore - a.avgScore || b.totalPoints - a.totalPoints);
+            
+            console.log(`✅ Loaded ${userRankings.length} rankings from API`);
+            return true;
+        } else {
+            console.error('Failed to load rankings:', data.message);
+            showNotification('Failed to load rankings: ' + (data.message || 'Unknown error'), 'error');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error loading rankings:', error);
+        showNotification('Error loading rankings: ' + error.message, 'error');
+        return false;
+    }
 }
 
-function loadRankings() {
-    if (userRankings.length === 0) {
-        generateUserRankings();
+async function loadRankings() {
+    // Load from API instead of generating mock data
+    const success = await loadRankingsFromAPI();
+    
+    if (!success || userRankings.length === 0) {
+        // Show empty state
+        document.getElementById('rank1Name').textContent = '-';
+        document.getElementById('rank1Score').textContent = '-';
+        document.getElementById('rank1Tests').textContent = '- tests';
+        document.getElementById('rank2Name').textContent = '-';
+        document.getElementById('rank2Score').textContent = '-';
+        document.getElementById('rank2Tests').textContent = '- tests';
+        document.getElementById('rank3Name').textContent = '-';
+        document.getElementById('rank3Score').textContent = '-';
+        document.getElementById('rank3Tests').textContent = '- tests';
+        
+        document.getElementById('totalRankedUsers').textContent = '0';
+        document.getElementById('avgRankScore').textContent = '0%';
+        document.getElementById('totalTestsTaken').textContent = '0';
+        document.getElementById('topPerformerStreak').textContent = '0 days';
+        
+        const tbody = document.getElementById('rankingsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #999;">No rankings available yet.</td></tr>';
+        }
+        return;
     }
     
     // Load top 3
@@ -2417,14 +3172,15 @@ function loadRankings() {
     
     // Calculate statistics
     const totalUsers = userRankings.length;
-    const avgScore = (userRankings.reduce((sum, user) => sum + user.avgScore, 0) / totalUsers).toFixed(1);
+    const avgScore = totalUsers > 0 ? (userRankings.reduce((sum, user) => sum + user.avgScore, 0) / totalUsers).toFixed(1) : '0';
     const totalTests = userRankings.reduce((sum, user) => sum + user.testsTaken, 0);
-    const highestStreak = Math.max(...userRankings.map(user => user.currentStreak));
+    const streaks = userRankings.map(user => user.currentStreak || 0).filter(s => s > 0);
+    const highestStreak = streaks.length > 0 ? Math.max(...streaks) : 0;
     
     document.getElementById('totalRankedUsers').textContent = totalUsers;
     document.getElementById('avgRankScore').textContent = avgScore + '%';
     document.getElementById('totalTestsTaken').textContent = totalTests;
-    document.getElementById('topPerformerStreak').textContent = highestStreak + ' days';
+    document.getElementById('topPerformerStreak').textContent = highestStreak > 0 ? highestStreak + ' days' : '-';
     
     // Load full rankings table
     displayRankings(userRankings);
@@ -2433,7 +3189,7 @@ function loadRankings() {
 function displayRankings(rankings) {
     const tbody = document.getElementById('rankingsTableBody');
     tbody.innerHTML = rankings.map((user, index) => {
-        const rank = index + 1;
+        const rank = user.rank || (index + 1);
         let rankBadge = '';
         
         if (rank === 1) {
@@ -2477,12 +3233,10 @@ function displayRankings(rankings) {
                     <strong style="font-size: 16px; color: #4CAF50;">${user.highestScore}%</strong>
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <span style="background: linear-gradient(135deg, #FF6B6B, #FFD93D); color: white; padding: 6px 12px; border-radius: 20px; font-weight: bold;">
-                        🔥 ${user.currentStreak} days
-                    </span>
+                    ${user.currentStreak > 0 ? `<span style="background: linear-gradient(135deg, #FF6B6B, #FFD93D); color: white; padding: 6px 12px; border-radius: 20px; font-weight: bold;">🔥 ${user.currentStreak} days</span>` : '<span style="color: #999;">-</span>'}
                 </td>
                 <td style="text-align: center; padding: 15px;">
-                    <strong style="color: #666;">${user.studyHours}h</strong>
+                    ${user.studyHours > 0 ? `<strong style="color: #666;">${user.studyHours}h</strong>` : '<span style="color: #999;">-</span>'}
                 </td>
                 <td style="text-align: center; padding: 15px;">
                     <button class="btn-icon btn-view" onclick="viewUser(${user.id})" title="View Details"><i class="fas fa-eye"></i></button>
@@ -2514,12 +3268,13 @@ function filterRankings() {
     if (filteredRankings.length > 0) {
         const avgScore = (filteredRankings.reduce((sum, user) => sum + user.avgScore, 0) / filteredRankings.length).toFixed(1);
         const totalTests = filteredRankings.reduce((sum, user) => sum + user.testsTaken, 0);
-        const highestStreak = Math.max(...filteredRankings.map(user => user.currentStreak));
+        const streaks = filteredRankings.map(user => user.currentStreak || 0).filter(s => s > 0);
+        const highestStreak = streaks.length > 0 ? Math.max(...streaks) : 0;
         
         document.getElementById('totalRankedUsers').textContent = filteredRankings.length;
         document.getElementById('avgRankScore').textContent = avgScore + '%';
         document.getElementById('totalTestsTaken').textContent = totalTests;
-        document.getElementById('topPerformerStreak').textContent = highestStreak + ' days';
+        document.getElementById('topPerformerStreak').textContent = highestStreak > 0 ? highestStreak + ' days' : '-';
         
         // Update top 3
         if (filteredRankings.length >= 1) {
@@ -2554,37 +3309,57 @@ function filterRankings() {
     }
 }
 
-function exportRankings() {
-    const filter = document.getElementById('rankingFilter').value;
-    let filteredRankings = userRankings;
-    
-    if (filter !== 'all') {
-        const examMap = {
-            'group4': 'TNPSC Group 4',
-            'group1': 'TNPSC Group 1',
-            'group2': 'TNPSC Group 2',
-            'vao': 'TNPSC VAO'
-        };
-        filteredRankings = userRankings.filter(user => user.exam === examMap[filter]);
+async function exportRankings() {
+    try {
+        // Ensure rankings are loaded from API
+        if (userRankings.length === 0) {
+            const success = await loadRankingsFromAPI();
+            if (!success) {
+                showNotification('Failed to load rankings for export', 'error');
+                return;
+            }
+        }
+        
+        const filter = document.getElementById('rankingFilter')?.value || 'all';
+        let filteredRankings = userRankings;
+        
+        if (filter !== 'all') {
+            const examMap = {
+                'group4': 'TNPSC Group 4',
+                'group1': 'TNPSC Group 1',
+                'group2': 'TNPSC Group 2',
+                'vao': 'TNPSC VAO'
+            };
+            filteredRankings = userRankings.filter(user => user.exam === examMap[filter]);
+        }
+        
+        if (filteredRankings.length === 0) {
+            showNotification('No rankings to export', 'info');
+            return;
+        }
+        
+        // Create CSV content with real data
+        let csvContent = 'Rank,Name,Email,Mobile,Exam Category,Tests Taken,Average Score,Highest Score\n';
+        
+        filteredRankings.forEach((user, index) => {
+            const rank = user.rank || (index + 1);
+            csvContent += `${rank},"${user.name}","${user.email}","${user.mobile || 'N/A'}","${user.exam}",${user.testsTaken},${user.avgScore.toFixed(2)}%,${user.highestScore.toFixed(2)}%\n`;
+        });
+        
+        // Download CSV
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `user_rankings_${filter}_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        showNotification(`✅ Successfully exported ${filteredRankings.length} rankings!`, 'success');
+    } catch (error) {
+        console.error('Error exporting rankings:', error);
+        showNotification('Error exporting rankings: ' + error.message, 'error');
     }
-    
-    // Create CSV content
-    let csvContent = 'Rank,Name,Email,Mobile,Exam Category,Tests Taken,Average Score,Highest Score,Current Streak,Study Hours\n';
-    
-    filteredRankings.forEach((user, index) => {
-        csvContent += `${index + 1},"${user.name}","${user.email}","${user.mobile || 'N/A'}","${user.exam}",${user.testsTaken},${user.avgScore}%,${user.highestScore}%,${user.currentStreak} days,${user.studyHours}h\n`;
-    });
-    
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `user_rankings_${filter}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    showNotification('Rankings exported successfully!', 'success');
 }
 
 console.log('TNPSC Mock Test Admin Panel - Mockup Version');

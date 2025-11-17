@@ -167,21 +167,75 @@ class _TestResultsPageState extends State<TestResultsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: ThemeHelper.cardShadow(context),
       ),
-                    child: Text(
-                      currentQuestion.text,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: ThemeHelper.textPrimary(context),
-                        height: 1.5,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // English Version
+                        if (currentQuestion.hasEnglish && currentQuestion.textEn != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'English',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentQuestion.textEn!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: ThemeHelper.textPrimary(context),
+                              height: 1.5,
+                            ),
+                          ),
+                          if (currentQuestion.hasTamil) const SizedBox(height: 12),
+                        ],
+                        
+                        // Tamil Version
+                        if (currentQuestion.hasTamil && currentQuestion.textTa != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'தமிழ்',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentQuestion.textTa!,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: ThemeHelper.textPrimary(context),
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   
                   const SizedBox(height: 24),
                   
                   // Options with Answer Status
-                  ...List.generate(currentQuestion.options.length, (index) {
+                  ...List.generate(4, (index) {
                     final isSelected = selectedAnswer == index;
                     final isCorrectAnswer = index == currentQuestion.correctAnswer;
                     
@@ -247,13 +301,36 @@ class _TestResultsPageState extends State<TestResultsPage> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Text(
-                              currentQuestion.options[index],
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // English Option
+                                if (currentQuestion.hasEnglish && currentQuestion.optionsEn != null)
+                                  Text(
+                                    '${String.fromCharCode(65 + index)}) ${currentQuestion.optionsEn![index]}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                
+                                // Spacing between languages
+                                if (currentQuestion.hasEnglish && currentQuestion.hasTamil && 
+                                    currentQuestion.optionsEn != null && currentQuestion.optionsTa != null)
+                                  const SizedBox(height: 4),
+                                
+                                // Tamil Option
+                                if (currentQuestion.hasTamil && currentQuestion.optionsTa != null)
+                                  Text(
+                                    '${['அ', 'ஆ', 'இ', 'ஈ'][index]}) ${currentQuestion.optionsTa![index]}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           if (isCorrectAnswer)

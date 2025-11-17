@@ -1,6 +1,7 @@
 <?php
 require_once '../../config/cors.php';
 require_once '../../config/database.php';
+require_once '../../admin/auth/middleware.php'; // Require authentication
 require_once '../../models/ExamCategory.php';
 
 $database = new Database();

@@ -18,6 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $questions = [];
 
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $hasEnglish = !empty($row['question_en']) && !empty($row['option_a_en']);
+            $hasTamil = !empty($row['question_ta']) && !empty($row['option_a_ta']);
+            
+            // Return BOTH languages - app will display both simultaneously
             $formatted = [
                 'id' => $row['id'],
                 'session_id' => $row['session_id'],
@@ -25,27 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'difficulty' => $row['difficulty'],
                 'marks' => $row['marks'],
                 'negative_marks' => $row['negative_marks'],
-                'display_order' => $row['display_order']
+                'display_order' => $row['display_order'],
+                
+                // English version
+                'question_en' => $row['question_en'] ?? null,
+                'option_a_en' => $row['option_a_en'] ?? null,
+                'option_b_en' => $row['option_b_en'] ?? null,
+                'option_c_en' => $row['option_c_en'] ?? null,
+                'option_d_en' => $row['option_d_en'] ?? null,
+                'explanation_en' => $row['explanation_en'] ?? null,
+                
+                // Tamil version
+                'question_ta' => $row['question_ta'] ?? null,
+                'option_a_ta' => $row['option_a_ta'] ?? null,
+                'option_b_ta' => $row['option_b_ta'] ?? null,
+                'option_c_ta' => $row['option_c_ta'] ?? null,
+                'option_d_ta' => $row['option_d_ta'] ?? null,
+                'explanation_ta' => $row['explanation_ta'] ?? null,
+                
+                // Language availability flags
+                'has_english' => $hasEnglish,
+                'has_tamil' => $hasTamil
             ];
-
-            if ($language === 'ta' && !empty($row['question_ta'])) {
-                $formatted['question'] = $row['question_ta'];
-                $formatted['option_a'] = $row['option_a_ta'];
-                $formatted['option_b'] = $row['option_b_ta'];
-                $formatted['option_c'] = $row['option_c_ta'];
-                $formatted['option_d'] = $row['option_d_ta'];
-                $formatted['explanation'] = $row['explanation_ta'];
-            } else {
-                $formatted['question'] = $row['question_en'];
-                $formatted['option_a'] = $row['option_a_en'];
-                $formatted['option_b'] = $row['option_b_en'];
-                $formatted['option_c'] = $row['option_c_en'];
-                $formatted['option_d'] = $row['option_d_en'];
-                $formatted['explanation'] = $row['explanation_en'];
-            }
-
-            $formatted['has_english'] = !empty($row['question_en']);
-            $formatted['has_tamil'] = !empty($row['question_ta']);
 
             $questions[] = $formatted;
         }

@@ -127,6 +127,31 @@ body {
     gap: 20px;
 }
 
+.logout-button {
+    padding: 8px 16px;
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.logout-button:hover {
+    background: #e55a5a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+}
+
+.logout-button i {
+    font-size: 14px;
+}
+
 .user-profile {
     display: flex;
     align-items: center;

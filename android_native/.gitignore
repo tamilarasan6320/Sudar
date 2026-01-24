@@ -1,0 +1,17 @@
+.idea/
+.gradle/
+build/
+local.properties
+*.iml
+*.log
+
+# Android Studio
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing secrets (DO NOT COMMIT)
+key.properties
+*.jks
+*.keystore
+# google-services.json  # Allowed - committed per project decision

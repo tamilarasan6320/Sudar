@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SUDAR</string>
+    <!-- Truecaller SDK Client ID (OAuth flow from Truecaller Developer Portal) -->
+    <string name="truecallerClientId">0l45fkucpsmpmovcm8muhs8z7uypq-ysfzrhws0slki</string>
+    
+    <!-- Meta (Facebook) App Events SDK -->
+    <string name="facebook_app_id">2077952139663505</string>
+    <string name="facebook_client_token">84e674e178edf409935e3193042f8525</string>
+</resources>

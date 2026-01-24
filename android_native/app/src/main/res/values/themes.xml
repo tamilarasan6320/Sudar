@@ -1,0 +1,12 @@
+<resources>
+    <!-- Force Dark theme only - ignores system light mode -->
+    <style name="Theme.SudarAndroidNative" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/dark_background</item>
+        <item name="android:navigationBarColor">@color/dark_background</item>
+    </style>
+    
+    <color name="dark_background">#121212</color>
+    <color name="dark_surface">#1E1E1E</color>
+</resources>
+

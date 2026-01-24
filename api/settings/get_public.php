@@ -5,7 +5,7 @@ require_once '../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// Create settings table if it doesn't exist
+// Create settings tabl if it doesn't exist
 try {
     $create_table = "CREATE TABLE IF NOT EXISTS app_settings (
         id INT(11) AUTO_INCREMENT PRIMARY KEY,

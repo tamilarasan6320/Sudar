@@ -149,9 +149,10 @@ class _PerformancePageState extends State<PerformancePage> {
               : _performanceData == null
                   ? const Center(child: Text('No data available'))
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           // Overall Performance Card
                           _buildOverallPerformanceCard(),
@@ -416,7 +417,7 @@ class _PerformancePageState extends State<PerformancePage> {
 
     return Container(
       height: 200,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ThemeHelper.cardColor(context),
         borderRadius: BorderRadius.circular(12),
@@ -424,6 +425,7 @@ class _PerformancePageState extends State<PerformancePage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Score Trend',
@@ -433,18 +435,22 @@ class _PerformancePageState extends State<PerformancePage> {
               color: ThemeHelper.textPrimary(context),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List<Widget>.generate(chartData.length, (index) {
-                final item = chartData[index] as Map<String, dynamic>;
-                final score = (item['score'] ?? 0.0).toDouble();
-                final height = maxHeight > 0 ? (score / maxHeight) : 0.0;
-                final day = index < 7 ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] : 'Day ${index + 1}';
-                return _buildChartBar(day, height.clamp(0.0, 1.0), score);
-              }),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List<Widget>.generate(chartData.length, (index) {
+                    final item = chartData[index] as Map<String, dynamic>;
+                    final score = (item['score'] ?? 0.0).toDouble();
+                    final height = maxHeight > 0 ? (score / maxHeight) : 0.0;
+                    final day = index < 7 ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] : 'Day ${index + 1}';
+                    return _buildChartBar(day, height.clamp(0.0, 1.0), score, constraints.maxHeight);
+                  }),
+                );
+              },
             ),
           ),
         ],
@@ -452,40 +458,56 @@ class _PerformancePageState extends State<PerformancePage> {
     );
   }
 
-  Widget _buildChartBar(String day, double value, double score) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          score.toStringAsFixed(0),
-          style: GoogleFonts.poppins(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          width: 32,
-          height: 100 * value,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryLight],
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
+  Widget _buildChartBar(String day, double value, double score, double maxHeight) {
+    // Calculate available height for bar (maxHeight - text heights - spacing)
+    // Score text (~14px) + spacing (4px) + label text (~15px) + spacing (8px) = ~41px
+    final availableHeight = maxHeight - 50;
+    final barHeight = (availableHeight * value).clamp(0.0, availableHeight);
+    
+    return Flexible(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              score.toStringAsFixed(0),
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            borderRadius: BorderRadius.circular(8),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          day,
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: AppColors.textLight,
+          const SizedBox(height: 4),
+          Container(
+            width: 28,
+            height: barHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Flexible(
+            child: Text(
+              day,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: AppColors.textLight,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

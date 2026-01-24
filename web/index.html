@@ -5,16 +5,16 @@
   
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="TNPSC Mock Test Application">
+  <meta name="description" content="SUDAR - TNPSC Mock Test Application">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="TNPSC Mock Test">
+  <meta name="apple-mobile-web-app-title" content="SUDAR">
 
-  <title>TNPSC Mock Test</title>
+  <title>SUDAR - TNPSC Mock Test</title>
   <link rel="manifest" href="manifest.json">
 
   <style>
@@ -52,12 +52,26 @@
       color: #666;
       font-size: 14px;
     }
+    
+    .logo-container {
+      margin-bottom: 30px;
+    }
+    
+    .logo-container img {
+      width: 120px;
+      height: 120px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
   </style>
 </head>
 <body>
   <div class="loading">
+    <div class="logo-container">
+      <img src="assets/images/logo.png" alt="SUDAR Logo" onerror="this.style.display='none'">
+    </div>
     <div class="loader"></div>
-    <div class="loading-text">Loading TNPSC Mock Test...</div>
+    <div class="loading-text">Loading SUDAR...</div>
   </div>
   
   <script>

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/language_service.dart';
 
 class LanguageSettingsPage extends StatefulWidget {
   const LanguageSettingsPage({Key? key}) : super(key: key);
@@ -117,19 +119,32 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
               Icons.radio_button_unchecked,
               color: Colors.grey,
             ),
-      onTap: () {
+      onTap: () async {
         setState(() => _selectedLanguage = code);
+        
+        // Actually save the language selection
+        final languageService = Provider.of<LanguageService>(context, listen: false);
+        await languageService.setLanguage(code);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              code == 'en' ? 'Language set to English' : 'Tamil language coming soon!',
+              code == 'en' ? 'Language set to English' : 'மொழி தமிழ் என அமைக்கப்பட்டது',
               style: GoogleFonts.poppins(),
             ),
+            backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             duration: const Duration(seconds: 2),
           ),
         );
+        
+        // Navigate back after a short delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        });
       },
     );
   }

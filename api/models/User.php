@@ -16,6 +16,7 @@ class User {
     public $education;
     public $profile_pic;
     public $language;
+    public $verification_method; // 'otp' or 'truecaller'
     public $created_at;
     public $updated_at;
     public $last_login;
@@ -34,9 +35,19 @@ class User {
     }
 
     public function create() {
-        $query = "INSERT INTO " . $this->table_name . " 
-                  SET name=:name, mobile=:mobile, email=:email, age=:age,
-                      district=:district, education=:education, language=:language";
+        // Check if verification_method column exists
+        $hasVerificationMethod = $this->columnExists('verification_method');
+        
+        if ($hasVerificationMethod) {
+            $query = "INSERT INTO " . $this->table_name . " 
+                      SET name=:name, mobile=:mobile, email=:email, age=:age,
+                          district=:district, education=:education, language=:language,
+                          verification_method=:verification_method";
+        } else {
+            $query = "INSERT INTO " . $this->table_name . " 
+                      SET name=:name, mobile=:mobile, email=:email, age=:age,
+                          district=:district, education=:education, language=:language";
+        }
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":name", $this->name);
@@ -46,12 +57,32 @@ class User {
         $stmt->bindParam(":district", $this->district);
         $stmt->bindParam(":education", $this->education);
         $stmt->bindParam(":language", $this->language);
+        
+        if ($hasVerificationMethod) {
+            $verificationMethod = $this->verification_method ?? 'otp';
+            $stmt->bindParam(":verification_method", $verificationMethod);
+        }
 
         if ($stmt->execute()) {
             $this->id = $this->conn->lastInsertId();
             return true;
         }
         return false;
+    }
+    
+    /**
+     * Check if a column exists in the users table
+     */
+    private function columnExists($columnName) {
+        try {
+            $query = "SHOW COLUMNS FROM " . $this->table_name . " LIKE :column";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":column", $columnName);
+            $stmt->execute();
+            return $stmt->rowCount() > 0;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     public function update() {
@@ -81,11 +112,22 @@ class User {
     }
 
     public function getAllUsers($limit = 100, $offset = 0) {
-        $query = "SELECT id, name, mobile, email, age, district, education,
-                         language, created_at, last_login, is_active
-                  FROM " . $this->table_name . "
-                  ORDER BY created_at DESC
-                  LIMIT :limit OFFSET :offset";
+        // Check if verification_method column exists
+        $hasVerificationMethod = $this->columnExists('verification_method');
+        
+        if ($hasVerificationMethod) {
+            $query = "SELECT id, name, mobile, email, age, district, education,
+                             language, verification_method, created_at, last_login, is_active
+                      FROM " . $this->table_name . "
+                      ORDER BY created_at DESC
+                      LIMIT :limit OFFSET :offset";
+        } else {
+            $query = "SELECT id, name, mobile, email, age, district, education,
+                             language, 'otp' as verification_method, created_at, last_login, is_active
+                      FROM " . $this->table_name . "
+                      ORDER BY created_at DESC
+                      LIMIT :limit OFFSET :offset";
+        }
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);

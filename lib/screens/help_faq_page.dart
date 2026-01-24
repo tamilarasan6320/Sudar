@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 
@@ -11,6 +13,10 @@ class HelpFAQPage extends StatefulWidget {
 }
 
 class _HelpFAQPageState extends State<HelpFAQPage> {
+  // WhatsApp support number
+  static const String _whatsappNumber = '918300321814';
+  static const String _displayNumber = '+91 83003 21814';
+
   final List<Map<String, String>> _faqs = [
     {
       'question': 'How do I take a test?',
@@ -28,10 +34,11 @@ class _HelpFAQPageState extends State<HelpFAQPage> {
       'question': 'How do I track my progress?',
       'answer': 'Visit the Progress tab to see detailed analytics including tests taken, average score, rank, and performance trends.',
     },
-    {
-      'question': 'Can I save tests for later?',
-      'answer': 'Yes! You can save tests and access them later from the "Saved Tests" section in your profile.',
-    },
+    // Removed Saved Tests FAQ - will implement in later phase
+    // {
+    //   'question': 'Can I save tests for later?',
+    //   'answer': 'Yes! You can save tests and access them later from the "Saved Tests" section in your profile.',
+    // },
     {
       'question': 'How do I change my exam category?',
       'answer': 'Tap on the exam dropdown at the top of the home screen and select your preferred exam category.',
@@ -42,7 +49,7 @@ class _HelpFAQPageState extends State<HelpFAQPage> {
     },
     {
       'question': 'How do I contact support?',
-      'answer': 'You can find contact information in the About section of your profile, or send feedback directly from the Support section.',
+      'answer': 'Tap the "Chat on WhatsApp" button below to reach our support team instantly. You can also find contact information in the About section of your profile.',
     },
   ];
 
@@ -133,29 +140,22 @@ class _HelpFAQPageState extends State<HelpFAQPage> {
               );
             }),
             const SizedBox(height: 20),
-            // Contact Support Button
+            // WhatsApp Support Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Opening support center...', style: GoogleFonts.poppins()),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.support_agent),
+                onPressed: _openWhatsAppSupport,
+                icon: const Icon(Icons.chat, color: Colors.white),
                 label: Text(
-                  'Contact Support',
+                  'Chat on WhatsApp',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: const Color(0xFF25D366), // WhatsApp green
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -163,9 +163,125 @@ class _HelpFAQPageState extends State<HelpFAQPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // Show number below button
+            Center(
+              child: Text(
+                'Support: $_displayNumber',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: ThemeHelper.textSecondary(context),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Opens WhatsApp with the support number
+  Future<void> _openWhatsAppSupport() async {
+    // WhatsApp URL with pre-filled message
+    final whatsappUrl = Uri.parse(
+      'https://wa.me/$_whatsappNumber?text=${Uri.encodeComponent("Hi, I need help with the Sudar TNPSC App.")}',
+    );
+
+    try {
+      final launched = await launchUrl(
+        whatsappUrl,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        _showWhatsAppError();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showWhatsAppError();
+      }
+    }
+  }
+
+  /// Shows error dialog with option to copy number
+  void _showWhatsAppError() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error),
+            const SizedBox(width: 8),
+            Text(
+              'WhatsApp Not Found',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Could not open WhatsApp. You can contact us directly at:',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.phone, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _displayNumber,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins()),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: _displayNumber));
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Number copied to clipboard!', style: GoogleFonts.poppins()),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            label: Text('Copy Number', style: GoogleFonts.poppins()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
       ),
     );
   }

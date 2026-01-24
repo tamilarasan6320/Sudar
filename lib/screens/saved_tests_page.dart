@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/api_service.dart';
 import 'test_page.dart';
+import 'subscription_offer_page.dart';
 
 class SavedTestsPage extends StatefulWidget {
   const SavedTestsPage({Key? key}) : super(key: key);
@@ -158,6 +162,7 @@ class _SavedTestsPageState extends State<SavedTestsPage> {
                       final index = entry.key;
                       final session = entry.value;
                       final questionCount = session['question_count'] ?? 0;
+                      final durationMins = session['duration'] ?? 180; // Get duration from API, default 180
                       final difficulty = _getDifficulty(questionCount);
                       final difficultyColor = _getDifficultyColor(difficulty);
                       final isNew = index < 2; // Mark first 2 as new
@@ -169,11 +174,12 @@ class _SavedTestsPageState extends State<SavedTestsPage> {
                           session['name'] ?? 'Test',
                           session['description'] ?? 'Test Session',
                           '$questionCount Questions',
-                          '${(questionCount * 1.2).toInt()} Minutes', // Estimate 1.2 min per question
+                          '$durationMins Minutes',
                           difficulty,
                           difficultyColor,
                           isNew,
                           session['id'],
+                          durationMins, // Pass duration in minutes
                         ),
                       );
                     }).toList(),
@@ -288,6 +294,7 @@ class _SavedTestsPageState extends State<SavedTestsPage> {
     Color difficultyColor,
     bool isNew,
     int sessionId,
+    int durationMinutes, // Added: duration in minutes for TestPage
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -382,18 +389,7 @@ class _SavedTestsPageState extends State<SavedTestsPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TestPage(
-                          testTitle: title,
-                          category: subjects,
-                          sessionId: sessionId,
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: () => _startTest(title, subjects, sessionId, durationMinutes),
                   icon: const Icon(Icons.play_arrow, size: 18),
                   label: Text(
                     'Start Test',
@@ -413,6 +409,60 @@ class _SavedTestsPageState extends State<SavedTestsPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _startTest(String title, String category, int sessionId, int duration) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool isPremium = prefs.getBool('is_premium') ?? false;
+
+    // Best-effort refresh from server
+    if (!isPremium) {
+      final userId = prefs.getInt('user_id') ?? prefs.getInt('userId');
+      if (userId != null) {
+        try {
+          final url = '${ApiService.baseUrl}/subscriptions/status.php?user_id=$userId';
+          final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+          if (res.statusCode == 200) {
+            final data = jsonDecode(res.body);
+            isPremium = data['is_premium'] == true;
+            await prefs.setBool('is_premium', isPremium);
+          }
+        } catch (_) {
+          // ignore network errors; use cached value
+        }
+      }
+    }
+
+    if (!isPremium && mounted) {
+      // Show subscription offer first
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const SubscriptionOfferPage()),
+      );
+      // Update premium status if subscribed
+      if (result == true) {
+        await prefs.setBool('is_premium', true);
+        isPremium = true;
+      } else {
+        // User skipped - don't start test, stay on current page
+        return;
+      }
+    }
+
+    // Start test only if user is premium
+    if (mounted && isPremium) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TestPage(
+            testTitle: title,
+            category: category,
+            sessionId: sessionId,
+            duration: duration,
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildInfoChip(IconData icon, String label, Color color) {

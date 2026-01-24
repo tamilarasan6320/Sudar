@@ -4,11 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/api_service.dart';
-import 'test_page.dart';
+import '../services/update_service.dart';
+import '../services/onesignal_service.dart';
+import '../services/firebase_service.dart';
 import 'tests_page.dart';
 import 'progress_page.dart';
 import 'profile_page.dart';
 import 'performance_page.dart';
+import 'annual_planner_page.dart';
 
 class HomePage extends StatefulWidget {
   final String? selectedExam;
@@ -20,8 +23,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const String _notifPromptedKey = 'notification_permission_prompted';
+  static const String _notifDismissedUntilKey = 'notification_permission_dismissed_until';
+
   int _selectedIndex = 0;
-  late String _currentExam;
+  // Must have a safe default before async SharedPreferences load finishes.
+  String _currentExam = 'Select Exam';
+  
+  // Double back press to exit
+  DateTime? _lastBackPressTime;
   bool _isLoadingStats = true;
   bool _isLoadingCategories = true;
   bool _isLoadingExams = true;
@@ -32,12 +42,143 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _testCategories = [];
   List<Map<String, dynamic>> _examCategories = [];
   int? _selectedExamId;
+  bool _isPremium = false;
 
   @override
   void initState() {
     super.initState();
     print('🚀 HomePage initState called');
+    // Ensure _currentExam is initialized synchronously to avoid LateInitializationError
+    // during the first build.
+    _currentExam = widget.selectedExam ?? _currentExam;
     _initializeData();
+    _loadPremiumStatus();
+    
+    // Check for app updates after widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkForAppUpdate();
+      await _maybeShowNotificationPermissionDialog();
+    });
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _isPremium = prefs.getBool('is_premium') ?? false;
+      });
+    }
+  }
+  
+  /// Check for app updates from Play Store
+  Future<void> _checkForAppUpdate() async {
+    await UpdateService().checkForUpdate(context);
+  }
+
+  Future<void> _maybeShowNotificationPermissionDialog() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final prompted = prefs.getBool(_notifPromptedKey) ?? false;
+      if (prompted) return;
+
+      final dismissedUntil = prefs.getInt(_notifDismissedUntilKey);
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (dismissedUntil != null && nowMs < dismissedUntil) return;
+
+      final shouldShow = await OneSignalService.shouldShowPermissionDialog();
+      if (!shouldShow) return;
+      if (!mounted) return;
+
+      final action = await showDialog<String>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_active_rounded,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Enable Notifications?',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: ThemeHelper.textPrimary(ctx),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'Allow notifications to get updates about new tests, results, and announcements.',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: ThemeHelper.textSecondary(ctx),
+                height: 1.3,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'later'),
+                child: Text(
+                  'Not now',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, 'allow'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(
+                  'Allow',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (action == 'allow') {
+        await prefs.setBool(_notifPromptedKey, true);
+        await _requestNotificationPermission();
+      } else {
+        // Later (or dismissed)
+        await prefs.setInt(
+          _notifDismissedUntilKey,
+          DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch,
+        );
+      }
+    } catch (e) {
+      print('HomePage: Error showing notification permission dialog: $e');
+    }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    try {
+      await OneSignalService.requestPermission();
+      await FirebaseService.requestPermission();
+    } catch (e) {
+      print('HomePage: Error requesting notification permission: $e');
+    }
   }
   
   @override
@@ -274,15 +415,44 @@ class _HomePageState extends State<HomePage> {
       const ProfilePage(),
     ];
     
-    return Scaffold(
-      backgroundColor: ThemeHelper.backgroundColor(context),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: _pages[_selectedIndex],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        
+        // Double back press to exit
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || 
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Press back again to exit',
+                style: GoogleFonts.poppins(fontSize: 14),
+              ),
+              duration: const Duration(seconds: 2),
+              backgroundColor: AppColors.textSecondary,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          );
+        } else {
+          // Exit the app
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: ThemeHelper.backgroundColor(context),
+        body: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: _pages[_selectedIndex],
+          ),
         ),
+        bottomNavigationBar: _buildBottomNavigationBar(),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
   
@@ -307,13 +477,13 @@ class _HomePageState extends State<HomePage> {
               
               const SizedBox(height: 24),
               
-              // Test Categories
-              _buildTestCategoriesSection(),
+              // Annual Planner 2026
+              _buildAnnualPlannerSection(),
               
               const SizedBox(height: 24),
               
-              // Recent Tests
-              _buildRecentTestsSection(),
+              // Test Categories
+              _buildTestCategoriesSection(),
               
               const SizedBox(height: 80),
             ]),
@@ -335,7 +505,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Mock Test',
+            'SUDAR App',
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -372,16 +542,34 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       centerTitle: false,
+      // Show premium badge if user is premium
       actions: [
-        IconButton(
-          icon: Icon(
-            Icons.notifications_outlined,
-            color: ThemeHelper.textPrimary(context),
-            size: 26,
+        if (_isPremium)
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.workspace_premium, color: Colors.white, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  'PRO',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
           ),
-          onPressed: () {},
-        ),
-        const SizedBox(width: 8),
       ],
     );
   }
@@ -726,6 +914,197 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildAnnualPlannerSection() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E3A5F),
+            Color(0xFF0F172A),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E3A5F).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AnnualPlannerPage(),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: Color(0xFF5EEAD4),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'TNPSC Official Schedule',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF5EEAD4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFF97316), Color(0xFFEA580C)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFF97316).withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '2026',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Annual Planner',
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Programme of Examinations',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Quick info row
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildPlannerStat('6', 'Exams'),
+                      Container(
+                        height: 30,
+                        width: 1,
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                      _buildPlannerStat('21', 'Days of Exam'),
+                      Container(
+                        height: 30,
+                        width: 1,
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                      _buildPlannerStat('Latest', 'Updated'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlannerStat(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            color: Colors.white.withOpacity(0.6),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTestCategoriesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,11 +1120,12 @@ class _HomePageState extends State<HomePage> {
                 color: ThemeHelper.textPrimary(context),
               ),
             ),
-            TextButton(
+            TextButton.icon(
               onPressed: () {
                 setState(() => _selectedIndex = 1); // Go to Tests page
               },
-              child: Text(
+              icon: Icon(Icons.grid_view_rounded, size: 16, color: AppColors.primary),
+              label: Text(
                 'View All',
                 style: GoogleFonts.poppins(
                   fontSize: 13,
@@ -756,7 +1136,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (_isLoadingCategories)
           const Center(
             child: Padding(
@@ -768,23 +1148,189 @@ class _HomePageState extends State<HomePage> {
           Center(
             child: Padding(
               padding: const EdgeInsets.all(32.0),
-              child: Text(
-                'No test categories available',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+              child: Column(
+                children: [
+                  Icon(Icons.folder_open_rounded, size: 48, color: AppColors.textLight),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No test categories available',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
           )
         else
-          ..._testCategories.take(5).map((category) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildCategoryCardFromData(category),
-            );
-          }).toList(),
+          _buildCategoryGrid(),
       ],
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    final categories = _testCategories.take(6).toList();
+    final List<Widget> rows = [];
+    
+    for (int i = 0; i < categories.length; i += 2) {
+      final List<Widget> rowItems = [];
+      
+      rowItems.add(Expanded(child: _buildGridCategoryCard(categories[i], i)));
+      
+      if (i + 1 < categories.length) {
+        rowItems.add(const SizedBox(width: 12));
+        rowItems.add(Expanded(child: _buildGridCategoryCard(categories[i + 1], i + 1)));
+      } else {
+        rowItems.add(const SizedBox(width: 12));
+        rowItems.add(const Expanded(child: SizedBox()));
+      }
+      
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(children: rowItems),
+        ),
+      );
+    }
+    
+    return Column(children: rows);
+  }
+
+  Widget _buildGridCategoryCard(Map<String, dynamic> category, int index) {
+    final name = category['name'] ?? 'Unknown';
+    final sessionsCount = (category['sessions_count'] ?? 0) is int 
+        ? category['sessions_count'] 
+        : int.tryParse(category['sessions_count']?.toString() ?? '0') ?? 0;
+    final completedCount = (category['completed_count'] ?? 0) is int
+        ? category['completed_count']
+        : int.tryParse(category['completed_count']?.toString() ?? '0') ?? 0;
+    final progress = sessionsCount > 0 ? (completedCount / sessionsCount).clamp(0.0, 1.0) : 0.0;
+    
+    // Clean accent colors
+    final List<Color> colors = [
+      const Color(0xFF6366F1), // Indigo
+      const Color(0xFF10B981), // Emerald
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFFEF4444), // Red
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFF06B6D4), // Cyan
+    ];
+    
+    // Assign icon based on category name
+    IconData icon;
+    if (name.contains('Tamil')) {
+      icon = Icons.translate_rounded;
+    } else if (name.contains('Science')) {
+      icon = Icons.science_rounded;
+    } else if (name.contains('Social') || name.contains('History')) {
+      icon = Icons.public_rounded;
+    } else if (name.contains('Aptitude') || name.contains('Mental')) {
+      icon = Icons.psychology_rounded;
+    } else if (name.contains('Current')) {
+      icon = Icons.newspaper_rounded;
+    } else if (name.contains('Previous') || name.contains('Year')) {
+      icon = Icons.history_edu_rounded;
+    } else if (name.contains('Economy') || name.contains('Economic')) {
+      icon = Icons.account_balance_rounded;
+    } else if (name.contains('Polity') || name.contains('Constitution')) {
+      icon = Icons.gavel_rounded;
+    } else if (name.contains('Geography')) {
+      icon = Icons.terrain_rounded;
+    } else {
+      icon = Icons.menu_book_rounded;
+    }
+    
+    final color = colors[index % colors.length];
+    
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        color: ThemeHelper.cardColor(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: color.withOpacity(0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() => _selectedIndex = 1);
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: Icon and count
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '$sessionsCount',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                // Category name
+                Text(
+                  name,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeHelper.textPrimary(context),
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                // Progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: color.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    minHeight: 5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

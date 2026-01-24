@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JSON Upload Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        textarea { width: 100%; height: 400px; font-family: monospace; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 5px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>JSON Upload Test - Question Validator</h1>
+    <p>Paste your JSON here:</p>
+    <textarea id="jsonInput" placeholder='Paste your JSON here...'></textarea>
+    <br>
+    <button onclick="testJSON()">Test JSON Structure</button>
+    <button onclick="document.getElementById('jsonInput').value = ''; document.getElementById('log').textContent = '';">Clear</button>
+    
+    <h2>Analysis Log:</h2>
+    <div id="log" class="log"></div>
+
+    <script>
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            logEl.textContent += msg + '\n';
+        }
+
+        function testJSON() {
+            const logEl = document.getElementById('log');
+            logEl.textContent = '';
+            
+            const jsonText = document.getElementById('jsonInput').value;
+            
+            if (!jsonText.trim()) {
+                log('❌ ERROR: No JSON provided');
+                return;
+            }
+            
+            try {
+                const jsonData = JSON.parse(jsonText);
+                log('✅ JSON parsed successfully');
+                log(`📊 Total questions: ${jsonData.questions?.length || 0}`);
+                log('');
+                
+                let validCount = 0;
+                let invalidCount = 0;
+                
+                for (let i = 0; i < Math.min(jsonData.questions.length, 10); i++) {
+                    const q = jsonData.questions[i];
+                    log(`\n========== Question ${i + 1} ==========`);
+                    
+                    // Parse fields
+                    const questionEn = (q.question_en || q.question || '').trim();
+                    const questionTa = (q.question_ta || '').trim();
+                    
+                    const optA_en = (q.options?.A || '').trim();
+                    const optB_en = (q.options?.B || '').trim();
+                    const optC_en = (q.options?.C || '').trim();
+                    const optD_en = (q.options?.D || '').trim();
+                    
+                    const optA_ta = (q.options_ta?.A || '').trim();
+                    const optB_ta = (q.options_ta?.B || '').trim();
+                    const optC_ta = (q.options_ta?.C || '').trim();
+                    const optD_ta = (q.options_ta?.D || '').trim();
+                    
+                    log(`Question EN: "${questionEn.substring(0, 50)}..."`);
+                    log(`Question TA: "${questionTa.substring(0, 50)}..."`);
+                    log(``);
+                    log(`EN Options: A=${!!optA_en}, B=${!!optB_en}, C=${!!optC_en}, D=${!!optD_en}`);
+                    log(`TA Options: A=${!!optA_ta}, B=${!!optB_ta}, C=${!!optC_ta}, D=${!!optD_ta}`);
+                    
+                    // Validation
+                    const hasQuestion = questionEn || questionTa;
+                    const hasEnglishOptions = optA_en && optB_en && optC_en && optD_en;
+                    const hasTamilOptions = optA_ta && optB_ta && optC_ta && optD_ta;
+                    
+                    if (!hasQuestion) {
+                        log(`❌ INVALID: No question text`);
+                        invalidCount++;
+                    } else if (!hasEnglishOptions && !hasTamilOptions) {
+                        log(`⚠️  INCOMPLETE: Has question but missing all options`);
+                        log(`   Will auto-fill with placeholders`);
+                        invalidCount++;
+                    } else {
+                        log(`✅ VALID: Has question and options in at least one language`);
+                        validCount++;
+                    }
+                }
+                
+                if (jsonData.questions.length > 10) {
+                    log(`\n... (showing first 10 of ${jsonData.questions.length} questions)`);
+                }
+                
+                log(`\n========== SUMMARY ==========`);
+                log(`✅ Valid: ${validCount}`);
+                log(`⚠️  Invalid/Incomplete: ${invalidCount}`);
+                log(`📊 Total analyzed: ${Math.min(10, jsonData.questions.length)}`);
+                
+            } catch (error) {
+                log(`❌ JSON PARSE ERROR: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+

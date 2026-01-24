@@ -90,39 +90,47 @@ class _AboutPageState extends State<AboutPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 20),
-                  // App Icon/Logo
+                  // App Logo
                   Container(
-                    width: 120,
-                    height: 120,
+                    width: 150,
+                    height: 150,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [AppColors.primary, AppColors.primaryLight],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 20,
+                          color: AppColors.primary.withOpacity(0.2),
+                          blurRadius: 25,
                           offset: const Offset(0, 10),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.school,
-                      color: Colors.white,
-                      size: 60,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 30),
                   // App Name
                   Text(
-                    _appName,
+                    'SUDAR',
                     style: GoogleFonts.poppins(
-                      fontSize: 28,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
+                      letterSpacing: 2,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _appName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),

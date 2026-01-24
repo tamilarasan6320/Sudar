@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/api_service.dart';
+import '../services/meta_app_events_service.dart';
+import '../services/google_analytics_service.dart';
 import 'exam_selection_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
@@ -11,6 +13,7 @@ class ProfileSetupPage extends StatefulWidget {
   final bool isNewUser;
   final String? token;
   final Map<String, dynamic>? userData;
+  final String verificationMethod; // 'otp' or 'truecaller'
   
   const ProfileSetupPage({
     Key? key,
@@ -18,6 +21,7 @@ class ProfileSetupPage extends StatefulWidget {
     this.isNewUser = true,
     this.token,
     this.userData,
+    this.verificationMethod = 'otp', // Default to OTP
   }) : super(key: key);
 
   @override
@@ -60,6 +64,17 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             await prefs.setString('userMobile', user['mobile']);
             await prefs.setString('token', token);
             await prefs.setBool('isLoggedIn', true);
+
+            // Log CompleteRegistration event (Meta + Google Analytics)
+            await MetaAppEventsService.logCompleteRegistration(
+              registrationMethod: widget.verificationMethod, // 'otp' or 'truecaller'
+            );
+            await GoogleAnalyticsService.logSignUp(
+              signUpMethod: widget.verificationMethod, // 'otp' or 'truecaller'
+            );
+            // Set user ID for attribution (Meta + Google Analytics)
+            await MetaAppEventsService.setUserId(userId.toString());
+            await GoogleAnalyticsService.setUserId(userId.toString());
           } else {
             throw response['message'] ?? 'Failed to create profile';
           }
@@ -74,6 +89,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             await prefs.setString('userMobile', user['mobile']);
             await prefs.setString('token', widget.token ?? '');
             await prefs.setBool('isLoggedIn', true);
+            
+            // Log login event for existing user (Meta + Google Analytics)
+            await GoogleAnalyticsService.logLogin(
+              loginMethod: widget.verificationMethod, // 'otp' or 'truecaller'
+            );
+            // Set user ID for attribution
+            await MetaAppEventsService.setUserId(userId.toString());
+            await GoogleAnalyticsService.setUserId(userId.toString());
           }
         }
 

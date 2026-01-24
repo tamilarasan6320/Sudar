@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,12 +12,15 @@ class TestPage extends StatefulWidget {
   final String testTitle;
   final String category;
   final int sessionId;
+  // Duration in minutes
+  final int duration;
   
   const TestPage({
     Key? key,
     required this.testTitle,
     required this.category,
     required this.sessionId,
+    this.duration = 60,
   }) : super(key: key);
 
   @override
@@ -25,7 +29,8 @@ class TestPage extends StatefulWidget {
 
 class _TestPageState extends State<TestPage> {
   int _currentQuestionIndex = 0;
-  int _timeRemaining = 3600; // 60 minutes in seconds
+  late final int _totalTimeSeconds;
+  late int _timeRemaining;
   Timer? _timer;
   bool _isLoading = true;
   String? _errorMessage;
@@ -38,6 +43,9 @@ class _TestPageState extends State<TestPage> {
   @override
   void initState() {
     super.initState();
+    final durationMinutes = widget.duration > 0 ? widget.duration : 60;
+    _totalTimeSeconds = durationMinutes * 60;
+    _timeRemaining = _totalTimeSeconds;
     _loadQuestions();
   }
 
@@ -64,6 +72,22 @@ class _TestPageState extends State<TestPage> {
 
           setState(() {
             _questions = questionsData.map((q) {
+              // Optional table data support (if backend provides JSON)
+              Map<String, dynamic>? tableData;
+              final rawTableData = q['table_data'] ?? q['tableData'];
+              if (rawTableData is Map<String, dynamic>) {
+                tableData = rawTableData;
+              } else if (rawTableData is String && rawTableData.trim().isNotEmpty) {
+                try {
+                  final decodedTable = jsonDecode(rawTableData);
+                  if (decodedTable is Map<String, dynamic>) {
+                    tableData = decodedTable;
+                  }
+                } catch (_) {
+                  // ignore invalid JSON
+                }
+              }
+
               // Parse English options
               List<String>? optionsEn;
               if (q['option_a_en'] != null || q['option_b_en'] != null) {
@@ -110,6 +134,7 @@ class _TestPageState extends State<TestPage> {
                 explanationTa: q['explanation_ta']?.toString(),
                 hasEnglish: hasEn,
                 hasTamil: hasTa,
+                tableData: tableData,
               );
             }).where((q) {
               // Only include questions that have at least one language
@@ -263,7 +288,9 @@ class _TestPageState extends State<TestPage> {
       }).toList();
       
       // Calculate time taken in seconds
-      final timeTaken = 3600 - _timeRemaining;
+      int timeTaken = _totalTimeSeconds - _timeRemaining;
+      if (timeTaken < 0) timeTaken = 0;
+      if (timeTaken > _totalTimeSeconds) timeTaken = _totalTimeSeconds;
       
       // Get started time (current time minus time taken)
       final now = DateTime.now();
@@ -916,6 +943,7 @@ class Question {
   final String? explanationTa;
   final bool hasEnglish;
   final bool hasTamil;
+  final Map<String, dynamic>? tableData;
 
   Question({
     required this.id,
@@ -928,6 +956,7 @@ class Question {
     this.explanationTa,
     required this.hasEnglish,
     required this.hasTamil,
+    this.tableData,
   });
 }
 

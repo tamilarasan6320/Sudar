@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
+import '../services/api_service.dart';
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({Key? key}) : super(key: key);
@@ -13,6 +15,7 @@ class FeedbackPage extends StatefulWidget {
 class _FeedbackPageState extends State<FeedbackPage> {
   final _feedbackController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -20,19 +23,96 @@ class _FeedbackPageState extends State<FeedbackPage> {
     super.dispose();
   }
 
-  void _submitFeedback() {
-    if (_formKey.currentState!.validate()) {
-      // Here you would typically send feedback to your backend
+  Future<void> _submitFeedback() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Get user info from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('userId');
+      final userName = prefs.getString('userName') ?? 'Anonymous';
+      final userEmail = prefs.getString('userEmail');
+      final userMobile = prefs.getString('userMobile');
+
+      print('📤 Submitting feedback:');
+      print('  User ID: $userId');
+      print('  User Name: $userName');
+      print('  Message: ${_feedbackController.text}');
+
+      // Submit feedback to API
+      final response = await ApiService.submitFeedback(
+        message: _feedbackController.text.trim(),
+        subject: 'App Feedback',
+        userId: userId,
+        userName: userName,
+        userEmail: userEmail,
+        userMobile: userMobile,
+        category: 'general',
+      );
+
+      print('📥 Feedback response: $response');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] ?? 'Thank you for your feedback!',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        _feedbackController.clear();
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response['message'] ?? 'Failed to submit feedback. Please try again.',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error submitting feedback: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Thank you for your feedback!', style: GoogleFonts.poppins()),
-          backgroundColor: AppColors.success,
+          content: Text(
+            'Error submitting feedback. Please try again.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 3),
         ),
       );
-      Navigator.pop(context);
     }
   }
 
@@ -158,22 +238,32 @@ class _FeedbackPageState extends State<FeedbackPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submitFeedback,
+                  onPressed: _isSubmitting ? null : _submitFeedback,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
                   ),
-                  child: Text(
-                    'Submit Feedback',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isSubmitting
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Submit Feedback',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ],

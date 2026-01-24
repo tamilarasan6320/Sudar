@@ -46,7 +46,6 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
         MaterialPageRoute(
           builder: (context) => HomePage(
             selectedExam: widget.selectedExam,
-            selectedLanguage: _selectedLanguage!,
           ),
         ),
         (route) => false,

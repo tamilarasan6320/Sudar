@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Upload Questions - TNPSC Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1e293b;
+        }
+        body {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .container { max-width: 1200px; padding: 20px; }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        h1 { color: var(--dark); margin-bottom: 10px; }
+        .subtitle { color: #64748b; margin-bottom: 30px; }
+        
+        .drop-zone {
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8fafc;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: #ede9fe;
+        }
+        .drop-zone i { font-size: 64px; color: var(--primary); margin-bottom: 20px; }
+        
+        .file-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .file-item .icon { font-size: 24px; color: var(--primary); margin-right: 12px; }
+        .file-item .name { flex: 1; font-weight: 500; min-width: 200px; }
+        .file-item .questions { color: #64748b; margin-right: 12px; }
+        .file-item .status { min-width: 150px; text-align: center; }
+        .file-item .status.pending { color: #f59e0b; }
+        .file-item .status.success { color: var(--success); }
+        .file-item .status.error { color: var(--danger); }
+        .file-item .status.uploading { color: #2196F3; }
+        .file-item .session-select { margin-left: 10px; width: 200px; }
+        
+        .btn-upload {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-upload:hover { transform: scale(1.05); color: white; }
+        .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .progress-section { margin-top: 30px; }
+        .progress { height: 24px; border-radius: 12px; }
+        .progress-bar { 
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-card .number { font-size: 32px; font-weight: bold; color: var(--dark); }
+        .stat-card .label { color: #64748b; font-size: 14px; }
+        
+        .log-section {
+            background: var(--dark);
+            color: #10b981;
+            padding: 20px;
+            border-radius: 12px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+        .log-section .error { color: #ef4444; }
+        .log-section .success { color: #10b981; }
+        .log-section .info { color: #60a5fa; }
+        .log-section .warn { color: #f59e0b; }
+        
+        @media (max-width: 768px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="text-center">
+                <h1><i class="fas fa-cloud-upload-alt"></i> Bulk Upload Questions</h1>
+                <p class="subtitle">Upload all JSON files - auto match to sessions!</p>
+            </div>
+            
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-folder-open"></i>
+                <h3>Drop JSON Files Here</h3>
+                <p>or click to browse</p>
+                <p class="text-muted">Select all files from C:\question folder</p>
+                <input type="file" id="fileInput" multiple accept=".json" style="display:none" onchange="handleFiles(this.files)">
+            </div>
+            
+            <div class="stats" id="statsSection" style="display:none">
+                <div class="stat-card">
+                    <div class="number" id="totalFiles">0</div>
+                    <div class="label">Total Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="totalQuestions">0</div>
+                    <div class="label">Total Questions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="uploadedCount">0</div>
+                    <div class="label">Uploaded</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="failedCount">0</div>
+                    <div class="label">Failed</div>
+                </div>
+            </div>
+            
+            <div class="file-list" id="fileList"></div>
+            
+            <div class="text-center mt-4">
+                <button class="btn-upload" id="uploadBtn" onclick="startUpload()" disabled>
+                    <i class="fas fa-rocket"></i> Start Bulk Upload
+                </button>
+            </div>
+            
+            <div class="progress-section" id="progressSection" style="display:none">
+                <div class="d-flex justify-content-between mb-2">
+                    <span id="progressText">Preparing...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="log-section" id="logSection" style="display:none"></div>
+        </div>
+        
+        <div class="text-center">
+            <a href="index.html" class="btn btn-light">
+                <i class="fas fa-arrow-left"></i> Back to Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '../api/admin';
+        let selectedFiles = [];
+        let sessions = [];
+        let totalUploaded = 0;
+        let totalFailed = 0;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadSessions);
+        
+        // Drag and drop
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        async function loadSessions() {
+            try {
+                const res = await fetch(`${API_BASE}/sessions/crud.php`);
+                const data = await res.json();
+                if (data.success) {
+                    sessions = data.sessions;
+                    log(`✅ Loaded ${sessions.length} sessions from database`, 'success');
+                }
+            } catch (e) {
+                log('❌ Could not load sessions: ' + e.message, 'error');
+            }
+        }
+        
+        function findSessionByName(filename) {
+            // Clean filename: remove prefix, numbers, extension
+            // BotZoo_Evolution_28Qs_1765341938708.json → Evolution
+            const cleanName = filename
+                .replace(/\.json$/i, '')
+                .replace(/_\d+Qs_\d+$/, '')
+                .replace(/^[A-Za-z]+_/, '');
+            
+            // Direct match
+            let session = sessions.find(s => 
+                s.name.toLowerCase() === cleanName.toLowerCase()
+            );
+            
+            if (!session) {
+                // Partial match
+                session = sessions.find(s => 
+                    s.name.toLowerCase().includes(cleanName.toLowerCase()) ||
+                    cleanName.toLowerCase().includes(s.name.toLowerCase().split(' ')[0])
+                );
+            }
+            
+            return session;
+        }
+        
+        async function handleFiles(files) {
+            selectedFiles = [];
+            let totalQs = 0;
+            
+            const fileListEl = document.getElementById('fileList');
+            fileListEl.innerHTML = '<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i> Loading files...</div>';
+            
+            const filePromises = Array.from(files)
+                .filter(f => f.name.endsWith('.json'))
+                .map(file => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const json = JSON.parse(e.target.result);
+                                const questions = json.questions || json;
+                                const qCount = Array.isArray(questions) ? questions.length : 0;
+                                const session = findSessionByName(file.name);
+                                
+                                resolve({
+                                    file: file,
+                                    name: file.name,
+                                    rawQuestions: questions,
+                                    count: qCount,
+                                    sessionName: session?.name || null,
+                                    sessionId: session?.id || null
+                                });
+                            } catch (err) {
+                                log('⚠️ Error parsing ' + file.name + ': ' + err.message, 'error');
+                                resolve(null);
+                            }
+                        };
+                        reader.readAsText(file);
+                    });
+                });
+            
+            const results = await Promise.all(filePromises);
+            selectedFiles = results.filter(r => r !== null);
+            
+            // Render file list with session selection
+            fileListEl.innerHTML = '';
+            let matchedCount = 0;
+            
+            selectedFiles.forEach((fd, idx) => {
+                totalQs += fd.count;
+                if (fd.sessionId) matchedCount++;
+                
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.id = `file-${idx}`;
+                item.innerHTML = `
+                    <i class="fas fa-file-code icon"></i>
+                    <div class="name">${fd.name}</div>
+                    <div class="questions">${fd.count} Qs</div>
+                    <select class="form-select session-select" id="session-${idx}" onchange="updateSession(${idx}, this.value)">
+                        <option value="">-- Select Session --</option>
+                        ${sessions.map(s => `
+                            <option value="${s.id}" ${s.id === fd.sessionId ? 'selected' : ''}>
+                                ${s.name} (${s.total_questions || 0})
+                            </option>
+                        `).join('')}
+                    </select>
+                    <div class="status ${fd.sessionId ? 'pending' : 'error'}" id="status-${idx}">
+                        ${fd.sessionId ? '⏳ Ready' : '❌ Select session'}
+                    </div>
+                `;
+                fileListEl.appendChild(item);
+            });
+            
+            document.getElementById('statsSection').style.display = 'grid';
+            document.getElementById('totalFiles').textContent = selectedFiles.length;
+            document.getElementById('totalQuestions').textContent = totalQs;
+            document.getElementById('uploadBtn').disabled = matchedCount === 0;
+            
+            log(`📁 Loaded ${selectedFiles.length} files with ${totalQs} total questions`, 'info');
+            log(`✅ ${matchedCount} files auto-matched to sessions`, 'success');
+        }
+        
+        function updateSession(idx, sessionId) {
+            const session = sessions.find(s => s.id == sessionId);
+            selectedFiles[idx].sessionId = sessionId ? parseInt(sessionId) : null;
+            selectedFiles[idx].sessionName = session?.name || null;
+            
+            const statusEl = document.getElementById(`status-${idx}`);
+            if (sessionId) {
+                statusEl.className = 'status pending';
+                statusEl.textContent = '⏳ Ready';
+            } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ Select session';
+            }
+            
+            // Enable upload button if any file has session
+            const hasReady = selectedFiles.some(f => f.sessionId);
+            document.getElementById('uploadBtn').disabled = !hasReady;
+        }
+        
+        async function startUpload() {
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            
+            document.getElementById('progressSection').style.display = 'block';
+            document.getElementById('logSection').style.display = 'block';
+            
+            const filesToUpload = selectedFiles.filter(f => f.sessionId);
+            totalUploaded = 0;
+            totalFailed = 0;
+            
+            log('═══════════════════════════════════════', 'info');
+            log(`🚀 Starting upload of ${filesToUpload.length} files...`, 'info');
+            
+            for (let fIdx = 0; fIdx < filesToUpload.length; fIdx++) {
+                const fileData = filesToUpload[fIdx];
+                const originalIdx = selectedFiles.indexOf(fileData);
+                const statusEl = document.getElementById(`status-${originalIdx}`);
+                
+                statusEl.className = 'status uploading';
+                statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                
+                log(`\n📤 [${fIdx + 1}/${filesToUpload.length}] ${fileData.name} → "${fileData.sessionName}"`, 'info');
+                
+                // Clear existing questions for this session first
+                try {
+                    log(`   🗑️ Clearing existing questions...`, 'warn');
+                    await fetch(`${API_BASE}/questions/crud.php`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: fileData.sessionId })
+                    });
+                } catch (e) {
+                    log(`   ⚠️ Clear warning: ${e.message}`, 'warn');
+                }
+                
+                // Upload questions one by one
+                let fileSuccess = 0;
+                let fileError = 0;
+                
+                for (let qIdx = 0; qIdx < fileData.rawQuestions.length; qIdx++) {
+                    const q = fileData.rawQuestions[qIdx];
+                    
+                    // Transform question to API format
+                    const apiQuestion = transformQuestion(q, fileData.sessionId, qIdx + 1);
+                    
+                    if (!apiQuestion) {
+                        fileError++;
+                        continue;
+                    }
+                    
+                    try {
+                        const res = await fetch(`${API_BASE}/questions/crud.php`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(apiQuestion)
+                        });
+                        
+                        const result = await res.json();
+                        
+                        if (result.success) {
+                            fileSuccess++;
+                        } else {
+                            fileError++;
+                            if (qIdx < 3) { // Only log first few errors
+                                log(`   ❌ Q${qIdx + 1}: ${result.message}`, 'error');
+                            }
+                        }
+                    } catch (e) {
+                        fileError++;
+                    }
+                    
+                    // Update progress
+                    const overallProgress = Math.round(
+                        ((fIdx + (qIdx + 1) / fileData.count) / filesToUpload.length) * 100
+                    );
+                    document.getElementById('progressBar').style.width = overallProgress + '%';
+                    document.getElementById('progressPercent').textContent = overallProgress + '%';
+                    document.getElementById('progressText').textContent = 
+                        `File ${fIdx + 1}/${filesToUpload.length}: Q${qIdx + 1}/${fileData.count}`;
+                    
+                    statusEl.textContent = `📤 ${qIdx + 1}/${fileData.count}`;
+                }
+                
+                // Update file status
+                totalUploaded += fileSuccess;
+                totalFailed += fileError;
+                
+                if (fileError === 0) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = `✅ ${fileSuccess} uploaded`;
+                    log(`   ✅ SUCCESS: ${fileSuccess} questions uploaded!`, 'success');
+                } else {
+                    statusEl.className = fileSuccess > 0 ? 'status success' : 'status error';
+                    statusEl.textContent = `${fileSuccess > 0 ? '⚠️' : '❌'} ${fileSuccess}/${fileData.count}`;
+                    log(`   ⚠️ ${fileSuccess} OK, ${fileError} failed`, 'warn');
+                }
+                
+                document.getElementById('uploadedCount').textContent = totalUploaded;
+                document.getElementById('failedCount').textContent = totalFailed;
+                
+                // Small delay between files
+                await new Promise(r => setTimeout(r, 300));
+            }
+            
+            log('═══════════════════════════════════════', 'info');
+            log(`🎉 UPLOAD COMPLETE!`, 'success');
+            log(`✅ Uploaded: ${totalUploaded} questions`, 'success');
+            if (totalFailed > 0) log(`❌ Failed: ${totalFailed} questions`, 'error');
+            
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressPercent').textContent = '100%';
+            document.getElementById('progressText').textContent = 'Upload Complete!';
+            
+            btn.innerHTML = '<i class="fas fa-check"></i> Upload Complete!';
+        }
+        
+        function transformQuestion(q, sessionId, displayOrder) {
+            // Handle different JSON formats from extraction scripts
+            
+            // Get question text
+            let questionEn = (q.question_en || q.question || '').trim();
+            let questionTa = (q.question_ta || '').trim();
+            
+            // Handle combined En/Ta in single field
+            if (questionEn && !questionTa) {
+                const parts = splitEnTa(questionEn);
+                questionEn = parts.en;
+                questionTa = parts.ta;
+            }
+            
+            // Get options (handle both formats)
+            let optA_en = '', optA_ta = '';
+            let optB_en = '', optB_ta = '';
+            let optC_en = '', optC_ta = '';
+            let optD_en = '', optD_ta = '';
+            
+            if (q.options) {
+                // Format: { "A": "...", "B": "...", ... }
+                optA_en = (q.options.A || q.options.a || '').trim();
+                optB_en = (q.options.B || q.options.b || '').trim();
+                optC_en = (q.options.C || q.options.c || '').trim();
+                optD_en = (q.options.D || q.options.d || '').trim();
+            }
+            
+            if (q.options_ta) {
+                optA_ta = (q.options_ta.A || q.options_ta.a || '').trim();
+                optB_ta = (q.options_ta.B || q.options_ta.b || '').trim();
+                optC_ta = (q.options_ta.C || q.options_ta.c || '').trim();
+                optD_ta = (q.options_ta.D || q.options_ta.d || '').trim();
+            }
+            
+            // Split combined options
+            if (optA_en && !optA_ta) {
+                const p = splitEnTa(optA_en); optA_en = p.en; optA_ta = p.ta;
+            }
+            if (optB_en && !optB_ta) {
+                const p = splitEnTa(optB_en); optB_en = p.en; optB_ta = p.ta;
+            }
+            if (optC_en && !optC_ta) {
+                const p = splitEnTa(optC_en); optC_en = p.en; optC_ta = p.ta;
+            }
+            if (optD_en && !optD_ta) {
+                const p = splitEnTa(optD_en); optD_en = p.en; optD_ta = p.ta;
+            }
+            
+            // Get correct answer
+            let correctAnswer = (q.correctAnswer || q.correct_answer || q.answer || '').toString().toUpperCase();
+            
+            // Convert number to letter if needed
+            if (/^[1-4]$/.test(correctAnswer)) {
+                correctAnswer = ['A', 'B', 'C', 'D'][parseInt(correctAnswer) - 1];
+            }
+            
+            // Validate correct answer
+            if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                return null; // Skip invalid
+            }
+            
+            // Check we have content
+            const hasQuestion = questionEn || questionTa;
+            const hasEnOptions = optA_en && optB_en && optC_en && optD_en;
+            const hasTaOptions = optA_ta && optB_ta && optC_ta && optD_ta;
+            
+            if (!hasQuestion || (!hasEnOptions && !hasTaOptions)) {
+                return null; // Skip incomplete
+            }
+            
+            return {
+                session_id: sessionId,
+                question_en: questionEn || null,
+                question_ta: questionTa || null,
+                option_a_en: optA_en || null,
+                option_a_ta: optA_ta || null,
+                option_b_en: optB_en || null,
+                option_b_ta: optB_ta || null,
+                option_c_en: optC_en || null,
+                option_c_ta: optC_ta || null,
+                option_d_en: optD_en || null,
+                option_d_ta: optD_ta || null,
+                correct_answer: correctAnswer,
+                explanation_en: q.answerExplanation || q.explanation_en || null,
+                explanation_ta: q.answerExplanation_ta || q.explanation_ta || null,
+                difficulty: 'medium',
+                marks: 1,
+                negative_marks: 0,
+                display_order: displayOrder
+            };
+        }
+        
+        function splitEnTa(text) {
+            // Split English/Tamil from combined text
+            const hasTamil = /[\u0B80-\u0BFF]/.test(text);
+            
+            if (!hasTamil) {
+                return { en: text, ta: '' };
+            }
+            
+            // Try splitting by <br>
+            let parts = text.split(/<br\s*\/?>/i);
+            if (parts.length >= 2) {
+                const en = parts[0].trim();
+                const ta = parts.slice(1).join(' ').trim();
+                if (/[\u0B80-\u0BFF]/.test(ta)) {
+                    return { en, ta };
+                }
+            }
+            
+            // Try splitting by newline
+            parts = text.split(/\n/);
+            if (parts.length >= 2) {
+                const en = parts[0].trim();
+                const ta = parts.slice(1).join(' ').trim();
+                if (/[\u0B80-\u0BFF]/.test(ta)) {
+                    return { en, ta };
+                }
+            }
+            
+            // Find where Tamil starts
+            const tamilMatch = text.match(/([\u0B80-\u0BFF])/);
+            if (tamilMatch) {
+                const idx = text.indexOf(tamilMatch[0]);
+                return {
+                    en: text.substring(0, idx).trim(),
+                    ta: text.substring(idx).trim()
+                };
+            }
+            
+            return { en: text, ta: '' };
+        }
+        
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('logSection');
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = message;
+            logEl.appendChild(line);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+    </script>
+</body>
+</html>

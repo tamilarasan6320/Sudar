@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/api_service.dart';
 import 'home_page.dart';
+import 'subscription_offer_page.dart';
 
 class ExamSelectionPage extends StatefulWidget {
   const ExamSelectionPage({Key? key}) : super(key: key);
@@ -67,6 +70,52 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
     return examName.substring(0, 1).toUpperCase();
   }
 
+  /// Check premium status and navigate accordingly
+  Future<void> _navigateAfterExamSelection(BuildContext context, SharedPreferences prefs, String selectedExam) async {
+    bool isPremium = prefs.getBool('is_premium') ?? false;
+
+    // Best-effort refresh from server
+    if (!isPremium) {
+      final userId = prefs.getInt('user_id') ?? prefs.getInt('userId');
+      if (userId != null) {
+        try {
+          final url = '${ApiService.baseUrl}/subscriptions/status.php?user_id=$userId';
+          final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+          if (res.statusCode == 200) {
+            final data = jsonDecode(res.body);
+            isPremium = data['is_premium'] == true;
+            await prefs.setBool('is_premium', isPremium);
+          }
+        } catch (_) {
+          // ignore network errors; use cached value
+        }
+      }
+    }
+
+    if (!isPremium) {
+      // Show subscription offer first
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const SubscriptionOfferPage(useVideoHero: true)),
+      );
+      // Update premium status if subscribed
+      if (result == true) {
+        await prefs.setBool('is_premium', true);
+      }
+    }
+
+    // Now go to home page
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(selectedExam: selectedExam),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
   void _handleContinue() async {
     if (_selectedExam != null) {
       // Find the selected exam's ID
@@ -80,15 +129,12 @@ class _ExamSelectionPageState extends State<ExamSelectionPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('selectedExam', _selectedExam!);
         await prefs.setInt('selectedExamId', selectedExamData['id']);
+        // Mark that exam has been selected (so it won't show again)
+        await prefs.setBool('examSelected', true);
+        
+        // Check premium and navigate
+        await _navigateAfterExamSelection(context, prefs, _selectedExam!);
       }
-      
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(selectedExam: _selectedExam),
-        ),
-        (route) => false,
-      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

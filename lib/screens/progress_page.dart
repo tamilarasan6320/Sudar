@@ -294,7 +294,7 @@ class _ProgressPageState extends State<ProgressPage> {
             
             Container(
               height: 200,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -317,6 +317,7 @@ class _ProgressPageState extends State<ProgressPage> {
                     )
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Performance Trend',
@@ -326,18 +327,27 @@ class _ProgressPageState extends State<ProgressPage> {
                             color: ThemeHelper.textPrimary(context),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: List<Widget>.generate(_performanceTrend.length, (index) {
-                              final item = _performanceTrend[index];
-                              final score = ((item['score'] ?? 0) as num).toDouble();
-                              final height = (score / 100).clamp(0.0, 1.0);
-                              final label = index < 7 ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] : 'T${index + 1}';
-                              return _buildChartBar(label, height, score);
-                            }),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Limit to last 7 items to prevent overflow
+                              final displayTrends = _performanceTrend.length > 7 
+                                ? _performanceTrend.sublist(_performanceTrend.length - 7)
+                                : _performanceTrend;
+                              
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: List<Widget>.generate(displayTrends.length, (index) {
+                                  final item = displayTrends[index];
+                                  final score = ((item['score'] ?? 0) as num).toDouble();
+                                  final height = (score / 100).clamp(0.0, 1.0);
+                                  final label = index < 7 ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index] : 'T${index + 1}';
+                                  return _buildChartBar(label, height, score, constraints.maxHeight);
+                                }),
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -708,40 +718,56 @@ class _ProgressPageState extends State<ProgressPage> {
     );
   }
 
-  Widget _buildChartBar(String label, double value, double score) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          score.toStringAsFixed(0),
-          style: GoogleFonts.poppins(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          width: 28,
-          height: 100 * value,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryLight],
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
+  Widget _buildChartBar(String label, double value, double score, double maxHeight) {
+    // Calculate available height for bar (maxHeight - text heights - spacing)
+    // Score text (~14px) + spacing (4px) + label text (~15px) + spacing (8px) = ~41px
+    final availableHeight = maxHeight - 50;
+    final barHeight = (availableHeight * value).clamp(0.0, availableHeight);
+    
+    return Flexible(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              score.toStringAsFixed(0),
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            borderRadius: BorderRadius.circular(8),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: AppColors.textLight,
+          const SizedBox(height: 4),
+          Container(
+            width: 28,
+            height: barHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: AppColors.textLight,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

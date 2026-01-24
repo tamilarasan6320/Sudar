@@ -1,17 +1,58 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'screens/splash_screen.dart';
+import 'screens/app_startup_router.dart';
 import 'utils/app_colors.dart';
 import 'services/theme_service.dart';
+import 'services/firebase_service.dart';
+import 'services/onesignal_service.dart';
+import 'services/app_navigator.dart';
+import 'services/meta_app_events_service.dart';
+import 'services/google_analytics_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Run the app immediately
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeService(),
       child: const TNPSCMockTestApp(),
     ),
   );
+  
+  // Initialize Firebase and OneSignal after first frame to avoid blocking UI
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _initializeServices();
+  });
+}
+
+/// Initialize services after the first frame (non-blocking)
+Future<void> _initializeServices() async {
+  debugPrint('╔════════════════════════════════════════════════════════════╗');
+  debugPrint('║           INITIALIZING ALL SERVICES                        ║');
+  debugPrint('╚════════════════════════════════════════════════════════════╝');
+  
+  // Initialize Firebase first (required for OneSignal and Analytics)
+  await FirebaseService.initialize();
+  
+  // Initialize OneSignal for push notifications
+  await OneSignalService.initialize();
+  
+  // Initialize Meta (Facebook) SDK for app events tracking
+  // This enables automatic app install and app open tracking
+  await MetaAppEventsService.initialize();
+  
+  // Test install event (for internal testing)
+  await MetaAppEventsService.testInstallEvent();
+  
+  // Initialize Google Analytics for event tracking
+  await GoogleAnalyticsService.initialize();
+  
+  debugPrint('╔════════════════════════════════════════════════════════════╗');
+  debugPrint('║           ALL SERVICES INITIALIZED                         ║');
+  debugPrint('╚════════════════════════════════════════════════════════════╝');
 }
 
 class TNPSCMockTestApp extends StatelessWidget {
@@ -22,9 +63,17 @@ class TNPSCMockTestApp extends StatelessWidget {
     final themeService = Provider.of<ThemeService>(context);
     
     return MaterialApp(
-      title: 'TNPSC Mock Test',
+      title: 'SUDAR - TNPSC Mock Test',
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
       themeMode: themeService.themeMode,
+      // Prevent black screen during page transitions
+      builder: (context, child) {
+        return Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: child,
+        );
+      },
       
       // Light Theme
       theme: ThemeData(
@@ -123,9 +172,7 @@ class TNPSCMockTestApp extends StatelessWidget {
         ),
       ),
       
-      home: const SplashScreen(),
+      home: const AppStartupRouter(),
     );
   }
 }
-
-

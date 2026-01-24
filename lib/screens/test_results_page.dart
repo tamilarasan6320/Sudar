@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_html/flutter_html.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import 'test_page.dart';
@@ -188,16 +189,77 @@ class _TestResultsPageState extends State<TestResultsPage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            currentQuestion.textEn!,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: ThemeHelper.textPrimary(context),
-                              height: 1.5,
-                            ),
+                          Html(
+                            data: currentQuestion.textEn!,
+                            style: {
+                              "body": Style(
+                                margin: Margins.zero,
+                                padding: HtmlPaddings.zero,
+                                fontSize: FontSize(16),
+                                fontWeight: FontWeight.w500,
+                                color: ThemeHelper.textPrimary(context),
+                                lineHeight: const LineHeight(1.5),
+                                fontFamily: GoogleFonts.poppins().fontFamily,
+                              ),
+                              "p": Style(
+                                margin: Margins.zero,
+                                padding: HtmlPaddings.zero,
+                              ),
+                              "img": Style(
+                                width: Width(100, Unit.percent),
+                                height: Height.auto(),
+                                margin: Margins.only(top: 8, bottom: 8),
+                                display: Display.block,
+                              ),
+                              "br": Style(
+                                margin: Margins.only(bottom: 4),
+                              ),
+                            },
+                            extensions: [
+                              TagExtension(
+                                tagsToExtend: {"img"},
+                                builder: (extensionContext) {
+                                  final src = extensionContext.attributes['src'] ?? '';
+                                  print('🖼️ RENDERING IMAGE: $src');
+                                  
+                                  if (src.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                    child: Image.network(
+                                      src,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) {
+                                          print('✅ Image loaded: $src');
+                                          return child;
+                                        }
+                                        return const Center(child: CircularProgressIndicator());
+                                      },
+                                      errorBuilder: (context, error, stackTrace) {
+                                        print('❌ IMAGE ERROR: $error for $src');
+                                        return Container(
+                                          padding: const EdgeInsets.all(16),
+                                          color: Colors.red.shade50,
+                                          child: Text('❌ Image failed: $src\nError: $error'),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                          if (currentQuestion.hasTamil) const SizedBox(height: 12),
+                          if (currentQuestion.hasTamil) ...[
+                            const SizedBox(height: 20),
+                            Divider(
+                              color: Colors.grey.shade300,
+                              thickness: 1,
+                              height: 1,
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ],
                         
                         // Tamil Version
@@ -218,14 +280,75 @@ class _TestResultsPageState extends State<TestResultsPage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            currentQuestion.textTa!,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: ThemeHelper.textPrimary(context),
-                              height: 1.5,
-                            ),
+                          Html(
+                            data: currentQuestion.textTa!,
+                            style: {
+                              "body": Style(
+                                margin: Margins.zero,
+                                padding: HtmlPaddings.zero,
+                                fontSize: FontSize(16),
+                                fontWeight: FontWeight.w500,
+                                color: ThemeHelper.textPrimary(context),
+                                lineHeight: const LineHeight(1.5),
+                                fontFamily: GoogleFonts.poppins().fontFamily,
+                              ),
+                              "p": Style(
+                                margin: Margins.zero,
+                                padding: HtmlPaddings.zero,
+                              ),
+                              "img": Style(
+                                width: Width(100, Unit.percent),
+                                height: Height.auto(),
+                                margin: Margins.only(top: 8, bottom: 8),
+                                display: Display.block,
+                              ),
+                              "br": Style(
+                                margin: Margins.only(bottom: 4),
+                              ),
+                            },
+                            extensions: [
+                              TagExtension(
+                                tagsToExtend: {"img"},
+                                builder: (extensionContext) {
+                                  final src = extensionContext.attributes['src'] ?? '';
+                                  print('🖼️ RENDERING IMAGE (TA): $src');
+                                  
+                                  if (src.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                    child: Image.network(
+                                      src,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) {
+                                          print('✅ Image loaded (TA): $src');
+                                          return child;
+                                        }
+                                        return const Center(child: CircularProgressIndicator());
+                                      },
+                                      errorBuilder: (context, error, stackTrace) {
+                                        print('❌ IMAGE ERROR (TA): $error for $src');
+                                        return Container(
+                                          padding: const EdgeInsets.all(16),
+                                          color: Colors.red.shade50,
+                                          child: Text('❌ Image failed: $src\nError: $error'),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                        
+                        // Table Display (if exists)
+                        if (currentQuestion.tableData != null) ...[
+                          const SizedBox(height: 16),
+                          Builder(
+                            builder: (ctx) => _buildTableWidget(ctx, currentQuestion.tableData!),
                           ),
                         ],
                       ],
@@ -301,35 +424,96 @@ class _TestResultsPageState extends State<TestResultsPage> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Column(
+                            child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // English Option
-                                if (currentQuestion.hasEnglish && currentQuestion.optionsEn != null)
-                                  Text(
-                                    '${String.fromCharCode(65 + index)}) ${currentQuestion.optionsEn![index]}',
+                                // Label (A, B, C, D)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  margin: const EdgeInsets.only(top: 2),
+                                  decoration: BoxDecoration(
+                                    color: isCorrectAnswer || isSelected 
+                                        ? borderColor.withOpacity(0.2) 
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '${String.fromCharCode(65 + index)}.',
                                     style: GoogleFonts.poppins(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
                                       color: textColor,
                                     ),
                                   ),
+                                ),
+                                const SizedBox(width: 12),
                                 
-                                // Spacing between languages
-                                if (currentQuestion.hasEnglish && currentQuestion.hasTamil && 
-                                    currentQuestion.optionsEn != null && currentQuestion.optionsTa != null)
-                                  const SizedBox(height: 4),
-                                
-                                // Tamil Option
-                                if (currentQuestion.hasTamil && currentQuestion.optionsTa != null)
-                                  Text(
-                                    '${['அ', 'ஆ', 'இ', 'ஈ'][index]}) ${currentQuestion.optionsTa![index]}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: textColor,
-                                    ),
+                                // Text content (English + Tamil) - with HTML stripped
+                                Expanded(
+                                  child: Builder(
+                                    builder: (context) {
+                                      // Helper function to strip HTML tags
+                                      String stripHtml(String html) {
+                                        if (html.isEmpty) return '';
+                                        return html
+                                            .replaceAll(RegExp(r'<[^>]*>'), '')
+                                            .replaceAll('&nbsp;', ' ')
+                                            .replaceAll('&amp;', '&')
+                                            .replaceAll('&lt;', '<')
+                                            .replaceAll('&gt;', '>')
+                                            .trim();
+                                      }
+                                      
+                                      // Helper to check if text contains Tamil characters
+                                      bool hasTamilChars(String text) {
+                                        return RegExp(r'[\u0B80-\u0BFF]').hasMatch(text);
+                                      }
+                                      
+                                      String englishText = '';
+                                      String tamilText = '';
+                                      
+                                      if (currentQuestion.optionsEn != null && currentQuestion.optionsEn!.length > index) {
+                                        englishText = stripHtml(currentQuestion.optionsEn![index]);
+                                      }
+                                      if (currentQuestion.optionsTa != null && currentQuestion.optionsTa!.length > index) {
+                                        tamilText = stripHtml(currentQuestion.optionsTa![index]);
+                                      }
+                                      
+                                      // Show Tamil line only if it contains Tamil characters
+                                      bool showTamilLine = tamilText.isNotEmpty && hasTamilChars(tamilText);
+                                      
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // English text (or Tamil if no English)
+                                          Text(
+                                            englishText.isNotEmpty ? englishText : tamilText,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: textColor,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                          
+                                          // Tamil text (only if it contains Tamil characters)
+                                          if (showTamilLine) ...[
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              tamilText,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: textColor.withOpacity(0.8),
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      );
+                                    },
                                   ),
+                                ),
                               ],
                             ),
                           ),
@@ -527,6 +711,147 @@ class _TestResultsPageState extends State<TestResultsPage> {
         _currentQuestionIndex--;
       });
     }
+  }
+
+  Widget _buildTableWidget(BuildContext context, Map<String, dynamic> tableData) {
+    List<dynamic> columnA = tableData['column_A'] ?? [];
+    List<dynamic> columnB = tableData['column_B'] ?? [];
+    
+    if (columnA.isEmpty && columnB.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    // Determine max rows
+    int maxRows = columnA.length > columnB.length ? columnA.length : columnB.length;
+    
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Table(
+        border: TableBorder(
+          horizontalInside: BorderSide(color: Colors.grey.shade300, width: 1),
+          verticalInside: BorderSide(color: Colors.grey.shade300, width: 1),
+          top: BorderSide(color: Colors.grey.shade400, width: 1),
+          bottom: BorderSide(color: Colors.grey.shade400, width: 1),
+          left: BorderSide(color: Colors.grey.shade400, width: 1),
+          right: BorderSide(color: Colors.grey.shade400, width: 1),
+        ),
+        columnWidths: const {
+          0: FlexColumnWidth(1),
+          1: FlexColumnWidth(1),
+        },
+        children: [
+          // Header row
+          TableRow(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+            ),
+            children: [
+              TableCell(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    'பட்டியல் I',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeHelper.textPrimary(context),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              TableCell(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    'பட்டியல் II',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeHelper.textPrimary(context),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Data rows
+          ...List.generate(maxRows, (index) {
+            String cellA = '';
+            String cellB = '';
+            
+            if (index < columnA.length) {
+              if (columnA[index] is Map) {
+                final key = columnA[index]['key']?.toString() ?? '';
+                final value = columnA[index]['value']?.toString() ?? '';
+                // Format: (a) value or a. value
+                if (key.isNotEmpty && value.isNotEmpty) {
+                  cellA = '($key) $value';
+                } else if (value.isNotEmpty) {
+                  cellA = value;
+                } else {
+                  cellA = key;
+                }
+              } else {
+                cellA = columnA[index].toString();
+              }
+            }
+            
+            if (index < columnB.length) {
+              if (columnB[index] is Map) {
+                final key = columnB[index]['key']?.toString() ?? '';
+                final value = columnB[index]['value']?.toString() ?? '';
+                // Format: 1. value
+                if (key.isNotEmpty && value.isNotEmpty) {
+                  cellB = '$key. $value';
+                } else if (value.isNotEmpty) {
+                  cellB = value;
+                } else {
+                  cellB = key;
+                }
+              } else {
+                cellB = columnB[index].toString();
+              }
+            }
+            
+            return TableRow(
+              children: [
+                TableCell(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      cellA,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: ThemeHelper.textPrimary(context),
+                      ),
+                    ),
+                  ),
+                ),
+                TableCell(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      cellB,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: ThemeHelper.textPrimary(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
   }
 
   String _getExplanation(Question question) {

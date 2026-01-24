@@ -13,6 +13,8 @@ class TestCategory {
     public $description;
     public $icon;
     public $color;
+    public $image;
+    public $image_path;
     public $is_active;
     public $display_order;
 
@@ -76,7 +78,8 @@ class TestCategory {
     public function create() {
         $query = "INSERT INTO " . $this->table_name . "
                   SET exam_category_id=:exam_category_id, name=:name, description=:description,
-                      icon=:icon, color=:color, is_active=:is_active, display_order=:display_order";
+                      icon=:icon, color=:color, image=:image, image_path=:image_path, 
+                      is_active=:is_active, display_order=:display_order";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':exam_category_id', $this->exam_category_id, PDO::PARAM_INT);
@@ -84,6 +87,8 @@ class TestCategory {
         $stmt->bindParam(':description', $this->description);
         $stmt->bindParam(':icon', $this->icon);
         $stmt->bindParam(':color', $this->color);
+        $stmt->bindParam(':image', $this->image);
+        $stmt->bindParam(':image_path', $this->image_path);
         $stmt->bindParam(':is_active', $this->is_active, PDO::PARAM_BOOL);
         $stmt->bindParam(':display_order', $this->display_order, PDO::PARAM_INT);
 
@@ -97,7 +102,8 @@ class TestCategory {
     public function update() {
         $query = "UPDATE " . $this->table_name . "
                   SET exam_category_id=:exam_category_id, name=:name, description=:description,
-                      icon=:icon, color=:color, is_active=:is_active, display_order=:display_order
+                      icon=:icon, color=:color, image=:image, image_path=:image_path,
+                      is_active=:is_active, display_order=:display_order
                   WHERE id=:id";
 
         $stmt = $this->conn->prepare($query);
@@ -106,6 +112,8 @@ class TestCategory {
         $stmt->bindParam(':description', $this->description);
         $stmt->bindParam(':icon', $this->icon);
         $stmt->bindParam(':color', $this->color);
+        $stmt->bindParam(':image', $this->image);
+        $stmt->bindParam(':image_path', $this->image_path);
         $stmt->bindParam(':is_active', $this->is_active, PDO::PARAM_BOOL);
         $stmt->bindParam(':display_order', $this->display_order, PDO::PARAM_INT);
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);

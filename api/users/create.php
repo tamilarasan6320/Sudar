@@ -30,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user->district = isset($data->district) ? $data->district : null;
         $user->education = isset($data->education) ? $data->education : null;
         $user->language = isset($data->language) ? $data->language : 'en';
+        // Track verification method: 'otp' or 'truecaller'
+        $user->verification_method = isset($data->verification_method) ? $data->verification_method : 'otp';
 
         if ($user->create()) {
             http_response_code(201);
@@ -44,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'age' => $user->age,
                     'district' => $user->district,
                     'education' => $user->education,
-                    'language' => $user->language
+                    'language' => $user->language,
+                    'verification_method' => $user->verification_method
                 ],
                 'token' => base64_encode($user->id . ':' . time())
             ]);

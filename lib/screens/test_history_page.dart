@@ -14,11 +14,14 @@ class TestHistoryPage extends StatefulWidget {
 
 class _TestHistoryPageState extends State<TestHistoryPage> {
   bool _isLoading = true;
-  List<Map<String, dynamic>> _testHistory = [];
+  List<Map<String, dynamic>> _allTestHistory = [];
+  List<Map<String, dynamic>> _filteredTestHistory = [];
   double _avgScore = 0;
   int _totalTests = 0;
   int _passedTests = 0;
   double _totalTime = 0;
+
+  String _selectedPeriod = 'All'; // All | This Week | This Month
 
   @override
   void initState() {
@@ -39,28 +42,10 @@ class _TestHistoryPageState extends State<TestHistoryPage> {
         if (response['success'] == true) {
           final history = List<Map<String, dynamic>>.from(response['history'] ?? []);
           
-          double totalScore = 0;
-          int passed = 0;
-          double totalTimeHours = 0;
-          
-          for (var test in history) {
-            final percentage = (test['percentage'] ?? 0).toDouble();
-            totalScore += percentage;
-            if (percentage >= 50) passed++;
-            
-            // Calculate time if available (assuming time_taken in minutes)
-            if (test['time_taken'] != null) {
-              totalTimeHours += (test['time_taken'] / 60);
-            }
-          }
-          
           if (mounted) {
             setState(() {
-              _testHistory = history;
-              _totalTests = history.length;
-              _avgScore = history.isNotEmpty ? totalScore / history.length : 0;
-              _passedTests = passed;
-              _totalTime = totalTimeHours;
+              _allTestHistory = history;
+              _applyPeriodFilter();
               _isLoading = false;
             });
           }
@@ -80,6 +65,60 @@ class _TestHistoryPageState extends State<TestHistoryPage> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  DateTime? _parseCompletedAt(Map<String, dynamic> test) {
+    final raw = test['completed_at'] ?? test['submitted_at'] ?? test['created_at'];
+    if (raw == null) return null;
+    try {
+      return DateTime.parse(raw.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _applyPeriodFilter() {
+    final now = DateTime.now();
+
+    bool include(Map<String, dynamic> test) {
+      if (_selectedPeriod == 'All') return true;
+
+      final dt = _parseCompletedAt(test);
+      if (dt == null) return true; // don't hide items we can't parse
+
+      if (_selectedPeriod == 'This Week') {
+        return now.difference(dt).inDays < 7;
+      }
+
+      if (_selectedPeriod == 'This Month') {
+        return dt.year == now.year && dt.month == now.month;
+      }
+
+      return true;
+    }
+
+    _filteredTestHistory = _allTestHistory.where(include).toList();
+
+    // Recompute stats based on filtered list
+    double totalScore = 0;
+    int passed = 0;
+    double totalTimeHours = 0;
+
+    for (var test in _filteredTestHistory) {
+      final percentage = (test['percentage'] ?? 0).toDouble();
+      totalScore += percentage;
+      if (percentage >= 50) passed++;
+
+      // Calculate time if available (assuming time_taken in minutes)
+      if (test['time_taken'] != null) {
+        totalTimeHours += (test['time_taken'] / 60);
+      }
+    }
+
+    _totalTests = _filteredTestHistory.length;
+    _avgScore = _filteredTestHistory.isNotEmpty ? totalScore / _filteredTestHistory.length : 0;
+    _passedTests = passed;
+    _totalTime = totalTimeHours;
   }
 
   String _formatDate(String? dateStr) {
@@ -173,7 +212,7 @@ class _TestHistoryPageState extends State<TestHistoryPage> {
                   const SizedBox(height: 12),
                   
                   // Test History Items - Dynamic from API
-                  if (_testHistory.isEmpty)
+                  if (_filteredTestHistory.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(40),
                       decoration: BoxDecoration(
@@ -205,7 +244,7 @@ class _TestHistoryPageState extends State<TestHistoryPage> {
                       ),
                     )
                   else
-                    ..._testHistory.map((test) {
+                    ..._filteredTestHistory.map((test) {
                       final percentage = (test['percentage'] ?? 0).toDouble();
                       final score = test['score'] ?? 0;
                       final totalQuestions = test['total_questions'] ?? 0;
@@ -333,9 +372,9 @@ class _TestHistoryPageState extends State<TestHistoryPage> {
       ),
       child: Row(
         children: [
-          _buildPeriodButton(context, 'All', true),
-          _buildPeriodButton(context, 'This Week', false),
-          _buildPeriodButton(context, 'This Month', false),
+          _buildPeriodButton(context, 'All', _selectedPeriod == 'All'),
+          _buildPeriodButton(context, 'This Week', _selectedPeriod == 'This Week'),
+          _buildPeriodButton(context, 'This Month', _selectedPeriod == 'This Month'),
         ],
       ),
     );
@@ -343,19 +382,32 @@ class _TestHistoryPageState extends State<TestHistoryPage> {
 
   Widget _buildPeriodButton(BuildContext context, String label, bool isSelected) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.secondary : Colors.transparent,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+          onTap: () {
+            if (_selectedPeriod == label) return;
+            setState(() {
+              _selectedPeriod = label;
+              _applyPeriodFilter();
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.secondary : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                ),
+              ),
             ),
           ),
         ),

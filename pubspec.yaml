@@ -1,7 +1,7 @@
 name: tnpsc_mock_test
 description: A professional TNPSC Mock Test application
 publish_to: 'none'
-version: 1.0.0+1
+version: 4.0.0+31
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -15,15 +15,41 @@ dependencies:
   shared_preferences: ^2.2.2
   provider: ^6.1.1
   http: ^1.1.0
+  url_launcher: ^6.2.5
+  onesignal_flutter: ^5.0.4
+  firebase_core: ^3.6.0
+  firebase_analytics: ^11.3.3
+  firebase_messaging: ^15.1.3
+  flutter_html: ^3.0.0-beta.2
+  html: ^0.15.0
+  in_app_update: ^4.2.3
+  package_info_plus: ^8.0.0
+  razorpay_flutter: ^1.3.7
+  uuid: ^4.5.2
+  sms_autofill: ^2.4.1
+  flutter_math_fork: ^0.7.4
+  truecaller_sdk: ^1.2.0
+  facebook_app_events: ^0.19.2
+  video_player: ^2.8.2
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+
+# Flutter Launcher Icons Configuration
+# Run: flutter pub get && flutter pub run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
-
-
+    - assets/videos/

@@ -1,11 +1,11 @@
 {
-    "name": "TNPSC Mock Test",
-    "short_name": "TNPSC",
+    "name": "SUDAR - TNPSC Mock Test",
+    "short_name": "SUDAR",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#F5F7FA",
-    "theme_color": "#2E7D32",
-    "description": "Tamil Nadu Public Service Commission Mock Test Application",
+    "background_color": "#FFFFFF",
+    "theme_color": "#6C63FF",
+    "description": "SUDAR - Tamil Nadu Public Service Commission Mock Test Application",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

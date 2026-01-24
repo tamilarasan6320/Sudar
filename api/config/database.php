@@ -5,9 +5,9 @@
 
 class Database {
     private $host = "localhost";
-    private $db_name = "mock_test_db";
-    private $username = "root";
-    private $password = "";
+    private $db_name = "u747149096_mock_test_db";
+    private $username = "u747149096_dbuser";
+    private $password = "tLaDgqzL3~";
     public $conn;
 
     public function getConnection() {
@@ -15,14 +15,24 @@ class Database {
 
         try {
             $this->conn = new PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
+                "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4",
                 $this->username,
-                $this->password
+                $this->password,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]
             );
             $this->conn->exec("SET NAMES utf8mb4");
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $exception) {
-            echo "Connection error: " . $exception->getMessage();
+            error_log("Database connection error: " . $exception->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Database connection failed. Please contact administrator.'
+            ]);
+            exit;
         }
 
         return $this->conn;

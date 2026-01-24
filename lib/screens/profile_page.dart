@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_colors.dart';
 import '../utils/theme_helper.dart';
 import '../services/theme_service.dart';
 import '../services/api_service.dart';
+import '../services/onesignal_service.dart';
 import 'performance_page.dart';
 import 'login_page.dart';
-import 'saved_tests_page.dart';
+// import 'saved_tests_page.dart'; // Removed - will implement in later phase
 import 'test_history_page.dart';
 import 'about_page.dart';
 import 'privacy_policy_page.dart';
 import 'edit_profile_page.dart';
 import 'notifications_settings_page.dart';
 import 'language_settings_page.dart';
-import 'theme_settings_page.dart';
+// import 'theme_settings_page.dart'; // Removed - will implement in later phase
 import 'help_faq_page.dart';
 import 'feedback_page.dart';
+import 'account_deletion_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -27,20 +31,33 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  // WhatsApp support number
+  static const String _whatsappNumber = '918300321814';
+  static const String _displayNumber = '+91 83003 21814';
+
   String _userName = 'Loading...';
   String _userMobile = '';
   int _testsTaken = 0;
   int _userRank = 0;
   double _avgScore = 0;
-  int _savedTestsCount = 0;
+  // int _savedTestsCount = 0; // Removed - will implement in later phase
   bool _isLoadingStats = true;
+  bool _isPremium = false;
   
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _loadStats();
-    _loadSavedTestsCount();
+    _loadPremiumStatus();
+    // _loadSavedTestsCount(); // Removed - will implement in later phase
+  }
+
+  Future<void> _loadPremiumStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isPremium = prefs.getBool('is_premium') ?? false;
+    });
   }
   
   Future<void> _loadUserData() async {
@@ -120,80 +137,35 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _loadSavedTestsCount() async {
-    try {
-      final response = await ApiService.getQuestionSessions();
-      if (response['success'] == true) {
-        final sessions = List<Map<String, dynamic>>.from(response['sessions'] ?? []);
-        if (mounted) {
-          setState(() {
-            _savedTestsCount = sessions.length;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading saved tests count: $e');
-    }
-  }
+  // Removed - will implement in later phase
+  // Future<void> _loadSavedTestsCount() async {
+  //   try {
+  //     final response = await ApiService.getQuestionSessions();
+  //     if (response['success'] == true) {
+  //       final sessions = List<Map<String, dynamic>>.from(response['sessions'] ?? []);
+  //       if (mounted) {
+  //         setState(() {
+  //           _savedTestsCount = sessions.length;
+  //         });
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print('Error loading saved tests count: $e');
+  //   }
+  // }
 
-  // Edit Profile Picture function
-  void _editProfilePicture() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Change Profile Picture',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
-              title: Text('Take Photo', style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.pop(context);
-                _showMessage('Camera feature coming soon!');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
-              title: Text('Choose from Gallery', style: GoogleFonts.poppins()),
-              onTap: () {
-                Navigator.pop(context);
-                _showMessage('Gallery feature coming soon!');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: Text('Remove Photo', style: GoogleFonts.poppins(color: AppColors.error)),
-              onTap: () {
-                Navigator.pop(context);
-                _showMessage('Profile picture removed');
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Removed - Profile Picture edit option removed
+  // void _editProfilePicture() {
+  //   // Profile photo change/edit option removed
+  // }
 
-  // Saved Tests function
-  void _openSavedTests() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const SavedTestsPage()),
-    );
-  }
+  // Removed - will implement in later phase
+  // void _openSavedTests() {
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(builder: (context) => const SavedTestsPage()),
+  //   );
+  // }
 
   // Test History function
   void _openTestHistory() {
@@ -240,13 +212,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Theme function
-  void _changeTheme() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ThemeSettingsPage()),
-    );
-  }
+  // Removed - will implement in later phase
+  // void _changeTheme() {
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(builder: (context) => const ThemeSettingsPage()),
+  //   );
+  // }
 
   // Help & FAQ function
   void _openHelp() {
@@ -280,8 +252,18 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _openAccountDeletion() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AccountDeletionPage()),
+    );
+  }
+
   // Logout function
   void _handleLogout() async {
+    // Remove OneSignal user ID
+    await OneSignalService.removeUserId();
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     if (!mounted) return;
@@ -300,6 +282,103 @@ class _ProfilePageState extends State<ProfilePage> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Opens WhatsApp with the support number
+  Future<void> _openWhatsAppSupport() async {
+    final whatsappUrl = Uri.parse(
+      'https://wa.me/$_whatsappNumber?text=${Uri.encodeComponent("Hi, I need help with the Sudar TNPSC App.")}',
+    );
+
+    try {
+      final launched = await launchUrl(
+        whatsappUrl,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        _showWhatsAppError();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showWhatsAppError();
+      }
+    }
+  }
+
+  /// Shows error dialog with option to copy number
+  void _showWhatsAppError() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error),
+            const SizedBox(width: 8),
+            Text(
+              'WhatsApp Not Found',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Could not open WhatsApp. Contact us at:',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.phone, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _displayNumber,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins()),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: _displayNumber));
+              if (mounted) {
+                Navigator.pop(context);
+                _showMessage('Number copied to clipboard!');
+              }
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            label: Text('Copy Number', style: GoogleFonts.poppins()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -327,6 +406,25 @@ class _ProfilePageState extends State<ProfilePage> {
             color: textPrimary,
           ),
         ),
+        actions: [
+          InkWell(
+            onTap: _openWhatsAppSupport,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Center(
+                child: Text(
+                  'Support',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -362,35 +460,49 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _editProfilePicture,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.edit,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // Removed - Profile photo edit button removed
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    _userName,
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: textPrimary,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _userName,
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
+                      ),
+                      if (_isPremium) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.workspace_premium, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                'PRO',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -452,14 +564,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       color: textPrimary,
                     ),
                   ),
+                  // Removed Saved Tests - will implement in later phase
+                  // const SizedBox(height: 16),
+                  // _buildMenuItem(
+                  //   icon: Icons.bookmark_outline,
+                  //   title: 'Saved Tests',
+                  //   subtitle: '$_savedTestsCount tests saved',
+                  //   onTap: _openSavedTests,
+                  // ),
                   const SizedBox(height: 16),
-                  _buildMenuItem(
-                    icon: Icons.bookmark_outline,
-                    title: 'Saved Tests',
-                    subtitle: '$_savedTestsCount tests saved',
-                    onTap: _openSavedTests,
-                  ),
-                  const Divider(height: 24),
                   _buildMenuItem(
                     icon: Icons.history,
                     title: 'Test History',
@@ -506,37 +619,40 @@ class _ProfilePageState extends State<ProfilePage> {
                     subtitle: 'Update your information',
                     onTap: _editProfile,
                   ),
-                  const Divider(height: 24),
-                  _buildMenuItem(
-                    icon: Icons.notifications_outlined,
-                    title: 'Notifications',
-                    subtitle: 'Manage notification preferences',
-                    onTap: _openNotifications,
-                  ),
-                  const Divider(height: 24),
-                  _buildMenuItem(
-                    icon: Icons.language_outlined,
-                    title: 'Language',
-                    subtitle: 'English',
-                    onTap: _changeLanguage,
-                  ),
-                  const Divider(height: 24),
-                  Consumer<ThemeService>(
-                    builder: (context, themeService, child) {
-                      String themeText = 'Light mode';
-                      if (themeService.themeMode == ThemeMode.dark) {
-                        themeText = 'Dark mode';
-                      } else if (themeService.themeMode == ThemeMode.system) {
-                        themeText = 'System default';
-                      }
-                      return _buildMenuItem(
-                        icon: Icons.dark_mode_outlined,
-                        title: 'Theme',
-                        subtitle: themeText,
-                        onTap: _changeTheme,
-                      );
-                    },
-                  ),
+                  // Temporarily removed - Notifications
+                  // const Divider(height: 24),
+                  // _buildMenuItem(
+                  //   icon: Icons.notifications_outlined,
+                  //   title: 'Notifications',
+                  //   subtitle: 'Manage notification preferences',
+                  //   onTap: _openNotifications,
+                  // ),
+                  // Temporarily removed - Language
+                  // const Divider(height: 24),
+                  // _buildMenuItem(
+                  //   icon: Icons.language_outlined,
+                  //   title: 'Language',
+                  //   subtitle: 'English',
+                  //   onTap: _changeLanguage,
+                  // ),
+                  // Removed Theme - will implement in later phase
+                  // const Divider(height: 24),
+                  // Consumer<ThemeService>(
+                  //   builder: (context, themeService, child) {
+                  //     String themeText = 'Light mode';
+                  //     if (themeService.themeMode == ThemeMode.dark) {
+                  //       themeText = 'Dark mode';
+                  //     } else if (themeService.themeMode == ThemeMode.system) {
+                  //       themeText = 'System default';
+                  //     }
+                  //     return _buildMenuItem(
+                  //       icon: Icons.dark_mode_outlined,
+                  //       title: 'Theme',
+                  //       subtitle: themeText,
+                  //       onTap: _changeTheme,
+                  //     );
+                  //   },
+                  // ),
                 ],
               ),
             ),
@@ -590,6 +706,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: 'Privacy Policy',
                     subtitle: 'View our privacy policy',
                     onTap: _openPrivacyPolicy,
+                  ),
+                  const Divider(height: 24),
+                  _buildMenuItem(
+                    icon: Icons.delete_forever_outlined,
+                    title: 'Delete Account',
+                    subtitle: 'Request account deletion',
+                    onTap: _openAccountDeletion,
                   ),
                 ],
               ),

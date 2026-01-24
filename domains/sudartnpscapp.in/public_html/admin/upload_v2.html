@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>JSON Upload v2 - No Cache</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; }
+        .input-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="number"], input[type="file"] { padding: 10px; font-size: 16px; }
+        button { padding: 12px 24px; font-size: 16px; background: #4CAF50; color: white; border: none; cursor: pointer; border-radius: 4px; margin: 5px; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log { background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace; white-space: pre-wrap; max-height: 500px; overflow-y: auto; border: 1px solid #ddd; }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
+        .warning { color: #f57c00; }
+    </style>
+</head>
+<body>
+    <h1>🚀 JSON Upload v2 (Cache-Free)</h1>
+    
+    <div class="input-group">
+        <label for="sessionId">Session ID:</label>
+        <input type="number" id="sessionId" placeholder="Enter Session ID (e.g., 9)" value="9">
+    </div>
+    
+    <div class="input-group">
+        <label for="jsonFile">Select JSON File:</label>
+        <input type="file" id="jsonFile" accept=".json">
+    </div>
+    
+    <button id="uploadBtn" onclick="uploadJSON()" disabled>Upload Questions</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <h2>Upload Log:</h2>
+    <div id="log" class="log">No upload started yet...</div>
+
+    <script>
+        const API_BASE_URL = 'https://sudartnpscapp.in/api';
+        
+        document.getElementById('jsonFile').addEventListener('change', function() {
+            document.getElementById('uploadBtn').disabled = !this.files.length;
+        });
+        
+        function log(msg, type = 'info') {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logEl.innerHTML += `<span class="${type}">[${timestamp}] ${prefix} ${msg}</span>\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = 'Log cleared.\n';
+        }
+        
+        async function uploadJSON() {
+            const sessionId = parseInt(document.getElementById('sessionId').value);
+            const fileInput = document.getElementById('jsonFile');
+            
+            if (!sessionId || sessionId <= 0) {
+                log('Invalid Session ID', 'error');
+                return;
+            }
+            
+            if (!fileInput.files.length) {
+                log('No file selected', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            log(`Starting upload: ${file.name} (${file.size} bytes)`);
+            
+            // Disable button during upload
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            try {
+                // Read file
+                const fileContent = await file.text();
+                log(`File read successfully (${fileContent.length} chars)`);
+                
+                // Parse JSON
+                const jsonData = JSON.parse(fileContent);
+                log(`JSON parsed: ${jsonData.questions.length} questions found`, 'success');
+                
+                // Clear existing questions
+                log(`Clearing existing questions for Session ${sessionId}...`);
+                const clearResponse = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                
+                const clearResult = await clearResponse.json();
+                log(`Cleared: ${clearResult.message}`, clearResult.success ? 'success' : 'error');
+                
+                // Upload questions
+                let successCount = 0;
+                let errorCount = 0;
+                const errors = [];
+                
+                for (let i = 0; i < jsonData.questions.length; i++) {
+                    const q = jsonData.questions[i];
+                    
+                    // Parse fields with DEBUGGING - use LET not CONST for reassignment
+                    const questionEn = (q.question_en || q.question || '').trim();
+                    const questionTa = (q.question_ta || '').trim();
+                    
+                    let optA_en = (q.options?.A || '').trim();
+                    let optB_en = (q.options?.B || '').trim();
+                    let optC_en = (q.options?.C || '').trim();
+                    let optD_en = (q.options?.D || '').trim();
+                    
+                    let optA_ta = (q.options_ta?.A || '').trim();
+                    let optB_ta = (q.options_ta?.B || '').trim();
+                    let optC_ta = (q.options_ta?.C || '').trim();
+                    let optD_ta = (q.options_ta?.D || '').trim();
+                    
+                    // Validation
+                    const hasQuestion = questionEn || questionTa;
+                    if (!hasQuestion) {
+                        errorCount++;
+                        errors.push(`Q${i+1}: No question text`);
+                        continue;
+                    }
+                    
+                    let hasEnglishOptions = optA_en && optB_en && optC_en && optD_en;
+                    let hasTamilOptions = optA_ta && optB_ta && optC_ta && optD_ta;
+                    
+                    // Auto-fill missing options
+                    let autoFilled = false;
+                    if (!hasEnglishOptions && !hasTamilOptions) {
+                        if (questionEn) {
+                            optA_en = 'Option A';
+                            optB_en = 'Option B';
+                            optC_en = 'Option C';
+                            optD_en = 'Option D';
+                            hasEnglishOptions = true;
+                            autoFilled = true;
+                            log(`Q${i+1}: Auto-filling EN options`, 'warning');
+                        } else if (questionTa) {
+                            optA_ta = 'விருப்பம் A';
+                            optB_ta = 'விருப்பம் B';
+                            optC_ta = 'விருப்பம் C';
+                            optD_ta = 'விருப்பம் D';
+                            hasTamilOptions = true;
+                            autoFilled = true;
+                            log(`Q${i+1}: Auto-filling TA options`, 'warning');
+                        }
+                    }
+                    
+                    // If English options are empty but Tamil has values, copy Tamil to English
+                    // This ensures the app can display content regardless of language setting
+                    const finalOptA_en = optA_en || optA_ta || null;
+                    const finalOptB_en = optB_en || optB_ta || null;
+                    const finalOptC_en = optC_en || optC_ta || null;
+                    const finalOptD_en = optD_en || optD_ta || null;
+                    
+                    // Also copy question text to Tamil field if Tamil is empty
+                    const finalQuestionTa = questionTa || questionEn || null;
+                    
+                    // Prepare question object
+                    const questionObj = {
+                        session_id: sessionId,
+                        correct_answer: (q.correctAnswer || 'A').toUpperCase(),
+                        difficulty: 'medium',
+                        marks: 1,
+                        negative_marks: 0.25,
+                        display_order: i + 1,  // Start from 1, not 0
+                        question_en: questionEn || null,
+                        question_ta: finalQuestionTa,
+                        option_a_en: finalOptA_en,
+                        option_b_en: finalOptB_en,
+                        option_c_en: finalOptC_en,
+                        option_d_en: finalOptD_en,
+                        option_a_ta: optA_ta || optA_en || null,
+                        option_b_ta: optB_ta || optB_en || null,
+                        option_c_ta: optC_ta || optC_en || null,
+                        option_d_ta: optD_ta || optD_en || null,
+                        explanation_en: q.answerExplanation || null,
+                        explanation_ta: q.answerExplanation || null
+                    };
+                    
+                    // Add table data if exists
+                    if (q.table) {
+                        const filteredColumnA = (q.table.column_A || []).filter(item => {
+                            const value = (item.value || '').trim();
+                            return value && !value.includes('பட்டியல்') && !value.includes('List');
+                        });
+                        
+                        const filteredColumnB = (q.table.column_B || []).filter(item => {
+                            const value = (item.value || '').trim();
+                            return value && !value.includes('பட்டியல்') && !value.includes('List');
+                        });
+                        
+                        if (filteredColumnA.length > 0 || filteredColumnB.length > 0) {
+                            questionObj.table_data = JSON.stringify({
+                                column_A: filteredColumnA,
+                                column_B: filteredColumnB
+                            });
+                        }
+                    }
+                    
+                    // Upload to server
+                    try {
+                        // Debug: Log first failed question details
+                        if (i === 0) {
+                            log(`DEBUG Q1 - Sending to server:`, 'info');
+                            log(`  EN: "${questionObj.question_en?.substring(0, 30)}..."`, 'info');
+                            log(`  TA: "${questionObj.question_ta?.substring(0, 30)}..."`, 'info');
+                            log(`  optA_en: "${questionObj.option_a_en}" (${!!questionObj.option_a_en})`, 'info');
+                            log(`  optB_en: "${questionObj.option_b_en}" (${!!questionObj.option_b_en})`, 'info');
+                            log(`  optC_en: "${questionObj.option_c_en}" (${!!questionObj.option_c_en})`, 'info');
+                            log(`  optD_en: "${questionObj.option_d_en}" (${!!questionObj.option_d_en})`, 'info');
+                            log(`  optA_ta: "${questionObj.option_a_ta?.substring(0, 20)}..." (${!!questionObj.option_a_ta})`, 'info');
+                            log(`  optB_ta: "${questionObj.option_b_ta?.substring(0, 20)}..." (${!!questionObj.option_b_ta})`, 'info');
+                            log(`  optC_ta: "${questionObj.option_c_ta?.substring(0, 20)}..." (${!!questionObj.option_c_ta})`, 'info');
+                            log(`  optD_ta: "${questionObj.option_d_ta?.substring(0, 20)}..." (${!!questionObj.option_d_ta})`, 'info');
+                        }
+                        
+                        const response = await fetch(`${API_BASE_URL}/admin/questions/crud.php`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(questionObj)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (!response.ok || !result.success) {
+                            throw new Error(result.message || `HTTP ${response.status}`);
+                        }
+                        
+                        successCount++;
+                        if ((i + 1) % 10 === 0) {
+                            log(`Uploaded ${i + 1}/${jsonData.questions.length}...`);
+                        }
+                        
+                        if (autoFilled) {
+                            log(`Q${i+1}: Auto-filled options`, 'warning');
+                        }
+                        
+                    } catch (error) {
+                        errorCount++;
+                        errors.push(`Q${i+1}: ${error.message}`);
+                        log(`Q${i+1} failed: ${error.message}`, 'error');
+                        
+                        // Debug: Log first few failures in detail
+                        if (errorCount <= 3) {
+                            log(`  hasEN: ${hasEnglishOptions}, hasTA: ${hasTamilOptions}, autoFilled: ${autoFilled}`, 'error');
+                        }
+                    }
+                }
+                
+                // Final summary
+                log('', 'info');
+                log('========== UPLOAD COMPLETE ==========', 'info');
+                log(`✅ Success: ${successCount}`, 'success');
+                log(`❌ Errors: ${errorCount}`, errorCount > 0 ? 'error' : 'info');
+                
+                if (errors.length > 0) {
+                    log('', 'info');
+                    log('First 5 errors:', 'warning');
+                    errors.slice(0, 5).forEach(err => log(err, 'error'));
+                    if (errors.length > 5) {
+                        log(`... and ${errors.length - 5} more errors`, 'warning');
+                    }
+                }
+                
+            } catch (error) {
+                log(`Fatal error: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Questions';
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,84 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="400" fill="#1a1a2e"/>
+  
+  <!-- Subtle pattern overlay -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2a2a3e" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+    <linearGradient id="flameGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#FF8C00;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#FF4500;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#FF1493;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00BFFF;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="bookGlow" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#FFF8DC;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#FFF8DC;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="400" height="400" fill="url(#grid)"/>
+  
+  <!-- Semi-circular arc with tick marks -->
+  <path d="M 80 120 Q 200 60 320 120" fill="none" stroke="white" stroke-width="2" opacity="0.9"/>
+  <!-- Tick marks on arc -->
+  <line x1="100" y1="110" x2="100" y2="115" stroke="white" stroke-width="2" opacity="0.9"/>
+  <line x1="150" y1="95" x2="150" y2="100" stroke="white" stroke-width="2" opacity="0.9"/>
+  <line x1="200" y1="90" x2="200" y2="95" stroke="white" stroke-width="2" opacity="0.9"/>
+  <line x1="250" y1="95" x2="250" y2="100" stroke="white" stroke-width="2" opacity="0.9"/>
+  <line x1="300" y1="110" x2="300" y2="115" stroke="white" stroke-width="2" opacity="0.9"/>
+  
+  <!-- Open Book -->
+  <g transform="translate(200, 200)">
+    <!-- Book cover/spine -->
+    <rect x="-60" y="-40" width="120" height="80" rx="4" fill="#FF6347" opacity="0.9"/>
+    <!-- Left page -->
+    <rect x="-60" y="-40" width="60" height="80" rx="4" fill="#FFF8DC" opacity="0.95"/>
+    <!-- Right page -->
+    <rect x="0" y="-40" width="60" height="80" rx="4" fill="#FFF8DC" opacity="0.95"/>
+    <!-- Book center glow -->
+    <ellipse cx="0" cy="0" rx="30" ry="40" fill="url(#bookGlow)"/>
+    <!-- Right page detail (stack of books/building) -->
+    <g transform="translate(20, -10)">
+      <rect x="0" y="0" width="8" height="12" fill="#FFA500" opacity="0.6"/>
+      <rect x="10" y="2" width="8" height="10" fill="#FFA500" opacity="0.6"/>
+      <rect x="20" y="4" width="8" height="8" fill="#FFA500" opacity="0.6"/>
+    </g>
+  </g>
+  
+  <!-- Flame rising from book -->
+  <g transform="translate(200, 160)">
+    <path d="M -15 20 Q -10 0 -5 -10 Q 0 -20 5 -10 Q 10 0 15 20 L 0 40 Z" fill="url(#flameGradient)"/>
+    <!-- Sparkles around flame -->
+    <circle cx="-20" cy="10" r="2" fill="#FFD700" opacity="0.8"/>
+    <circle cx="20" cy="15" r="1.5" fill="#FFD700" opacity="0.8"/>
+    <circle cx="-10" cy="25" r="1" fill="#FFD700" opacity="0.8"/>
+    <circle cx="10" cy="30" r="1.5" fill="#FFD700" opacity="0.8"/>
+  </g>
+  
+  <!-- SUDAR Text -->
+  <g transform="translate(200, 280)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="4">
+      SUD<tspan fill="#FF8C00">A</tspan>R
+    </text>
+    <!-- Torch icon replacing 'A' -->
+    <g transform="translate(-8, -40)">
+      <rect x="-3" y="0" width="6" height="20" fill="white" rx="1"/>
+      <path d="M -5 -5 Q 0 -8 5 -5 L 3 -2 Q 0 -4 -3 -2 Z" fill="#FF8C00"/>
+    </g>
+  </g>
+  
+  <!-- TNPSC MOCK TEST APP tagline -->
+  <text x="200" y="320" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle" letter-spacing="2" opacity="0.9">
+    TNPSC MOCK TEST APP
+  </text>
+  
+  <!-- Subtle star icon bottom right -->
+  <g transform="translate(360, 360)" opacity="0.2">
+    <path d="M 0 -10 L 2 -2 L 10 -2 L 3 2 L 5 10 L 0 5 L -5 10 L -3 2 L -10 -2 L -2 -2 Z" fill="#FFF"/>
+  </g>
+</svg>
+

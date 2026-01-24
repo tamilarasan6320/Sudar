@@ -1,0 +1,75 @@
+<?php
+require_once '../config/cors.php';
+require_once '../config/database.php';
+require_once '../models/User.php';
+
+$database = new Database();
+$db = $database->getConnection();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = json_decode(file_get_contents('php://input'));
+
+    if (!empty($data->mobile) && !empty($data->name)) {
+        $user = new User($db);
+
+        $user->mobile = $data->mobile;
+        $existing = $user->getUserByMobile();
+
+        if ($existing->rowCount() > 0) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'message' => 'User already exists'
+            ]);
+            exit;
+        }
+
+        $user->name = $data->name;
+        $user->email = isset($data->email) ? $data->email : null;
+        $user->age = isset($data->age) ? $data->age : null;
+        $user->district = isset($data->district) ? $data->district : null;
+        $user->education = isset($data->education) ? $data->education : null;
+        $user->language = isset($data->language) ? $data->language : 'en';
+        // Track verification method: 'otp' or 'truecaller'
+        $user->verification_method = isset($data->verification_method) ? $data->verification_method : 'otp';
+
+        if ($user->create()) {
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'message' => 'User profile created successfully',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'mobile' => $user->mobile,
+                    'email' => $user->email,
+                    'age' => $user->age,
+                    'district' => $user->district,
+                    'education' => $user->education,
+                    'language' => $user->language,
+                    'verification_method' => $user->verification_method
+                ],
+                'token' => base64_encode($user->id . ':' . time())
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to create user profile'
+            ]);
+        }
+    } else {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Mobile and name are required'
+        ]);
+    }
+} else {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Method not allowed'
+    ]);
+}
+?>

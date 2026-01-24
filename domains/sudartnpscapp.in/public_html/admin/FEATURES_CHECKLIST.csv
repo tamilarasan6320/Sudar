@@ -1,0 +1,127 @@
+Category,Feature Name,In Flutter App,In Admin Panel,Priority,Your Decision (Keep/Remove/Later),Notes
+LOGIN & AUTH,Mobile number login,Yes,No,HIGH,,Users can login with phone
+LOGIN & AUTH,OTP verification,Yes,No,HIGH,,6-digit OTP verification
+LOGIN & AUTH,User name collection,Yes,No,HIGH,,Profile setup after OTP
+LOGIN & AUTH,Exam selection on signup,Yes,No,HIGH,,5 TNPSC exam options
+LOGIN & AUTH,Language selection,Yes,No,MEDIUM,,English/Tamil choice
+DASHBOARD,View total users count,No,Yes,HIGH,,Admin dashboard stat
+DASHBOARD,View total exams count,No,Yes,MEDIUM,,Admin dashboard stat
+DASHBOARD,View total questions count,No,Yes,HIGH,,Admin dashboard stat
+DASHBOARD,View tests taken count,No,Yes,MEDIUM,,Admin dashboard stat
+DASHBOARD,Recent activity feed,No,Yes,LOW,,Shows recent actions
+HOME PAGE,User stats display,Yes,No,HIGH,,Tests taken/Avg score/Rank
+HOME PAGE,Start test quick action,Yes,No,HIGH,,Quick start button
+HOME PAGE,Performance analytics button,Yes,No,MEDIUM,,Coming soon feature
+HOME PAGE,8 Test categories with icons,Yes,No,HIGH,,Main navigation
+HOME PAGE,Category progress bars,Yes,No,HIGH,,Shows completion %
+HOME PAGE,Recent tests history,Yes,No,HIGH,,Last 3 tests
+HOME PAGE,Pass/Fail status badges,Yes,No,HIGH,,Visual indicators
+HOME PAGE,Exam switcher,Yes,No,HIGH,,Change exam easily
+HOME PAGE,Notifications icon,Yes,No,LOW,,Header bell icon
+TEST TAKING,Question display,Yes,No,HIGH,,Core functionality
+TEST TAKING,4 multiple choice options,Yes,No,HIGH,,A/B/C/D answers
+TEST TAKING,Timer countdown,Yes,No,HIGH,,Time limit tracking
+TEST TAKING,Answer selection,Yes,No,HIGH,,Radio button style
+TEST TAKING,Mark for review,Yes,No,MEDIUM,,Bookmark questions
+TEST TAKING,Previous/Next navigation,Yes,No,HIGH,,Question navigation
+TEST TAKING,Progress bar,Yes,No,MEDIUM,,Visual progress
+TEST TAKING,Submit confirmation,Yes,No,HIGH,,Prevent accidental submit
+TEST TAKING,Exit confirmation,Yes,No,MEDIUM,,Warn about data loss
+TEST TAKING,Auto-submit on timeout,Yes,No,HIGH,,When timer ends
+TEST RESULTS,Score summary display,Yes,No,HIGH,,Total correct/total
+TEST RESULTS,Question review,Yes,No,HIGH,,Review all answers
+TEST RESULTS,Correct/Incorrect badges,Yes,No,HIGH,,Visual feedback
+TEST RESULTS,Color-coded answers,Yes,No,MEDIUM,,Green/Red/Gray
+TEST RESULTS,Answer explanations,Yes,No,HIGH,,Educational value
+TEST RESULTS,Navigate between questions,Yes,No,MEDIUM,,Previous/Next in results
+TESTS PAGE,Category filter tabs,Yes,No,HIGH,,7 filter options
+TESTS PAGE,Test cards display,Yes,No,HIGH,,List all tests
+TESTS PAGE,Show questions count,Yes,No,HIGH,,Test details
+TESTS PAGE,Show duration,Yes,No,HIGH,,Time info
+TESTS PAGE,Difficulty badges,Yes,No,MEDIUM,,Easy/Medium/Hard
+PROGRESS PAGE,Overall stats card,Yes,No,HIGH,,4 key metrics
+PROGRESS PAGE,Performance by subject,Yes,No,HIGH,,6 subject bars
+PROGRESS PAGE,Recent activity list,Yes,No,MEDIUM,,Activity timeline
+PROGRESS PAGE,Strengths display,Yes,No,MEDIUM,,Strong subjects
+PROGRESS PAGE,Weaknesses display,Yes,No,MEDIUM,,Needs improvement
+PROGRESS PAGE,Daily streak counter,Yes,No,LOW,,Gamification
+PROFILE PAGE,User avatar display,Yes,No,LOW,,First letter avatar
+PROFILE PAGE,User info display,Yes,No,HIGH,,Name/Mobile/Stats
+PROFILE PAGE,Saved tests,Yes,No,MEDIUM,,Bookmark feature
+PROFILE PAGE,Test history,Yes,No,HIGH,,All past tests
+PROFILE PAGE,Performance analytics,Yes,No,HIGH,,Detailed insights
+PROFILE PAGE,Edit profile,Yes,No,MEDIUM,,Update info
+PROFILE PAGE,Notification settings,Yes,No,LOW,,Preferences
+PROFILE PAGE,Language change,Yes,No,MEDIUM,,Switch language
+PROFILE PAGE,Theme settings,Yes,No,LOW,,Light/Dark mode
+PROFILE PAGE,Help & FAQ,Yes,No,MEDIUM,,Support content
+PROFILE PAGE,Send feedback,Yes,No,MEDIUM,,User feedback
+PROFILE PAGE,About/Version,Yes,No,LOW,,App info
+PROFILE PAGE,Privacy policy view,Yes,No,MEDIUM,,Legal content
+PROFILE PAGE,Logout,Yes,No,HIGH,,Sign out
+NAVIGATION,Bottom navigation bar,Yes,No,HIGH,,4-tab navigation
+NAVIGATION,Tab icons,Yes,No,HIGH,,Visual navigation
+NAVIGATION,Active tab highlight,Yes,No,MEDIUM,,UX improvement
+USERS MGMT,Create user,No,Yes,HIGH,,Add new users
+USERS MGMT,View users list,No,Yes,HIGH,,See all users
+USERS MGMT,Edit user details,No,Yes,HIGH,,Update info
+USERS MGMT,Delete user,No,Yes,MEDIUM,,Remove users
+USERS MGMT,User status toggle,No,Yes,MEDIUM,,Active/Inactive
+EXAM CATEGORIES,Create exam category,No,Yes,HIGH,,Add TNPSC exams
+EXAM CATEGORIES,View exam categories,No,Yes,HIGH,,Grid display
+EXAM CATEGORIES,Edit exam category,No,Yes,MEDIUM,,Update details
+EXAM CATEGORIES,Delete exam category,No,Yes,LOW,,Remove category
+EXAM CATEGORIES,Set category icon,No,Yes,MEDIUM,,Visual identity
+EXAM CATEGORIES,Set category color,No,Yes,MEDIUM,,Color coding
+TEST CATEGORIES,Create test category,No,Yes,HIGH,,Add subject categories
+TEST CATEGORIES,View test categories,No,Yes,HIGH,,Table display
+TEST CATEGORIES,Edit test category,No,Yes,MEDIUM,,Update details
+TEST CATEGORIES,Delete test category,No,Yes,LOW,,Remove category
+TEST CATEGORIES,Assign to exam,No,Yes,HIGH,,Link to exam
+TEST CATEGORIES,Set icon & color,No,Yes,MEDIUM,,Visual identity
+QUESTION SESSIONS,Create session,No,Yes,HIGH,,Create test/quiz
+QUESTION SESSIONS,View sessions,No,Yes,HIGH,,List all sessions
+QUESTION SESSIONS,Edit session,No,Yes,MEDIUM,,Update details
+QUESTION SESSIONS,Delete session,No,Yes,MEDIUM,,Remove session
+QUESTION SESSIONS,Set duration,No,Yes,HIGH,,Time limit
+QUESTION SESSIONS,Set question count,No,Yes,HIGH,,Total questions
+QUESTION SESSIONS,Status toggle,No,Yes,MEDIUM,,Active/Inactive
+ADD QUESTIONS,View sessions grid,No,Yes,MEDIUM,,Visual session cards
+ADD QUESTIONS,Select session,No,Yes,HIGH,,Choose session
+ADD QUESTIONS,Upload questions interface,No,Yes,HIGH,,Bulk upload UI
+SETTINGS,Privacy policy editor,No,Yes,HIGH,,Legal content management
+SETTINGS,Terms & conditions editor,No,Yes,HIGH,,Legal content management
+SETTINGS,Tab switching,No,Yes,LOW,,UI feature
+SETTINGS,Save changes,No,Yes,HIGH,,Persist content
+UI FEATURES,Purple theme,Yes,Yes,MEDIUM,,Brand color #6C63FF
+UI FEATURES,Responsive design,Yes,Yes,HIGH,,Mobile friendly
+UI FEATURES,Loading indicators,Yes,Yes,MEDIUM,,UX feedback
+UI FEATURES,Toast notifications,Yes,Yes,HIGH,,User feedback
+UI FEATURES,Modal dialogs,Yes,Yes,HIGH,,Popups
+UI FEATURES,Form validation,Yes,Yes,HIGH,,Data validation
+UI FEATURES,Animations,Yes,Yes,LOW,,Smooth transitions
+UI FEATURES,Shadow effects,Yes,Yes,LOW,,Visual depth
+UI FEATURES,Gradient backgrounds,Yes,Yes,LOW,,Visual appeal
+UI FEATURES,Status badges,Yes,Yes,MEDIUM,,Visual indicators
+MISSING - CRITICAL,Questions library CRUD,No,No,CRITICAL,,Need to manage questions
+MISSING - CRITICAL,Individual question add/edit,No,No,CRITICAL,,Create questions one by one
+MISSING - CRITICAL,Bulk question import,No,No,HIGH,,Import from Excel/CSV
+MISSING - CRITICAL,View test results,No,No,CRITICAL,,See user scores
+MISSING - CRITICAL,Results filtering,No,No,HIGH,,Filter by user/test/date
+MISSING - CRITICAL,User analytics dashboard,No,No,HIGH,,Track performance
+MISSING - CRITICAL,Performance reports,No,No,MEDIUM,,Generate reports
+MISSING - HIGH,Send notifications,No,No,HIGH,,Push notifications
+MISSING - HIGH,Notification history,No,No,MEDIUM,,Track sent notifications
+MISSING - HIGH,View user feedback,No,No,HIGH,,See user comments
+MISSING - HIGH,FAQ management,No,No,MEDIUM,,Create/edit FAQs
+MISSING - HIGH,Leaderboard display,No,No,MEDIUM,,Show top users
+MISSING - MEDIUM,Test builder tool,No,No,MEDIUM,,Create custom tests
+MISSING - MEDIUM,Question preview,No,No,MEDIUM,,Preview before save
+MISSING - MEDIUM,Search functionality,No,No,MEDIUM,,Search across data
+MISSING - MEDIUM,Advanced filters,No,No,MEDIUM,,Filter options
+MISSING - MEDIUM,Export data,No,No,MEDIUM,,Download CSV/Excel
+MISSING - LOW,Study materials upload,No,No,LOW,,PDFs/Documents
+MISSING - LOW,Exam date management,No,No,LOW,,Important dates
+MISSING - LOW,Badge/Achievement system,No,No,LOW,,Gamification
+
+

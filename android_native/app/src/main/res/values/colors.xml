@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- White splash background -->
+    <color name="splash_background">#FFFFFF</color>
+    
+    <!-- Primary Colors (Red/Pink - Adda247 style) -->
+    <color name="primary">#FFE91E63</color>
+    <color name="primary_light">#FFF06292</color>
+    <color name="primary_dark">#FFC2185B</color>
+    
+    <!-- Secondary Colors (Blue) -->
+    <color name="secondary">#FF2196F3</color>
+    <color name="secondary_light">#FF64B5F6</color>
+    <color name="secondary_dark">#FF1976D2</color>
+    
+    <!-- Background Colors -->
+    <color name="background">#FFF5F5F5</color>
+    <color name="card_background">#FFFFFFFF</color>
+    <color name="surface_light">#FFFAFAFA</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#FF212121</color>
+    <color name="text_secondary">#FF757575</color>
+    <color name="text_light">#FF9E9E9E</color>
+    
+    <!-- Accent Colors -->
+    <color name="success">#FF4CAF50</color>
+    <color name="warning">#FFFF9800</color>
+    <color name="error">#FFF44336</color>
+    <color name="info">#FF2196F3</color>
+    
+    <!-- Border Colors -->
+    <color name="border">#FFE0E0E0</color>
+    <color name="border_light">#FFF0F0F0</color>
+</resources>

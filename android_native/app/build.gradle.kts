@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,11 +8,9 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("org.jetbrains.kotlin.kapt")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
-// L0oad keystore properties
-import java.util.Properties
-import java.io.FileInputStream
 
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
@@ -27,8 +28,8 @@ android {
         minSdk = 22
         targetSdk = 35
         // Flutter is +31, native must be >= 32
-        versionCode = 35
-        versionName = "6.0.0"
+        versionCode = 43
+        versionName = "7.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -129,6 +130,7 @@ dependencies {
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-messaging")
 
     // OneSignal Push Notifications
@@ -136,7 +138,6 @@ dependencies {
 
     // Facebook SDK (App Events + Install Attribution)
     implementation("com.facebook.android:facebook-android-sdk:17.0.1")
-    implementation("com.android.installreferrer:installreferrer:2.2")
 
     // Truecaller SDK
     implementation("com.truecaller.android.sdk:truecaller-sdk:3.2.1")
@@ -145,6 +146,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.google.android.gms:play-services-auth-api-phone:18.1.0")
     implementation("com.google.android.gms:play-services-identity:18.1.0")
+
+    // Google Play Install Referrer (capture /r/CODE -> Play Store referrer)
+    implementation("com.android.installreferrer:installreferrer:2.2")
 
     // Razorpay Payments
     implementation("com.razorpay:checkout:1.6.40")

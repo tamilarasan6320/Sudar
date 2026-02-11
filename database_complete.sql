@@ -1,4 +1,14 @@
--- Mock Test DB Complete Export (Structure + Sample Data)\n-- Generated: 2025-10-23 16:16:50\n\nCREATE DATABASE IF NOT EXISTS mock_test_db;\nUSE mock_test_db;\n\n-- ================================================\n-- Table: admin_users\n-- ================================================\nDROP TABLE IF EXISTS `admin_users`;\nCREATE TABLE `admin_users` (
+-- Mock Test DB Complete Export (Structure + Sample Data)
+-- Generated: 2025-10-23 16:16:50
+
+CREATE DATABASE IF NOT EXISTS mock_test_db;
+USE mock_test_db;
+
+-- ================================================
+-- Table: admin_users
+-- ================================================
+DROP TABLE IF EXISTS `admin_users`;
+CREATE TABLE `admin_users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -10,7 +20,16 @@
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   KEY `idx_username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for admin_users\nINSERT INTO `admin_users` (`id`, `username`, `password`, `email`, `role`, `is_active`, `created_at`, `last_login`) VALUES ('1', 'admin', '$2y$10$5Lo.y105tvdVM8cuochw2O9hQZnefa4TfJeD4k0bS/JruZU.jJPJC', 'admin@mocktest.com', 'super_admin', '1', '2025-10-23 15:26:50', NULL);\n\n-- ================================================\n-- Table: exam_categories\n-- ================================================\nDROP TABLE IF EXISTS `exam_categories`;\nCREATE TABLE `exam_categories` (
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for admin_users
+INSERT INTO `admin_users` (`id`, `username`, `password`, `email`, `role`, `is_active`, `created_at`, `last_login`) VALUES ('1', 'admin', '$2y$10$5Lo.y105tvdVM8cuochw2O9hQZnefa4TfJeD4k0bS/JruZU.jJPJC', 'admin@mocktest.com', 'super_admin', '1', '2025-10-23 15:26:50', NULL);
+
+-- ================================================
+-- Table: exam_categories
+-- ================================================
+DROP TABLE IF EXISTS `exam_categories`;
+CREATE TABLE `exam_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `description` text DEFAULT NULL,
@@ -20,7 +39,22 @@
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for exam_categories\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('1', 'TNPSC Group 1', 'Tamil Nadu Public Service Commission Group 1 Exams', 'users', '1', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('2', 'TNPSC Group 2', 'Tamil Nadu Public Service Commission Group 2 Exams', 'users', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('3', 'TNPSC Group 4', 'Tamil Nadu Public Service Commission Group 4 Exams', 'users', '1', '3', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('4', 'TNUSRB', 'Tamil Nadu Uniformed Services Recruitment Board', 'shield', '1', '4', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('5', 'TNPSC VAO Test', 'Village Administrative Officer Exam', 'building', '0', '0', '2025-10-23 15:46:15', '2025-10-23 15:48:08');\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('6', 'TNPSC Group 1', 'Tamil Nadu Public Service Commission Group 1 Exams', 'users', '1', '0', '2025-10-23 15:51:27', '2025-10-23 15:51:27');\nINSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('7', '45454', '5rfdfdf', '4', '0', '0', '2025-10-23 15:51:37', '2025-10-23 15:51:43');\n\n-- ================================================\n-- Table: otp_verifications\n-- ================================================\nDROP TABLE IF EXISTS `otp_verifications`;\nCREATE TABLE `otp_verifications` (
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for exam_categories
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('1', 'TNPSC Group 1', 'Tamil Nadu Public Service Commission Group 1 Exams', 'users', '1', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('2', 'TNPSC Group 2', 'Tamil Nadu Public Service Commission Group 2 Exams', 'users', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('3', 'TNPSC Group 4', 'Tamil Nadu Public Service Commission Group 4 Exams', 'users', '1', '3', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('4', 'TNUSRB', 'Tamil Nadu Uniformed Services Recruitment Board', 'shield', '1', '4', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('5', 'TNPSC VAO Test', 'Village Administrative Officer Exam', 'building', '0', '0', '2025-10-23 15:46:15', '2025-10-23 15:48:08');
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('6', 'TNPSC Group 1', 'Tamil Nadu Public Service Commission Group 1 Exams', 'users', '1', '0', '2025-10-23 15:51:27', '2025-10-23 15:51:27');
+INSERT INTO `exam_categories` (`id`, `name`, `description`, `icon`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('7', '45454', '5rfdfdf', '4', '0', '0', '2025-10-23 15:51:37', '2025-10-23 15:51:43');
+
+-- ================================================
+-- Table: otp_verifications
+-- ================================================
+DROP TABLE IF EXISTS `otp_verifications`;
+CREATE TABLE `otp_verifications` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `mobile` varchar(15) NOT NULL,
   `otp` varchar(6) NOT NULL,
@@ -31,7 +65,60 @@
   PRIMARY KEY (`id`),
   KEY `idx_mobile` (`mobile`),
   KEY `idx_expires_at` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for otp_verifications\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('1', '9876543210', '263647', '2025-10-23 16:10:52', '2025-10-23 12:50:52', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('2', '9384938493', '751807', '2025-10-23 16:27:15', '2025-10-23 13:07:15', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('8', '9834938434', '639202', '2025-10-23 16:32:49', '2025-10-23 13:12:49', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('11', '9384938434', '629821', '2025-10-23 16:36:10', '2025-10-23 13:16:10', '0', '1');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('13', '9839484343', '534364', '2025-10-23 16:38:01', '2025-10-23 13:18:01', '0', '4');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('14', '9382938232', '147455', '2025-10-23 16:38:24', '2025-10-23 13:18:24', '0', '1');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('15', '9485985454', '205963', '2025-10-23 16:42:34', '2025-10-23 13:22:34', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('16', '8738474634', '826425', '2025-10-23 18:55:16', '2025-10-23 15:35:16', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('17', '9898988923', '686034', '2025-10-23 18:57:57', '2025-10-23 15:37:57', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('18', '8937483748', '407830', '2025-10-23 19:14:07', '2025-10-23 15:54:07', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('19', '7878656566', '537033', '2025-10-23 19:36:24', '2025-10-23 16:16:24', '0', '0');\nINSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('20', '8776656565', '967571', '2025-10-23 19:41:54', '2025-10-23 16:21:54', '0', '0');\n\n-- ================================================\n-- Table: question_sessions\n-- ================================================\nDROP TABLE IF EXISTS `question_sessions`;\nCREATE TABLE `question_sessions` (
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for otp_verifications
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('1', '9876543210', '263647', '2025-10-23 16:10:52', '2025-10-23 12:50:52', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('2', '9384938493', '751807', '2025-10-23 16:27:15', '2025-10-23 13:07:15', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('8', '9834938434', '639202', '2025-10-23 16:32:49', '2025-10-23 13:12:49', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('11', '9384938434', '629821', '2025-10-23 16:36:10', '2025-10-23 13:16:10', '0', '1');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('13', '9839484343', '534364', '2025-10-23 16:38:01', '2025-10-23 13:18:01', '0', '4');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('14', '9382938232', '147455', '2025-10-23 16:38:24', '2025-10-23 13:18:24', '0', '1');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('15', '9485985454', '205963', '2025-10-23 16:42:34', '2025-10-23 13:22:34', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('16', '8738474634', '826425', '2025-10-23 18:55:16', '2025-10-23 15:35:16', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('17', '9898988923', '686034', '2025-10-23 18:57:57', '2025-10-23 15:37:57', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('18', '8937483748', '407830', '2025-10-23 19:14:07', '2025-10-23 15:54:07', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('19', '7878656566', '537033', '2025-10-23 19:36:24', '2025-10-23 16:16:24', '0', '0');
+INSERT INTO `otp_verifications` (`id`, `mobile`, `otp`, `created_at`, `expires_at`, `is_verified`, `attempts`) VALUES ('20', '8776656565', '967571', '2025-10-23 19:41:54', '2025-10-23 16:21:54', '0', '0');
+
+-- ================================================
+-- Table: test_categories
+-- ================================================
+DROP TABLE IF EXISTS `test_categories`;
+CREATE TABLE `test_categories` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `exam_category_id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `icon` varchar(50) DEFAULT NULL,
+  `color` varchar(20) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `display_order` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_exam_category` (`exam_category_id`),
+  CONSTRAINT `test_categories_ibfk_1` FOREIGN KEY (`exam_category_id`) REFERENCES `exam_categories` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for test_categories
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('1', '1', 'Tamil Language', 'Tamil Language and Grammar', NULL, '#FF6B6B', '1', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('2', '1', 'General English', 'English Grammar and Comprehension', NULL, '#4ECDC4', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('3', '1', 'General Science', 'Physics, Chemistry, Biology', NULL, '#45B7D1', '1', '3', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('4', '1', 'Indian History', 'Ancient, Medieval and Modern History', NULL, '#96CEB4', '1', '4', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('5', '1', 'Geography', 'Indian and World Geography', NULL, '#FFEAA7', '1', '5', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('6', '2', 'Tamil Language', 'Tamil Language for Group 2', NULL, '#FF6B6B', '1', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('7', '2', 'General Studies', 'General Studies for Group 2', NULL, '#DDA15E', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('8', '3', 'General Tamil', 'General Tamil for Group 4', NULL, '#FF6B6B', '0', '1', '2025-10-23 15:26:50', '2025-10-23 15:57:35');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('9', '3', 'General English', 'General English for Group 4', NULL, '#4ECDC4', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('10', '3', 'Aptitude', 'Numerical and Reasoning Aptitude', NULL, '#B392AC', '1', '3', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('13', '1', 'asasa', 'asasa', 'fas fa-tag', '#9c27b0', '1', '0', '2025-10-23 16:02:12', '2025-10-23 16:02:12');
+
+-- ================================================
+-- Table: question_sessions
+-- ================================================
+DROP TABLE IF EXISTS `question_sessions`;
+CREATE TABLE `question_sessions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `test_category_id` int(11) NOT NULL,
   `name` varchar(200) NOT NULL,
@@ -46,7 +133,21 @@
   KEY `idx_test_category` (`test_category_id`),
   KEY `idx_difficulty` (`difficulty`),
   CONSTRAINT `question_sessions_ibfk_1` FOREIGN KEY (`test_category_id`) REFERENCES `test_categories` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for question_sessions\nINSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('1', '1', 'Tamil Basics - Session 1', 'Basic Tamil Grammar', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('2', '2', 'English Grammar - Session 1', 'Basic English Grammar', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('3', '3', 'General Science - Session 1', 'Physics Fundamentals', '15', '20', 'medium', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('4', '4', 'Indian History - Session 1', 'Ancient India', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('5', '5', 'Geography Basics', 'World Geography', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('6', '1', 'asasa', '', '0', '60', 'medium', '1', '2025-10-23 16:02:22', '2025-10-23 16:02:22');\n\n-- ================================================\n-- Table: questions\n-- ================================================\nDROP TABLE IF EXISTS `questions`;\nCREATE TABLE `questions` (
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for question_sessions
+INSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('1', '1', 'Tamil Basics - Session 1', 'Basic Tamil Grammar', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('2', '2', 'English Grammar - Session 1', 'Basic English Grammar', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('3', '3', 'General Science - Session 1', 'Physics Fundamentals', '15', '20', 'medium', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('4', '4', 'Indian History - Session 1', 'Ancient India', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('5', '5', 'Geography Basics', 'World Geography', '10', '15', 'easy', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');
+INSERT INTO `question_sessions` (`id`, `test_category_id`, `name`, `description`, `total_questions`, `duration`, `difficulty`, `is_active`, `created_at`, `updated_at`) VALUES ('6', '1', 'asasa', '', '0', '60', 'medium', '1', '2025-10-23 16:02:22', '2025-10-23 16:02:22');
+
+-- ================================================
+-- Table: questions
+-- ================================================
+DROP TABLE IF EXISTS `questions`;
+CREATE TABLE `questions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `session_id` int(11) NOT NULL,
   `question_en` text DEFAULT NULL,
@@ -72,7 +173,13 @@
   KEY `idx_session` (`session_id`),
   KEY `idx_difficulty` (`difficulty`),
   CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`session_id`) REFERENCES `question_sessions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- ================================================\n-- Table: saved_tests\n-- ================================================\nDROP TABLE IF EXISTS `saved_tests`;\nCREATE TABLE `saved_tests` (
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================
+-- Table: saved_tests
+-- ================================================
+DROP TABLE IF EXISTS `saved_tests`;
+CREATE TABLE `saved_tests` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `session_id` int(11) NOT NULL,
@@ -83,21 +190,13 @@
   KEY `idx_user` (`user_id`),
   CONSTRAINT `saved_tests_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `saved_tests_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `question_sessions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- ================================================\n-- Table: test_categories\n-- ================================================\nDROP TABLE IF EXISTS `test_categories`;\nCREATE TABLE `test_categories` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `exam_category_id` int(11) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `description` text DEFAULT NULL,
-  `icon` varchar(50) DEFAULT NULL,
-  `color` varchar(20) DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT 1,
-  `display_order` int(11) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_exam_category` (`exam_category_id`),
-  CONSTRAINT `test_categories_ibfk_1` FOREIGN KEY (`exam_category_id`) REFERENCES `exam_categories` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for test_categories\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('1', '1', 'Tamil Language', 'Tamil Language and Grammar', NULL, '#FF6B6B', '1', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('2', '1', 'General English', 'English Grammar and Comprehension', NULL, '#4ECDC4', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('3', '1', 'General Science', 'Physics, Chemistry, Biology', NULL, '#45B7D1', '1', '3', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('4', '1', 'Indian History', 'Ancient, Medieval and Modern History', NULL, '#96CEB4', '1', '4', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('5', '1', 'Geography', 'Indian and World Geography', NULL, '#FFEAA7', '1', '5', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('6', '2', 'Tamil Language', 'Tamil Language for Group 2', NULL, '#FF6B6B', '1', '1', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('7', '2', 'General Studies', 'General Studies for Group 2', NULL, '#DDA15E', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('8', '3', 'General Tamil', 'General Tamil for Group 4', NULL, '#FF6B6B', '0', '1', '2025-10-23 15:26:50', '2025-10-23 15:57:35');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('9', '3', 'General English', 'General English for Group 4', NULL, '#4ECDC4', '1', '2', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('10', '3', 'Aptitude', 'Numerical and Reasoning Aptitude', NULL, '#B392AC', '1', '3', '2025-10-23 15:26:50', '2025-10-23 15:26:50');\nINSERT INTO `test_categories` (`id`, `exam_category_id`, `name`, `description`, `icon`, `color`, `is_active`, `display_order`, `created_at`, `updated_at`) VALUES ('13', '1', 'asasa', 'asasa', 'fas fa-tag', '#9c27b0', '1', '0', '2025-10-23 16:02:12', '2025-10-23 16:02:12');\n\n-- ================================================\n-- Table: test_results\n-- ================================================\nDROP TABLE IF EXISTS `test_results`;\nCREATE TABLE `test_results` (
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================
+-- Table: test_results
+-- ================================================
+DROP TABLE IF EXISTS `test_results`;
+CREATE TABLE `test_results` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `session_id` int(11) NOT NULL,
@@ -119,7 +218,20 @@
   KEY `idx_score` (`score`),
   CONSTRAINT `test_results_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `test_results_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `question_sessions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for test_results\nINSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('1', '1', '1', '10', '10', '8', '2', '0', '8.00', '80.00', '12', NULL, '2025-10-23 13:26:50', '2025-10-23 13:26:50');\nINSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('2', '2', '1', '10', '9', '7', '2', '1', '7.00', '70.00', '14', NULL, '2025-10-23 14:26:50', '2025-10-23 14:26:50');\nINSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('3', '3', '2', '10', '10', '9', '1', '0', '9.00', '90.00', '11', NULL, '2025-10-23 12:26:50', '2025-10-23 12:26:50');\nINSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('4', '4', '3', '15', '15', '12', '3', '0', '12.00', '80.00', '18', NULL, '2025-10-23 11:26:50', '2025-10-23 11:26:50');\nINSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('5', '5', '2', '10', '8', '6', '2', '2', '6.00', '60.00', '15', NULL, '2025-10-23 10:26:50', '2025-10-23 10:26:50');\n\n-- ================================================\n-- Table: user_answers\n-- ================================================\nDROP TABLE IF EXISTS `user_answers`;\nCREATE TABLE `user_answers` (
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for test_results
+INSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('1', '1', '1', '10', '10', '8', '2', '0', '8.00', '80.00', '12', NULL, '2025-10-23 13:26:50', '2025-10-23 13:26:50');
+INSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('2', '2', '1', '10', '9', '7', '2', '1', '7.00', '70.00', '14', NULL, '2025-10-23 14:26:50', '2025-10-23 14:26:50');
+INSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('3', '3', '2', '10', '10', '9', '1', '0', '9.00', '90.00', '11', NULL, '2025-10-23 12:26:50', '2025-10-23 12:26:50');
+INSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('4', '4', '3', '15', '15', '12', '3', '0', '12.00', '80.00', '18', NULL, '2025-10-23 11:26:50', '2025-10-23 11:26:50');
+INSERT INTO `test_results` (`id`, `user_id`, `session_id`, `total_questions`, `attempted_questions`, `correct_answers`, `wrong_answers`, `unanswered`, `score`, `percentage`, `time_taken`, `rank`, `started_at`, `submitted_at`) VALUES ('5', '5', '2', '10', '8', '6', '2', '2', '6.00', '60.00', '15', NULL, '2025-10-23 10:26:50', '2025-10-23 10:26:50');
+
+-- ================================================
+-- Table: user_answers
+-- ================================================
+DROP TABLE IF EXISTS `user_answers`;
+CREATE TABLE `user_answers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `result_id` int(11) NOT NULL,
   `question_id` int(11) NOT NULL,
@@ -132,7 +244,13 @@
   KEY `idx_question` (`question_id`),
   CONSTRAINT `user_answers_ibfk_1` FOREIGN KEY (`result_id`) REFERENCES `test_results` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_answers_ibfk_2` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- ================================================\n-- Table: user_rankings\n-- ================================================\nDROP TABLE IF EXISTS `user_rankings`;\nCREATE TABLE `user_rankings` (
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================
+-- Table: user_rankings
+-- ================================================
+DROP TABLE IF EXISTS `user_rankings`;
+CREATE TABLE `user_rankings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `exam_category_id` int(11) DEFAULT NULL,
@@ -147,7 +265,13 @@
   KEY `idx_exam_category` (`exam_category_id`),
   CONSTRAINT `user_rankings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `user_rankings_ibfk_2` FOREIGN KEY (`exam_category_id`) REFERENCES `exam_categories` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- ================================================\n-- Table: users\n-- ================================================\nDROP TABLE IF EXISTS `users`;\nCREATE TABLE `users` (
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ================================================
+-- Table: users
+-- ================================================
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `mobile` varchar(15) NOT NULL,
@@ -157,6 +281,10 @@
   `education` varchar(100) DEFAULT NULL,
   `profile_pic` varchar(255) DEFAULT NULL,
   `language` varchar(10) DEFAULT 'en',
+  `device_id` varchar(64) DEFAULT NULL,
+  `session_token` varchar(128) DEFAULT NULL,
+  `session_version` int(11) NOT NULL DEFAULT 0,
+  `session_updated_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `last_login` timestamp NULL DEFAULT NULL,
@@ -164,5 +292,22 @@
   PRIMARY KEY (`id`),
   UNIQUE KEY `mobile` (`mobile`),
   KEY `idx_mobile` (`mobile`),
+  KEY `idx_session_token` (`session_token`),
   KEY `idx_created_at` (`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n-- Sample data for users\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('1', 'Rajesh Kumar', '9876543210', 'rajesh@example.com', '25', 'Chennai', 'B.E Computer Science', NULL, 'ta', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('2', 'Priya Devi', '9876543211', 'priya@example.com', '23', 'Coimbatore', 'B.Sc Mathematics', NULL, 'ta', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('3', 'Arun Kumar', '9876543212', 'arun@example.com', '27', 'Madurai', 'B.A History', NULL, 'en', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('4', 'Lakshmi S', '9876543213', 'lakshmi@example.com', '24', 'Trichy', 'M.A Tamil', NULL, 'ta', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('5', 'Karthik R', '9876543214', 'karthik@example.com', '26', 'Salem', 'B.Com', NULL, 'en', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('6', 'Test User', '9999999999', 'test@test.com', NULL, NULL, NULL, NULL, 'en', '2025-10-23 15:37:41', '2025-10-23 15:37:49', NULL, '0');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('7', 'Demo User Live DB', '9988776655', 'demo@livedb.com', '30', 'Coimbatore', 'M.Sc Computer Science', NULL, 'en', '2025-10-23 15:39:49', '2025-10-23 15:40:14', NULL, '0');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('9', 'prasad', '9485985454', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 16:42:42', '2025-10-23 16:42:42', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('10', 'adsdsds', '8738474634', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 18:55:24', '2025-10-23 18:55:24', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('11', 'prasaddd', '9898988923', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 18:58:05', '2025-10-23 18:58:05', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('12', 'sdksds', '8937483748', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 19:14:15', '2025-10-23 19:14:15', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('13', 'sdsds', '7878656566', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 19:36:34', '2025-10-23 19:36:34', NULL, '1');\nINSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('14', '23232', '8776656565', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 19:42:33', '2025-10-23 19:42:33', NULL, '1');\n\n
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample data for users
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('1', 'Rajesh Kumar', '9876543210', 'rajesh@example.com', '25', 'Chennai', 'B.E Computer Science', NULL, 'ta', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('2', 'Priya Devi', '9876543211', 'priya@example.com', '23', 'Coimbatore', 'B.Sc Mathematics', NULL, 'ta', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('3', 'Arun Kumar', '9876543212', 'arun@example.com', '27', 'Madurai', 'B.A History', NULL, 'en', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('4', 'Lakshmi S', '9876543213', 'lakshmi@example.com', '24', 'Trichy', 'M.A Tamil', NULL, 'ta', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('5', 'Karthik R', '9876543214', 'karthik@example.com', '26', 'Salem', 'B.Com', NULL, 'en', '2025-10-23 15:26:50', '2025-10-23 15:26:50', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('6', 'Test User', '9999999999', 'test@test.com', NULL, NULL, NULL, NULL, 'en', '2025-10-23 15:37:41', '2025-10-23 15:37:49', NULL, '0');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('7', 'Demo User Live DB', '9988776655', 'demo@livedb.com', '30', 'Coimbatore', 'M.Sc Computer Science', NULL, 'en', '2025-10-23 15:39:49', '2025-10-23 15:40:14', NULL, '0');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('9', 'prasad', '9485985454', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 16:42:42', '2025-10-23 16:42:42', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('10', 'adsdsds', '8738474634', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 18:55:24', '2025-10-23 18:55:24', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('11', 'prasaddd', '9898988923', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 18:58:05', '2025-10-23 18:58:05', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('12', 'sdksds', '8937483748', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 19:14:15', '2025-10-23 19:14:15', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('13', 'sdsds', '7878656566', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 19:36:34', '2025-10-23 19:36:34', NULL, '1');
+INSERT INTO `users` (`id`, `name`, `mobile`, `email`, `age`, `district`, `education`, `profile_pic`, `language`, `created_at`, `updated_at`, `last_login`, `is_active`) VALUES ('14', '23232', '8776656565', NULL, NULL, NULL, NULL, NULL, 'en', '2025-10-23 19:42:33', '2025-10-23 19:42:33', NULL, '1');
+

@@ -14,6 +14,37 @@ function getApiBaseUrl() {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Exam name helpers
+function isGroup1ExamName(name) {
+    const s = String(name || '').toLowerCase();
+    // Match: "Group 1", "Group-1", "Group1", "Group I", "Gr 1", "Grp-1"
+    return /\b(group|gr|grp)\s*[-]?\s*(1|i)\b/.test(s);
+}
+
+function qsKeyPart(value) {
+    if (value === null || value === undefined || value === '') return 'uncategorized';
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function toggleQsCollapse(bodyId, iconId) {
+    const body = document.getElementById(bodyId);
+    const icon = document.getElementById(iconId);
+    if (!body || !icon) return;
+
+    const isCollapsed = body.getAttribute('data-collapsed') === '1';
+    if (isCollapsed) {
+        body.style.display = '';
+        body.setAttribute('data-collapsed', '0');
+        icon.classList.remove('fa-chevron-right');
+        icon.classList.add('fa-chevron-down');
+    } else {
+        body.style.display = 'none';
+        body.setAttribute('data-collapsed', '1');
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-right');
+    }
+}
+
 // Utility function to escape HTML characters (prevent XSS)
 // Define globally to ensure it's available everywhere
 window.escapeHtml = function(text) {
@@ -42,6 +73,9 @@ let questionSessions = [];
 let examCategories = [];
 let languages = [];
 let results = [];
+
+// Question Sessions view filter (Admin)
+let qsSessionFilterMode = 'all'; // all | pending
 
 // Settings Data
 let appSettings = {
@@ -230,7 +264,104 @@ document.addEventListener('DOMContentLoaded', async function() {
             filterTestCategories(); // No pre-select value when manually changed
         });
     }
+
+    // ✅ Question Sessions filter (All / Pending)
+    const qsFilter = document.getElementById('questionSessionsViewFilter');
+    if (qsFilter) {
+        qsFilter.value = qsSessionFilterMode;
+        qsFilter.addEventListener('change', function() {
+            qsSessionFilterMode = qsFilter.value || 'all';
+            loadQuestionSessions();
+        });
+    }
 });
+
+function isPendingSession(session) {
+    const actual = Number(session?.actual_question_count ?? 0);
+    const target = Number(session?.total_questions ?? 0);
+
+    // Pending if no questions at all
+    if (actual <= 0) return true;
+
+    // If a target is set (>0), pending when not yet reached
+    if (target > 0 && actual < target) return true;
+
+    return false;
+}
+
+function scrollToQuestionSessionsExam(examId) {
+    const examKey = qsKeyPart(examId);
+    const cardId = `qs-exam-${examKey}`;
+    const bodyId = `qs-exam-body-${examKey}`;
+    const iconId = `qs-exam-toggle-${examKey}`;
+
+    const body = document.getElementById(bodyId);
+    if (body && body.getAttribute('data-collapsed') === '1') {
+        toggleQsCollapse(bodyId, iconId);
+    }
+
+    const el = document.getElementById(cardId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function renderQuestionSessionsPendingSummary(examCats, sessions) {
+    const container = document.getElementById('questionSessionsPendingSummary');
+    if (!container) return;
+
+    const pendingByExam = {};
+    const totalByExam = {};
+
+    (sessions || []).forEach(s => {
+        const examId = s.exam_category_id || 'uncategorized';
+        totalByExam[examId] = (totalByExam[examId] || 0) + 1;
+        if (isPendingSession(s)) {
+            pendingByExam[examId] = (pendingByExam[examId] || 0) + 1;
+        }
+    });
+
+    const examNameById = {};
+    (examCats || []).forEach(ex => { examNameById[ex.id] = ex.name; });
+    examNameById['uncategorized'] = 'Uncategorized';
+
+    const rows = Object.keys(totalByExam).map(examId => ({
+        examId,
+        examName: examNameById[examId] || String(examId),
+        pending: pendingByExam[examId] || 0,
+        total: totalByExam[examId] || 0
+    }));
+
+    // Sort by pending desc, then name
+    rows.sort((a, b) => (b.pending - a.pending) || a.examName.localeCompare(b.examName));
+
+    const pendingTotal = rows.reduce((sum, r) => sum + r.pending, 0);
+
+    if (pendingTotal === 0) {
+        container.innerHTML = `
+            <div style="background: #f0fff4; border: 1px solid #c6f6d5; color: #22543d; padding: 12px 14px; border-radius: 10px;">
+                <b>✅ Pending Topics:</b> 0 (All sessions have questions)
+            </div>
+        `;
+        return;
+    }
+
+    const chips = rows
+        .filter(r => r.pending > 0)
+        .map(r => `
+            <button class="btn" onclick="scrollToQuestionSessionsExam('${String(r.examId)}')" style="background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; padding: 8px 10px; border-radius: 999px; font-size: 12px;">
+                <b>${escapeHtml(r.examName)}</b>: ${r.pending}/${r.total} pending
+            </button>
+        `)
+        .join('');
+
+    container.innerHTML = `
+        <div style="display:flex; flex-wrap: wrap; gap: 8px; align-items:center;">
+            <div style="margin-right: 6px; color: #666;"><b>Pending Topics:</b> ${pendingTotal}</div>
+            ${chips}
+        </div>
+    `;
+}
 
 // Navigation
 // ═══════════════════════════════════════════════════════════════
@@ -448,8 +579,11 @@ function showPage(pageName) {
         'languages': 'Languages',
         'rankings': 'User Rankings',
         'subscriptions': 'Subscriptions & Premium',
+        'settlement': 'Sattlement',
+        'userCategories': 'User Categories',
         'feedback': 'Feedback Management',
-        'settings': 'Settings'
+        'settings': 'Settings',
+        'referralLinks': 'Referral Links'
     };
     document.getElementById('pageTitle').textContent = titles[pageName] || pageName;
     
@@ -469,10 +603,16 @@ function showPage(pageName) {
         loadRankings();
     } else if (pageName === 'subscriptions') {
         refreshSubscriptionsPage();
+    } else if (pageName === 'settlement') {
+        refreshSettlementPage();
+    } else if (pageName === 'userCategories') {
+        refreshUserCategoriesPage();
     } else if (pageName === 'feedback') {
         loadFeedback();
     } else if (pageName === 'questionsManagement') {
         loadQuestionsManagementStats();
+    } else if (pageName === 'referralLinks') {
+        loadReferralLinks();
     } else if (pageName === 'settings') {
         // Ensure one settings section is visible (prevents blank page if sections are hidden by CSS/state)
         try {
@@ -488,6 +628,342 @@ function showPage(pageName) {
         initMarketingPage();
     } else if (pageName === 'reports') {
         initReportsPage();
+    }
+}
+
+// ==========================================
+// USER CATEGORIES (REGISTERED / TRIAL CANCELLED / ACTIVE)
+// ==========================================
+
+let userCategoriesLimit = 200;
+let userCategoriesOffset = 0;
+let userCategoriesTotal = 0;
+
+function getSelectedUserCategory() {
+    return document.getElementById('userCategorySelect')?.value || 'no_trial';
+}
+
+function getUserCategorySearch() {
+    return (document.getElementById('userCategorySearch')?.value || '').trim();
+}
+
+function handleUserCategorySearchKeyup(event) {
+    if (event && event.key === 'Enter') {
+        resetUserCategoriesAndLoad();
+    }
+}
+
+function resetUserCategoriesAndLoad() {
+    userCategoriesOffset = 0;
+    loadUserCategoriesBySelected();
+}
+
+function refreshUserCategoriesPage() {
+    const sel = document.getElementById('userCategorySelect');
+    if (sel && !sel.value) sel.value = 'no_trial';
+    if (userCategoriesOffset < 0) userCategoriesOffset = 0;
+    loadUserCategoriesBySelected();
+}
+
+function loadUserCategoriesPrevPage() {
+    userCategoriesOffset = Math.max(0, userCategoriesOffset - userCategoriesLimit);
+    loadUserCategoriesBySelected();
+}
+
+function loadUserCategoriesNextPage() {
+    const nextOffset = userCategoriesOffset + userCategoriesLimit;
+    if (userCategoriesTotal && nextOffset >= userCategoriesTotal) return;
+    userCategoriesOffset = nextOffset;
+    loadUserCategoriesBySelected();
+}
+
+async function loadUserCategoriesBySelected() {
+    const category = getSelectedUserCategory();
+    const search = getUserCategorySearch();
+    await loadUserCategories(category, search, userCategoriesLimit, userCategoriesOffset);
+}
+
+function updateUserCategoriesPagination() {
+    const fromEl = document.getElementById('userCategoriesShowingFrom');
+    const toEl = document.getElementById('userCategoriesShowingTo');
+    const totalEl = document.getElementById('userCategoriesTotalCount');
+    const prevBtn = document.getElementById('userCategoriesPrevBtn');
+    const nextBtn = document.getElementById('userCategoriesNextBtn');
+    const pageInfo = document.getElementById('userCategoriesPageInfo');
+
+    const from = userCategoriesTotal === 0 ? 0 : (userCategoriesOffset + 1);
+    const to = Math.min(userCategoriesOffset + userCategoriesLimit, userCategoriesTotal || 0);
+
+    if (fromEl) fromEl.textContent = String(from);
+    if (toEl) toEl.textContent = String(to);
+    if (totalEl) totalEl.textContent = String(userCategoriesTotal || 0);
+
+    if (prevBtn) prevBtn.disabled = userCategoriesOffset <= 0;
+    if (nextBtn) nextBtn.disabled = userCategoriesTotal ? (userCategoriesOffset + userCategoriesLimit >= userCategoriesTotal) : false;
+
+    const page = Math.floor(userCategoriesOffset / userCategoriesLimit) + 1;
+    const pages = userCategoriesTotal ? Math.max(1, Math.ceil(userCategoriesTotal / userCategoriesLimit)) : 1;
+    if (pageInfo) pageInfo.textContent = `Page ${page} / ${pages}`;
+}
+
+async function loadUserCategories(category, search = '', limit = 200, offset = 0) {
+    const tbody = document.getElementById('userCategoriesTableBody');
+    const summary = document.getElementById('userCategoriesSummary');
+
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                    <p style="margin-top: 10px; color: #666;">Loading users...</p>
+                </td>
+            </tr>
+        `;
+    }
+    if (summary) summary.textContent = '';
+
+    try {
+        const params = new URLSearchParams();
+        params.set('category', category || 'no_trial');
+        params.set('limit', String(limit));
+        params.set('offset', String(offset));
+        if (search) params.set('search', search);
+
+        const url = `${API_BASE_URL}/admin/users/categories.php?${params.toString()}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load users');
+        }
+
+        const users = Array.isArray(data.users) ? data.users : [];
+        userCategoriesTotal = typeof data.total === 'number' ? data.total : users.length;
+        userCategoriesLimit = typeof data.limit === 'number' ? data.limit : limit;
+        userCategoriesOffset = typeof data.offset === 'number' ? data.offset : offset;
+
+        renderUserCategoriesTable(users, category);
+        updateUserCategoriesPagination();
+
+        if (summary) {
+            const label =
+                category === 'no_trial' ? 'Registered (No Trial Yet)' :
+                category === 'trial_cancelled' ? 'Trial Cancelled' :
+                'Active Users';
+            summary.textContent = `${label} | Showing ${users.length} / ${userCategoriesTotal}${search ? ` | Search: "${search}"` : ''}`;
+        }
+    } catch (error) {
+        console.error('Error loading user categories:', error);
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: #f44336;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p style="margin: 0;">Failed to load users</p>
+                        <small style="color:#777;">${escapeHtml(error.message || '')}</small>
+                    </td>
+                </tr>
+            `;
+        }
+        userCategoriesTotal = 0;
+        updateUserCategoriesPagination();
+        if (summary) summary.textContent = '';
+        if (typeof showNotification === 'function') {
+            showNotification('Failed to load user categories', 'error');
+        }
+    }
+}
+
+function renderUserCategoriesTable(users, category) {
+    const tbody = document.getElementById('userCategoriesTableBody');
+    if (!tbody) return;
+
+    if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#666;">No users found</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+        const userId = parseInt(u.id || 0, 10) || 0;
+        const info = buildUserCategoryInfo(u, category);
+        return `
+            <tr>
+                <td><strong>#${escapeHtml(u.id)}</strong></td>
+                <td>${escapeHtml(u.name || 'Unknown')}</td>
+                <td>${escapeHtml(u.mobile || '')}</td>
+                <td>${info}</td>
+                <td style="text-align:center;">
+                    ${userId ? `<button class="btn-icon btn-view" onclick="viewUser(${userId})" title="View User"><i class="fas fa-eye"></i></button>` : '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function buildUserCategoryInfo(u, category) {
+    try {
+        if (category === 'no_trial') {
+            const created = u.created_at ? formatDateTime(u.created_at) : '-';
+            const lastLogin = u.last_login ? formatDateTime(u.last_login) : '-';
+            return `<div style="color:#444;"><div><strong>Registered:</strong> ${escapeHtml(created)}</div><div style="margin-top:4px; color:#666;"><strong>Last login:</strong> ${escapeHtml(lastLogin)}</div></div>`;
+        }
+        if (category === 'trial_cancelled') {
+            const trialStart = u.trial_start ? formatDateTime(u.trial_start) : '-';
+            const trialEnd = u.trial_end ? formatDateTime(u.trial_end) : '-';
+            const cancelledAt = u.cancelled_at ? formatDateTime(u.cancelled_at) : '-';
+            const status = (u.razorpay_status || u.status || '').toString();
+            const badge = status ? `<span class="badge" style="background:#f44336; color:white; padding:3px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(status)}</span>` : '';
+            return `<div style="color:#444;">
+                <div>${badge}</div>
+                <div style="margin-top:6px;"><strong>Trial:</strong> ${escapeHtml(trialStart)} → ${escapeHtml(trialEnd)}</div>
+                <div style="margin-top:4px; color:#666;"><strong>Cancelled:</strong> ${escapeHtml(cancelledAt)}</div>
+            </div>`;
+        }
+        // active
+        const isTrial = String(u.is_trial) === '1' || u.is_trial === 1 || u.is_trial === true;
+        const status = (u.status || '').toString();
+        const rzStatus = (u.razorpay_status || '').toString();
+        const until = u.current_period_end || u.trial_end || u.premium_expires_at || null;
+        const untilTxt = until ? formatDateTime(until) : '-';
+        const typeTxt = u.is_premium && (u.subscription_id == null || u.subscription_id === undefined) ? 'Manual Premium' : (isTrial ? 'Trial' : 'Paid');
+        const badgeColor = typeTxt === 'Trial' ? '#FF9800' : (typeTxt === 'Paid' ? '#4CAF50' : '#6C63FF');
+        const badge = `<span class="badge" style="background:${badgeColor}; color:white; padding:3px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(typeTxt)}</span>`;
+        const subStatusTxt = (rzStatus || status) ? escapeHtml(rzStatus || status) : '';
+        return `<div style="color:#444;">
+            <div>${badge} ${subStatusTxt ? `<span style="margin-left:8px; color:#666;">(${subStatusTxt})</span>` : ''}</div>
+            <div style="margin-top:6px;"><strong>Active until:</strong> ${escapeHtml(untilTxt)}</div>
+        </div>`;
+    } catch (e) {
+        return `<span style="color:#666;">-</span>`;
+    }
+}
+
+function csvEscape(value) {
+    const s = value === null || value === undefined ? '' : String(value);
+    const needsQuotes = /[",\n\r]/.test(s);
+    const escaped = s.replace(/"/g, '""');
+    return needsQuotes ? `"${escaped}"` : escaped;
+}
+
+function usersToCsvRows(users, category) {
+    const rows = [];
+
+    // Header
+    if (category === 'trial_cancelled') {
+        rows.push(['User ID', 'Name', 'Mobile', 'Email', 'Subscription ID', 'Status', 'Trial Start', 'Trial End', 'Cancelled At']);
+        for (const u of users) {
+            rows.push([
+                u.id,
+                u.name || '',
+                u.mobile || '',
+                u.email || '',
+                u.subscription_id || '',
+                (u.razorpay_status || u.status || ''),
+                u.trial_start || '',
+                u.trial_end || '',
+                u.cancelled_at || ''
+            ]);
+        }
+        return rows;
+    }
+
+    if (category === 'active') {
+        rows.push(['User ID', 'Name', 'Mobile', 'Email', 'Type', 'Status', 'Active Until', 'Last Login', 'Registered At']);
+        for (const u of users) {
+            const isTrial = String(u.is_trial) === '1' || u.is_trial === 1 || u.is_trial === true;
+            const type = u.is_premium && (u.subscription_id == null || u.subscription_id === undefined) ? 'manual_premium' : (isTrial ? 'trial' : 'paid');
+            const status = (u.razorpay_status || u.status || '');
+            const activeUntil = u.current_period_end || u.trial_end || u.premium_expires_at || '';
+            rows.push([
+                u.id,
+                u.name || '',
+                u.mobile || '',
+                u.email || '',
+                type,
+                status,
+                activeUntil,
+                u.last_login || '',
+                u.created_at || ''
+            ]);
+        }
+        return rows;
+    }
+
+    // no_trial
+    rows.push(['User ID', 'Name', 'Mobile', 'Email', 'Registered At', 'Last Login']);
+    for (const u of users) {
+        rows.push([
+            u.id,
+            u.name || '',
+            u.mobile || '',
+            u.email || '',
+            u.created_at || '',
+            u.last_login || ''
+        ]);
+    }
+    return rows;
+}
+
+function downloadCsv(filename, rows) {
+    const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function downloadUserCategoriesSheet() {
+    try {
+        const category = getSelectedUserCategory();
+        const search = getUserCategorySearch();
+
+        showNotification('Preparing sheet...', 'info');
+
+        // Fetch up to 5000 rows (paginated)
+        const maxRows = 5000;
+        const pageSize = 500;
+        let offset = 0;
+        let all = [];
+        let total = null;
+
+        while (offset < maxRows) {
+            const params = new URLSearchParams();
+            params.set('category', category || 'no_trial');
+            params.set('limit', String(pageSize));
+            params.set('offset', String(offset));
+            if (search) params.set('search', search);
+
+            const url = `${API_BASE_URL}/admin/users/categories.php?${params.toString()}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (!data.success) throw new Error(data.message || 'Failed to fetch data');
+
+            const users = Array.isArray(data.users) ? data.users : [];
+            if (total === null && typeof data.total === 'number') total = data.total;
+
+            all = all.concat(users);
+            if (users.length < pageSize) break;
+            offset += pageSize;
+        }
+
+        const safeTotal = total === null ? all.length : total;
+        if (safeTotal > maxRows) {
+            showNotification(`⚠️ Download limited to first ${maxRows} rows (total ${safeTotal}). Add search to narrow.`, 'warning');
+        }
+
+        const rows = usersToCsvRows(all, category);
+        const ts = new Date().toISOString().slice(0, 10);
+        const filename = `user_categories_${category}_${ts}.csv`;
+        downloadCsv(filename, rows);
+        showNotification('✅ Sheet downloaded!', 'success');
+    } catch (e) {
+        console.error('Download sheet failed:', e);
+        showNotification('❌ Failed to download sheet: ' + (e.message || ''), 'error');
     }
 }
 
@@ -765,6 +1241,551 @@ function renderTrialStartsTable(trials) {
             </tr>
         `;
     }).join('');
+}
+
+// ==========================================
+// SETTLEMENT PAGE (Trial + Paid Start Dates)
+// ==========================================
+
+function setSettlementDate(which) {
+    const input = document.getElementById('settlementDate');
+    if (!input) return;
+
+    if (which === 'today') {
+        input.value = getIstTodayYYYYMMDD();
+        return;
+    }
+    if (which === 'yesterday') {
+        input.value = getIstYesterdayYYYYMMDD();
+        return;
+    }
+    if (typeof which === 'string' && which.trim() !== '') {
+        input.value = which.trim();
+    }
+}
+
+function setSettlementDateAndLoad(which) {
+    setSettlementDate(which);
+    loadSettlementBySelectedDate();
+}
+
+function refreshSettlementPage() {
+    const input = document.getElementById('settlementDate');
+    if (input && !input.value) {
+        input.value = getIstTodayYYYYMMDD();
+    }
+    loadSettlementBySelectedDate();
+}
+
+async function loadSettlementBySelectedDate() {
+    const date = document.getElementById('settlementDate')?.value || getIstTodayYYYYMMDD();
+    await loadSettlement(date);
+}
+
+async function loadSettlement(date) {
+    const trialsTbody = document.getElementById('settlementTrialsTableBody');
+    const paidTbody = document.getElementById('settlementPaidTableBody');
+    const summary = document.getElementById('settlementSummary');
+
+    // Show loading spinners
+    if (trialsTbody) {
+        trialsTbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                    <p style="margin-top: 10px; color: #666;">Loading trial users...</p>
+                </td>
+            </tr>
+        `;
+    }
+    if (paidTbody) {
+        paidTbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                    <p style="margin-top: 10px; color: #666;">Loading paid users...</p>
+                </td>
+            </tr>
+        `;
+    }
+    if (summary) summary.textContent = '';
+
+    try {
+        const url = `${API_BASE_URL}/admin/subscriptions/settlement.php?date=${encodeURIComponent(date)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load settlement data');
+        }
+
+        const trials = Array.isArray(data.trials) ? data.trials : [];
+        const paid = Array.isArray(data.paid) ? data.paid : [];
+
+        renderSettlementTrialsTable(trials);
+        renderSettlementPaidTable(paid);
+
+        if (summary) {
+            summary.textContent = `Date: ${date} | ₹5 Trials: ${trials.length} | Paid: ${paid.length}`;
+        }
+    } catch (error) {
+        console.error('Error loading settlement data:', error);
+        if (trialsTbody) {
+            trialsTbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #f44336;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p style="margin: 0;">Failed to load trial users</p>
+                        <small style="color:#777;">${escapeHtml(error.message || '')}</small>
+                    </td>
+                </tr>
+            `;
+        }
+        if (paidTbody) {
+            paidTbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #f44336;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p style="margin: 0;">Failed to load paid users</p>
+                        <small style="color:#777;">${escapeHtml(error.message || '')}</small>
+                    </td>
+                </tr>
+            `;
+        }
+        if (summary) summary.textContent = '';
+        if (typeof showNotification === 'function') {
+            showNotification('Failed to load settlement data', 'error');
+        }
+    }
+}
+
+function renderSettlementTrialsTable(trials) {
+    const tbody = document.getElementById('settlementTrialsTableBody');
+    if (!tbody) return;
+
+    if (!trials || trials.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#666;">No trial users found for this date</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = trials.map(t => {
+        const status = (t.status || '-').toString();
+        const razorpayStatus = (t.razorpay_status || '-').toString();
+        
+        const statusColor =
+            status === 'active' ? '#4CAF50' :
+            status === 'authenticated' ? '#2196F3' :
+            status === 'cancelled' ? '#f44336' :
+            status === 'expired' ? '#607d8b' :
+            '#FF9800';
+        const statusBadge = `<span class="badge" style="background:${statusColor}; color:white; padding:4px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(status)}</span>`;
+
+        const rzpStatusColor =
+            razorpayStatus === 'active' ? '#4CAF50' :
+            razorpayStatus === 'authenticated' ? '#2196F3' :
+            razorpayStatus === 'cancelled' ? '#f44336' :
+            razorpayStatus === 'paused' ? '#FF9800' :
+            razorpayStatus === 'halted' ? '#9C27B0' :
+            razorpayStatus === 'expired' ? '#607d8b' :
+            razorpayStatus === 'completed' ? '#795548' :
+            '#999';
+        const rzpStatusBadge = `<span class="badge" style="background:${rzpStatusColor}; color:white; padding:4px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(razorpayStatus)}</span>`;
+
+        const userId = parseInt(t.user_id || 0, 10) || 0;
+
+        return `
+            <tr>
+                <td><strong>#${escapeHtml(t.subscription_id)}</strong></td>
+                <td>${escapeHtml(t.user_name || 'Unknown')}</td>
+                <td>${escapeHtml(t.user_mobile || '')}</td>
+                <td>${statusBadge}</td>
+                <td>${rzpStatusBadge}</td>
+                <td>${escapeHtml(formatDateTime(t.trial_start))}</td>
+                <td>${escapeHtml(formatDateTime(t.trial_end))}</td>
+                <td style="text-align:center;">
+                    ${userId ? `<button class="btn-icon btn-view" onclick="viewUser(${userId})" title="View User"><i class="fas fa-eye"></i></button>` : '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderSettlementPaidTable(paid) {
+    const tbody = document.getElementById('settlementPaidTableBody');
+    if (!tbody) return;
+
+    if (!paid || paid.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#666;">No paid users found for this date</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = paid.map(p => {
+        const status = (p.status || '-').toString();
+        const razorpayStatus = (p.razorpay_status || '-').toString();
+        
+        const statusColor =
+            status === 'active' ? '#4CAF50' :
+            status === 'authenticated' ? '#2196F3' :
+            status === 'cancelled' ? '#f44336' :
+            status === 'expired' ? '#607d8b' :
+            '#FF9800';
+        const statusBadge = `<span class="badge" style="background:${statusColor}; color:white; padding:4px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(status)}</span>`;
+
+        const rzpStatusColor =
+            razorpayStatus === 'active' ? '#4CAF50' :
+            razorpayStatus === 'authenticated' ? '#2196F3' :
+            razorpayStatus === 'cancelled' ? '#f44336' :
+            razorpayStatus === 'paused' ? '#FF9800' :
+            razorpayStatus === 'halted' ? '#9C27B0' :
+            razorpayStatus === 'expired' ? '#607d8b' :
+            razorpayStatus === 'completed' ? '#795548' :
+            '#999';
+        const rzpStatusBadge = `<span class="badge" style="background:${rzpStatusColor}; color:white; padding:4px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(razorpayStatus)}</span>`;
+
+        const userId = parseInt(p.user_id || 0, 10) || 0;
+
+        return `
+            <tr>
+                <td><strong>#${escapeHtml(p.subscription_id)}</strong></td>
+                <td>${escapeHtml(p.user_name || 'Unknown')}</td>
+                <td>${escapeHtml(p.user_mobile || '')}</td>
+                <td>${statusBadge}</td>
+                <td>${rzpStatusBadge}</td>
+                <td>${escapeHtml(formatDateTime(p.current_period_start))}</td>
+                <td>${escapeHtml(formatDateTime(p.current_period_end))}</td>
+                <td style="text-align:center;">
+                    ${userId ? `<button class="btn-icon btn-view" onclick="viewUser(${userId})" title="View User"><i class="fas fa-eye"></i></button>` : '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ==========================================
+// DAILY INCOME REPORT
+// ==========================================
+
+let dailyIncomeData = [];
+
+async function loadDailyIncome() {
+    const startDate = document.getElementById('incomeStartDate')?.value || '';
+    const endDate = document.getElementById('incomeEndDate')?.value || '';
+    
+    const tbody = document.getElementById('dailyIncomeTableBody');
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #10B981;"></i>
+                    <p style="margin-top: 10px; color: #666;">Loading daily income data...</p>
+                </td>
+            </tr>
+        `;
+    }
+    
+    try {
+        let url = `${API_BASE_URL}/admin/analytics/daily_income.php?format=json`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load daily income');
+        }
+        
+        dailyIncomeData = data.data || [];
+        const summary = data.summary || {};
+        
+        // Update summary cards
+        document.getElementById('incomeTotalAmount').textContent = `₹${(summary.total_amount || 0).toLocaleString('en-IN')}`;
+        document.getElementById('incomeTotalTransactions').textContent = (summary.total_transactions || 0).toLocaleString('en-IN');
+        document.getElementById('incomeAvgDaily').textContent = `₹${(summary.avg_daily_income || 0).toLocaleString('en-IN')}`;
+        document.getElementById('incomeDaysActive').textContent = summary.days_with_income || 0;
+        
+        // Render table
+        renderDailyIncomeTable(dailyIncomeData);
+        
+        // Update footer totals
+        document.getElementById('incomeTableTotalUsers').textContent = (summary.total_users || 0).toLocaleString('en-IN');
+        document.getElementById('incomeTableTotalAmount').textContent = `₹${(summary.total_amount || 0).toLocaleString('en-IN')}`;
+        
+    } catch (error) {
+        console.error('Error loading daily income:', error);
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 40px; color: #f44336;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
+                        <p style="margin-top: 10px;">Error loading data: ${escapeHtml(error.message)}</p>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function renderDailyIncomeTable(data) {
+    const tbody = document.getElementById('dailyIncomeTableBody');
+    if (!tbody) return;
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-info-circle" style="font-size: 24px;"></i>
+                    <p style="margin-top: 10px;">No income data found for the selected period</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = data.map(row => {
+        const dateFormatted = formatDateDisplay(row.date);
+        const amount = (row.amount || 0).toLocaleString('en-IN');
+        const userCount = row.user_count || 0;
+        
+        return `
+            <tr>
+                <td style="font-weight: 500;">${escapeHtml(dateFormatted)}</td>
+                <td style="text-align: center;">
+                    <span style="background: #EEF2FF; color: #4F46E5; padding: 4px 12px; border-radius: 12px; font-weight: 600;">
+                        ${userCount}
+                    </span>
+                </td>
+                <td style="text-align: right; font-weight: 600; color: #10B981;">₹${amount}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function formatDateDisplay(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const options = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' };
+    return date.toLocaleDateString('en-IN', options);
+}
+
+function downloadDailyIncomeCSV() {
+    const startDate = document.getElementById('incomeStartDate')?.value || '';
+    const endDate = document.getElementById('incomeEndDate')?.value || '';
+    
+    let url = `${API_BASE_URL}/admin/analytics/daily_income.php?format=csv`;
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+    
+    window.open(url, '_blank');
+}
+
+function initDailyIncomePage() {
+    // Set default dates (last 30 days)
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    const startDateInput = document.getElementById('incomeStartDate');
+    const endDateInput = document.getElementById('incomeEndDate');
+    
+    if (startDateInput) {
+        startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
+    }
+    if (endDateInput) {
+        endDateInput.value = today.toISOString().split('T')[0];
+    }
+    
+    // Load data
+    loadDailyIncome();
+}
+
+// ==========================================
+// WEEKLY AD SPEND & INCOME REPORT
+// ==========================================
+
+let weeklyAdIncomeData = [];
+
+async function loadWeeklyAdIncome() {
+    const startDate = document.getElementById('weeklyStartDate')?.value || '';
+    const endDate = document.getElementById('weeklyEndDate')?.value || '';
+    
+    const tbody = document.getElementById('weeklyAdIncomeTableBody');
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #8B5CF6;"></i>
+                    <p style="margin-top: 10px; color: #666;">Loading weekly data...</p>
+                </td>
+            </tr>
+        `;
+    }
+    
+    try {
+        let url = `${API_BASE_URL}/admin/analytics/weekly_ad_income.php?format=json`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load weekly data');
+        }
+        
+        weeklyAdIncomeData = data.data || [];
+        const totals = data.totals || {};
+        const gstRate = (data && data.gst_rate != null)
+            ? Number(data.gst_rate)
+            : (totals.gst_rate != null ? Number(totals.gst_rate) : 18);
+        
+        // Update summary cards (with null checks)
+        const elAdSpend = document.getElementById('weeklyTotalAdSpend');
+        const elIncome = document.getElementById('weeklyTotalIncome');
+        const elNetProfit = document.getElementById('weeklyNetProfit');
+        const elROI = document.getElementById('weeklyROI');
+        
+        if (elAdSpend) {
+            const spend = Number(totals.spend || 0);
+            const spendGst = totals.spend_gst != null ? Number(totals.spend_gst) : null;
+            if (spendGst != null) {
+                elAdSpend.innerHTML = `₹${spend.toLocaleString('en-IN')}<div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">incl GST (${gstRate}%): ₹${spendGst.toLocaleString('en-IN')}</div>`;
+            } else {
+                elAdSpend.textContent = `₹${spend.toLocaleString('en-IN')}`;
+            }
+        }
+        if (elIncome) elIncome.textContent = `₹${(totals.income || 0).toLocaleString('en-IN')}`;
+        
+        const profit = totals.profit || 0;
+        if (elNetProfit) {
+            elNetProfit.textContent = `${profit >= 0 ? '₹' : '-₹'}${Math.abs(profit).toLocaleString('en-IN')}`;
+            elNetProfit.style.color = profit >= 0 ? 'white' : '#FEE2E2';
+        }
+        
+        const roi = totals.roi || 0;
+        if (elROI) elROI.textContent = `${roi}%`;
+        
+        // Render table
+        renderWeeklyAdIncomeTable(weeklyAdIncomeData);
+        
+        // Update footer totals (with null checks)
+        const elTableSpend = document.getElementById('weeklyTableTotalSpend');
+        const elTableIncome = document.getElementById('weeklyTableTotalIncome');
+        const elTableProfit = document.getElementById('weeklyTableTotalProfit');
+        const elTableROI = document.getElementById('weeklyTableTotalROI');
+        
+        if (elTableSpend) {
+            const spend = Number(totals.spend || 0);
+            const spendGst = totals.spend_gst != null ? Number(totals.spend_gst) : null;
+            if (spendGst != null) {
+                elTableSpend.innerHTML = `₹${spend.toLocaleString('en-IN')}<div style="font-size: 11px; color: #6B7280; font-weight: 500; margin-top: 2px;">incl GST (${gstRate}%): ₹${spendGst.toLocaleString('en-IN')}</div>`;
+            } else {
+                elTableSpend.textContent = `₹${spend.toLocaleString('en-IN')}`;
+            }
+        }
+        if (elTableIncome) elTableIncome.textContent = `₹${(totals.income || 0).toLocaleString('en-IN')}`;
+        
+        if (elTableProfit) {
+            elTableProfit.textContent = `${profit >= 0 ? '₹' : '-₹'}${Math.abs(profit).toLocaleString('en-IN')}`;
+            elTableProfit.style.color = profit >= 0 ? '#10B981' : '#EF4444';
+        }
+        
+        if (elTableROI) elTableROI.textContent = `${roi}%`;
+        
+    } catch (error) {
+        console.error('Error loading weekly ad income:', error);
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #f44336;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px;"></i>
+                        <p style="margin-top: 10px;">Error loading data: ${escapeHtml(error.message)}</p>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function renderWeeklyAdIncomeTable(data) {
+    const tbody = document.getElementById('weeklyAdIncomeTableBody');
+    if (!tbody) return;
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-info-circle" style="font-size: 24px;"></i>
+                    <p style="margin-top: 10px;">No data found for the selected period</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = data.map(row => {
+        const spend = Number(row.spend || 0);
+        const spendGst = row.spend_gst != null ? Number(row.spend_gst) : null;
+        const spendGstLine = spendGst != null
+            ? `<div style="font-size: 11px; color: #9CA3AF; font-weight: 500; margin-top: 2px;">incl GST: ₹${spendGst.toLocaleString('en-IN')}</div>`
+            : '';
+
+        const profit = row.profit || 0;
+        const profitColor = profit >= 0 ? '#10B981' : '#EF4444';
+        const profitIcon = profit >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+        
+        const roi = row.roi || 0;
+        const roiColor = roi >= 0 ? '#10B981' : '#EF4444';
+        
+        return `
+            <tr>
+                <td style="font-weight: 500; white-space: nowrap;">${escapeHtml(row.ad_week || '-')}</td>
+                <td style="text-align: right; color: #EF4444; font-weight: 600;">₹${spend.toLocaleString('en-IN')}${spendGstLine}</td>
+                <td style="white-space: nowrap; color: #6B7280;">${escapeHtml(row.income_week || '-')}</td>
+                <td style="text-align: right; color: #10B981; font-weight: 600;">₹${(row.income || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; color: ${profitColor}; font-weight: 600;">
+                    <i class="fas ${profitIcon}" style="font-size: 10px;"></i>
+                    ${profit >= 0 ? '₹' : '-₹'}${Math.abs(profit).toLocaleString('en-IN')}
+                </td>
+                <td style="text-align: center;">
+                    <span style="background: ${roi >= 0 ? '#ECFDF5' : '#FEF2F2'}; color: ${roiColor}; padding: 4px 12px; border-radius: 12px; font-weight: 600;">
+                        ${roi}%
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function downloadWeeklyAdIncomeCSV() {
+    const startDate = document.getElementById('weeklyStartDate')?.value || '';
+    const endDate = document.getElementById('weeklyEndDate')?.value || '';
+    
+    let url = `${API_BASE_URL}/admin/analytics/weekly_ad_income.php?format=csv`;
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+    
+    window.open(url, '_blank');
+}
+
+function initWeeklyAdIncomePage() {
+    // Set default dates (last 8 weeks)
+    const today = new Date();
+    const eightWeeksAgo = new Date(today);
+    eightWeeksAgo.setDate(today.getDate() - 56);
+    
+    const startDateInput = document.getElementById('weeklyStartDate');
+    const endDateInput = document.getElementById('weeklyEndDate');
+    
+    if (startDateInput) {
+        startDateInput.value = eightWeeksAgo.toISOString().split('T')[0];
+    }
+    if (endDateInput) {
+        endDateInput.value = today.toISOString().split('T')[0];
+    }
+    
+    // Load data
+    loadWeeklyAdIncome();
 }
 
 // ==========================================
@@ -1429,6 +2450,29 @@ async function loadDashboard() {
                 document.getElementById('activeTrialCount').textContent = formatNumber(overview.active_trial_count || 0);
             }
             
+            // Today's Received Amount
+            if (document.getElementById('todayReceivedAmount')) {
+                document.getElementById('todayReceivedAmount').textContent = '₹' + formatNumber(overview.today_received_amount || 0);
+            }
+            if (document.getElementById('todayReceivedCount')) {
+                const count = overview.today_received_count || 0;
+                document.getElementById('todayReceivedCount').textContent = count + ' user' + (count !== 1 ? 's' : '') + ' paid';
+            }
+            
+            // Yesterday's Received Amount
+            if (document.getElementById('yesterdayReceivedAmount')) {
+                document.getElementById('yesterdayReceivedAmount').textContent = '₹' + formatNumber(overview.yesterday_received_amount || 0);
+            }
+            if (document.getElementById('yesterdayReceivedCount')) {
+                const count = overview.yesterday_received_count || 0;
+                document.getElementById('yesterdayReceivedCount').textContent = count + ' user' + (count !== 1 ? 's' : '') + ' paid';
+            }
+
+            // Total Users (for revenue section)
+            if (document.getElementById('totalUsersAll')) {
+                document.getElementById('totalUsersAll').textContent = formatNumber(overview.total_users || 0);
+            }
+            
             // Load charts data if available
             if (data.user_activity && data.user_activity.length > 0) {
                 // User activity chart data available
@@ -1664,7 +2708,7 @@ function renderUsersTable() {
     
     users = pageUsers; // Update global for compatibility
     
-    const tbody = document.getElementById('usersTableBody');
+            const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
     
     if (pageUsers.length === 0) {
@@ -1681,42 +2725,42 @@ function renderUsersTable() {
     }
     
     tbody.innerHTML = pageUsers.map(user => {
-        // Verification method badge (Truecaller or OTP)
-        const verificationMethod = user.verification_method || 'otp';
-        const isTruecaller = verificationMethod.toLowerCase() === 'truecaller';
-        const verificationBadge = isTruecaller 
-            ? '<span class="badge" style="background: linear-gradient(135deg, #0077B5 0%, #00a0dc 100%); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;"><i class="fas fa-phone-alt"></i> Truecaller</span>'
-            : '<span class="badge" style="background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;"><i class="fas fa-sms"></i> OTP</span>';
-        
-        // Premium status badge
-        const isPremium = user.is_premium || false;
-        const subscriptionStatus = user.subscription_status || 'free';
-        let premiumBadge;
-        if (isPremium) {
-            const statusText = subscriptionStatus.charAt(0).toUpperCase() + subscriptionStatus.slice(1);
-            premiumBadge = `<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #333; padding: 4px 8px; border-radius: 12px; font-size: 11px;"><i class="fas fa-crown"></i> ${statusText}</span>`;
-        } else {
-            premiumBadge = '<span class="badge" style="background: #e0e0e0; color: #666; padding: 4px 8px; border-radius: 12px; font-size: 11px;">Free</span>';
-        }
-        
-        return `
-        <tr>
-            <td>#U${user.id.toString().padStart(3, '0')}</td>
+                // Verification method badge (Truecaller or OTP)
+                const verificationMethod = user.verification_method || 'otp';
+                const isTruecaller = verificationMethod.toLowerCase() === 'truecaller';
+                const verificationBadge = isTruecaller 
+                    ? '<span class="badge" style="background: linear-gradient(135deg, #0077B5 0%, #00a0dc 100%); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;"><i class="fas fa-phone-alt"></i> Truecaller</span>'
+                    : '<span class="badge" style="background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;"><i class="fas fa-sms"></i> OTP</span>';
+                
+                // Premium status badge
+                const isPremium = user.is_premium || false;
+                const subscriptionStatus = user.subscription_status || 'free';
+                let premiumBadge;
+                if (isPremium) {
+                    const statusText = subscriptionStatus.charAt(0).toUpperCase() + subscriptionStatus.slice(1);
+                    premiumBadge = `<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #333; padding: 4px 8px; border-radius: 12px; font-size: 11px;"><i class="fas fa-crown"></i> ${statusText}</span>`;
+                } else {
+                    premiumBadge = '<span class="badge" style="background: #e0e0e0; color: #666; padding: 4px 8px; border-radius: 12px; font-size: 11px;">Free</span>';
+                }
+                
+                return `
+                <tr>
+                    <td>#U${user.id.toString().padStart(3, '0')}</td>
             <td><strong>${escapeHtml(user.name)}</strong></td>
             <td>${escapeHtml(user.email) || '<span style="color:#9ca3af">N/A</span>'}</td>
             <td><a href="tel:${user.mobile}" style="color: #6C63FF; text-decoration: none;">${user.mobile || 'N/A'}</a></td>
-            <td>${verificationBadge}</td>
-            <td>${premiumBadge}</td>
-            <td>${user.language === 'en' ? 'English' : 'Tamil'}</td>
-            <td><span class="badge badge-${user.is_active ? 'success' : 'danger'}">${user.is_active ? 'active' : 'inactive'}</span></td>
-            <td>
+                    <td>${verificationBadge}</td>
+                    <td>${premiumBadge}</td>
+                    <td>${user.language === 'en' ? 'English' : 'Tamil'}</td>
+                    <td><span class="badge badge-${user.is_active ? 'success' : 'danger'}">${user.is_active ? 'active' : 'inactive'}</span></td>
+                    <td>
                 <button class="btn-icon btn-view" onclick="viewUser(${user.id})" title="View Details"><i class="fas fa-eye"></i></button>
                 <button class="btn-icon btn-edit" onclick="editUser(${user.id})" title="Edit User"><i class="fas fa-edit"></i></button>
                 <button class="btn-icon btn-delete" onclick="showDeleteConfirm('user', ${user.id}, '${escapeHtml(user.name)}')" title="Delete User"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-        `;
-    }).join('');
+                    </td>
+                </tr>
+                `;
+            }).join('');
 }
 
 function updateUsersPagination() {
@@ -1780,7 +2824,7 @@ function updateUserSearchInfo() {
         
         infoText.innerHTML = `Found <strong>${filteredUsers.length}</strong> users${filterParts.length ? ' matching: ' + filterParts.join(', ') : ''}`;
         infoDiv.style.display = 'block';
-    } else {
+        } else {
         infoDiv.style.display = 'none';
     }
 }
@@ -2545,21 +3589,31 @@ async function loadExamCategories() {
         if (data.success) {
             examCategories = data.categories;
     const grid = document.getElementById('examCategoriesGrid');
-    grid.innerHTML = examCategories.map(cat => `
-        <div class="category-card">
+    grid.innerHTML = examCategories.map(cat => {
+        const isActive = Number(cat.is_active) === 1 || cat.is_active === true;
+        const eyeIcon = isActive ? 'fa-eye' : 'fa-eye-slash';
+        const eyeTitle = isActive ? 'Hide' : 'Show';
+
+        return `
+        <div class="category-card ${isActive ? '' : 'is-inactive'}" style="${isActive ? '' : 'opacity: 0.6;'}">
                     <div class="category-header" style="background: #6C63FF;">
                         <div style="font-size: 48px; font-weight: bold; color: white;">${cat.icon || cat.name.charAt(0)}</div>
             </div>
             <div class="category-body">
                         <h3>${cat.name}</h3>
                         <p style="font-size: 13px; color: #999;">${cat.description || ''}</p>
+                        ${isActive ? '' : '<span class="badge badge-danger" style="margin-top: 10px;">Hidden</span>'}
             </div>
                     <div class="category-actions">
+                        <button class="btn-icon btn-view" onclick="toggleExamCategoryActive(${cat.id})" title="${eyeTitle}">
+                            <i class="fas ${eyeIcon}"></i>
+                        </button>
                         <button class="btn-icon btn-edit" onclick="editExamCategory(${cat.id})"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon btn-delete" onclick="deleteExamCategory(${cat.id})"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-            `).join('');
+            `;
+    }).join('');
             populateExamCategoryDropdown();
         } else {
             console.error('Failed to load exam categories:', data.message);
@@ -2567,6 +3621,44 @@ async function loadExamCategories() {
     } catch (error) {
         console.error('Error loading exam categories:', error);
         showNotification('Failed to load exam categories', 'error');
+    }
+}
+
+async function toggleExamCategoryActive(id) {
+    const cat = examCategories.find(c => Number(c.id) === Number(id));
+    if (!cat) return;
+
+    const currentActive = Number(cat.is_active) === 1 || cat.is_active === true;
+    const nextActive = !currentActive;
+
+    const payload = {
+        id: Number(cat.id),
+        name: cat.name,
+        description: cat.description || '',
+        icon: cat.icon || '',
+        is_active: nextActive ? 1 : 0,
+        display_order: Number(cat.display_order) || 0
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification(`Exam category ${nextActive ? 'shown' : 'hidden'} successfully!`, 'success');
+            loadExamCategories();
+        } else {
+            showNotification(data.message || 'Failed to update exam category status', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating exam category status:', error);
+        showNotification('Error updating exam category status', 'error');
     }
 }
 
@@ -2587,6 +3679,13 @@ async function saveExamCategory() {
     
     if (isEditMode) {
         categoryData.id = parseInt(storedId);
+
+        // Preserve fields not editable in modal (avoid resetting display_order/is_active)
+        const existing = examCategories.find(c => Number(c.id) === Number(storedId));
+        if (existing) {
+            categoryData.is_active = (Number(existing.is_active) === 1 || existing.is_active === true) ? 1 : 0;
+            categoryData.display_order = Number(existing.display_order) || 0;
+        }
     }
     
     try {
@@ -2909,13 +4008,28 @@ async function loadTestCategories() {
         
         if (testData.success) {
             testCategories = testData.categories;
-            const examCategories = examData.success ? examData.categories : [];
+            const examCats = examData.success ? examData.categories : [];
+            // keep global in sync (used by other admin actions)
+            examCategories = examCats;
             
             // Group test categories by exam_category_id
             const groupedByExam = {};
+
+            // If Group 1 exam category is missing, show a "Create Group 1" helper card
+            const hasGroup1 = (examCats || []).some(exam => isGroup1ExamName(exam.name || ''));
+            if (!hasGroup1) {
+                groupedByExam['__create_group1__'] = {
+                    isCreateCard: true,
+                    examId: '__create_group1__',
+                    examName: 'TNPSC Group 1 (Not Created Yet)',
+                    examIcon: 'fas fa-plus-circle',
+                    examColor: '#00BCD4',
+                    testCategories: []
+                };
+            }
             
             // Initialize groups for all exam categories
-            examCategories.forEach(exam => {
+            examCats.forEach(exam => {
                 groupedByExam[exam.id] = {
                     examId: exam.id,
                     examName: exam.name,
@@ -2950,8 +4064,41 @@ async function loadTestCategories() {
                 let html = '';
                 
                 Object.values(groupedByExam).forEach(group => {
-                    // Skip empty groups (except show message if all empty)
-                    if (group.testCategories.length === 0 && group.examId !== null) return;
+                    if (group.isCreateCard) {
+                        html += `
+                        <div class="exam-category-card" style="background: white; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden;">
+                            <div class="exam-card-header" style="background: linear-gradient(135deg, ${group.examColor}, ${adjustColor(group.examColor, -20)}); padding: 20px 24px; color: white; display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="${group.examIcon}" style="font-size: 24px;"></i>
+                                    </div>
+                                    <div>
+                                        <h3 style="margin: 0; font-size: 20px; font-weight: 600;">${group.examName}</h3>
+                                        <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">Create Exam → Auto add Categories + Sessions</p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <button class="btn" onclick="createGroup1ExamAndSetup()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 16px;" title="Create TNPSC Group 1 exam category and import syllabus topics">
+                                        <i class="fas fa-magic"></i> Create + Setup Group 1
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="exam-card-body" style="padding: 20px;">
+                                <div style="text-align: center; padding: 30px; color: #666;">
+                                    <i class="fas fa-info-circle" style="font-size: 40px; margin-bottom: 15px; opacity: 0.7; color: ${group.examColor};"></i>
+                                    <p style="margin: 0; line-height: 1.5;">
+                                        You don’t have a <b>TNPSC Group 1</b> exam category yet.
+                                        Click <b>Create + Setup Group 1</b> to automatically create it and add all syllabus topic sessions.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                        return;
+                    }
+
+                    // Skip empty "Uncategorized" group only
+                    if (group.examId === null && group.testCategories.length === 0) return;
                     
                     html += `
                     <div class="exam-category-card" style="background: white; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden;">
@@ -2965,9 +4112,29 @@ async function loadTestCategories() {
                                     <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">${group.testCategories.length} Test Categories</p>
                                 </div>
                             </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                ${group.examId ? `
                             <button class="btn" onclick="openTestCategoryModalForExam(${group.examId})" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 16px;">
                                 <i class="fas fa-plus"></i> Add
                             </button>
+                                ` : ''}
+                                ${group.examId && /group\s*2/i.test(group.examName || '') ? `
+                                    <button class="btn" onclick="duplicateGroup4CategoriesToExam(${group.examId})" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 16px;" title="Copy all Group 4 test categories to this exam">
+                                        <i class="fas fa-copy"></i> Copy Group 4
+                                    </button>
+                                    <button class="btn" onclick="bulkAddGeneralEnglishSessions(${group.examId})" style="background: rgba(255, 193, 7, 0.35); color: white; border: none; padding: 10px 16px;" title="Create 'General English' category (if needed) and add all Question Sessions topics">
+                                        <i class="fas fa-list"></i> Add English Sessions
+                                    </button>
+                                ` : ''}
+                                ${group.examId && isGroup1ExamName(group.examName || '') ? `
+                                    <button class="btn" onclick="setupGroup1Syllabus(${group.examId})" style="background: rgba(0, 188, 212, 0.35); color: white; border: none; padding: 10px 16px;" title="Create Group 1 test categories + topic sessions (safe to run multiple times)">
+                                        <i class="fas fa-magic"></i> Setup Group 1
+                                    </button>
+                                    <button class="btn" onclick="copyGroup4QuestionsToGroup1(${group.examId})" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 16px;" title="Match topic names and copy questions from Group 4 into Group 1 sessions">
+                                        <i class="fas fa-copy"></i> Copy Group 4 Qs
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                         <div class="exam-card-body" style="padding: 20px;">
                             ${group.testCategories.length === 0 ? `
@@ -3051,6 +4218,333 @@ async function loadTestCategories() {
     } catch (error) {
         console.error('Error loading test categories:', error);
         showNotification('Failed to load test categories', 'error');
+    }
+}
+
+async function duplicateGroup4CategoriesToExam(targetExamId) {
+    if (!targetExamId) return;
+
+    const targetExam = (examCategories || []).find(e => Number(e.id) === Number(targetExamId));
+    const sourceExam = (examCategories || []).find(e => String(e.name || '').toLowerCase().includes('group 4'));
+
+    if (!sourceExam) {
+        showNotification('Group 4 exam category not found', 'error');
+        return;
+    }
+
+    const confirmMsg = `Copy all test categories + sessions + questions from "${sourceExam.name}" to "${targetExam ? targetExam.name : 'this exam'}"?\n\nThis will:\n- Copy categories (skip duplicates)\n- Copy sessions under each category (skip duplicates)\n- Copy questions into the target sessions (only if target session has 0 questions)\n- Add "General English" category if missing\n\nSafe to run multiple times (no duplicate questions).`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/test_categories/duplicate_from_exam.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source_exam_id: Number(sourceExam.id),
+                target_exam_id: Number(targetExamId),
+                add_general_english: true,
+                copy_sessions: true,
+                copy_questions: true
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            const englishMsg = data.english_created ? ', +General English' : '';
+            const sessionsMsg = `, Sessions +${data.sessions_created || 0}${(data.sessions_reactivated || 0) ? ` (re-activated ${data.sessions_reactivated})` : ''}`;
+            const questionsMsg = (data.questions_created || 0)
+                ? `, Questions +${data.questions_created || 0}`
+                : '';
+            const qsSkipMsg = (data.question_sessions_skipped_has_questions || 0)
+                ? ` (skipped ${data.question_sessions_skipped_has_questions} sessions already had questions)`
+                : '';
+            showNotification(`Copied: ${data.created_count || 0}, Skipped: ${data.skipped_count || 0}${englishMsg}${sessionsMsg}${questionsMsg}${qsSkipMsg}`, 'success');
+            await loadTestCategories();
+            populateSessionDropdowns();
+            await loadQuestionSessions();
+        } else {
+            showNotification(data.message || 'Failed to copy test categories', 'error');
+        }
+    } catch (error) {
+        console.error('Error copying test categories:', error);
+        showNotification('Error copying test categories', 'error');
+    }
+}
+
+// Bulk add General English topics (7 Units) for Group 2
+async function bulkAddGeneralEnglish(targetExamId) {
+    if (!targetExamId) return;
+
+    const targetExam = (examCategories || []).find(e => Number(e.id) === Number(targetExamId));
+    
+    const confirmMsg = `Add all General English topics to "${targetExam ? targetExam.name : 'this exam'}"?\n\nThis will add 25 categories covering:\n• Grammar (5 categories)\n• Vocabulary (4 categories)\n• Writing Skills (2 categories)\n• Technical Terms (1 category)\n• Reading Comprehension (1 category)\n• Translation (1 category)\n• Literary Works - Poetry (5 sets)\n• Literary Works - Prose (6 sets)\n\nExisting categories will be skipped.`;
+    
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        showNotification('Adding General English categories...', 'info');
+        
+        const formData = new FormData();
+        formData.append('exam_id', targetExamId);
+        
+        const response = await fetch(`${API_BASE_URL}/admin/test_categories/bulk_add_general_english.php`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const raw = await response.text();
+        let data = null;
+        try {
+            data = raw ? JSON.parse(raw) : null;
+        } catch (parseErr) {
+            console.error('Non-JSON response:', raw);
+            showNotification(`Server error (${response.status}). Please try again.`, 'error');
+            return;
+        }
+
+        if (!response.ok) {
+            showNotification(data?.message || data?.error || `Request failed (${response.status})`, 'error');
+            return;
+        }
+
+        if (data?.success) {
+            const skipped = typeof data.skipped_count === 'number' ? `, Skipped: ${data.skipped_count}` : '';
+            showNotification(`✅ Added: ${data.added_count ?? 0}${skipped}`, 'success');
+            await loadTestCategories();
+            populateSessionDropdowns();
+        } else {
+            showNotification(data?.error || data?.message || 'Failed to add General English categories', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding General English:', error);
+        showNotification('Error adding General English categories', 'error');
+    }
+}
+
+// Bulk add General English QUESTION SESSIONS (topics) under Group 2 -> "General English"
+async function bulkAddGeneralEnglishSessions(targetExamId) {
+    if (!targetExamId) return;
+
+    const targetExam = (examCategories || []).find(e => Number(e.id) === Number(targetExamId));
+
+    const confirmMsg = `Add all General English Question Sessions to "${targetExam ? targetExam.name : 'this exam'}"?\n\nThis will:\n- Create ONE test category: "General English" (only if missing)\n- Add all syllabus topics as Question Sessions (Grammar, Vocabulary, Writing, Translation, Poems, Prose)\n\nExisting sessions will be skipped.`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        showNotification('Adding General English sessions...', 'info');
+
+        const formData = new FormData();
+        formData.append('exam_id', targetExamId);
+
+        const response = await fetch(`${API_BASE_URL}/admin/sessions/bulk_add_general_english.php`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const raw = await response.text();
+        let data = null;
+        try {
+            data = raw ? JSON.parse(raw) : null;
+        } catch (parseErr) {
+            console.error('Non-JSON response:', raw);
+            showNotification(`Server error (${response.status}). Please try again.`, 'error');
+            return;
+        }
+
+        if (!response.ok) {
+            showNotification(data?.message || data?.error || `Request failed (${response.status})`, 'error');
+            return;
+        }
+
+        if (data?.success) {
+            const catMsg = data.english_category_created ? ' (General English category created)' : '';
+            showNotification(
+                `✅ Sessions Added: ${data.created_count ?? 0}, Reactivated: ${data.reactivated_count ?? 0}, Skipped: ${data.skipped_count ?? 0}${catMsg}`,
+                'success'
+            );
+            console.log('✅ Bulk English Sessions Response:', data);
+
+            // Refresh cached data + UI so sessions show immediately
+            await loadTestCategories();
+            populateSessionDropdowns();
+            await loadQuestionSessions();
+            await loadSessionCards();
+
+            // Take user to sessions page to verify visually
+            try { showPage('questionSessions'); } catch (e) {}
+        } else {
+            showNotification(data?.message || data?.error || 'Failed to add General English sessions', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding General English sessions:', error);
+        showNotification('Error adding General English sessions', 'error');
+    }
+}
+
+async function ensureGroup1ExamCategoryId() {
+    // Try current cached list first
+    const existing = (examCategories || []).find(e => isGroup1ExamName(e.name || ''));
+    if (existing && existing.id) return Number(existing.id);
+
+    // Fetch fresh list (avoid relying on hidden page DOM)
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`);
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.categories)) {
+            examCategories = data.categories;
+            const found = (examCategories || []).find(e => isGroup1ExamName(e.name || ''));
+            if (found && found.id) return Number(found.id);
+        }
+    } catch (e) {
+        // ignore; we'll try to create below
+    }
+
+    // Create new exam category
+    const createPayload = {
+        name: 'TNPSC Group 1',
+        description: 'TNPSC Group 1',
+        icon: '1',
+        is_active: 1,
+        display_order: 0
+    };
+
+    const response = await fetch(`${API_BASE_URL}/admin/exam_categories/crud.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createPayload)
+    });
+
+    const data = await response.json();
+    if (data?.success && data?.id) {
+        return Number(data.id);
+    }
+
+    throw new Error(data?.message || 'Failed to create TNPSC Group 1 exam category');
+}
+
+async function createGroup1ExamAndSetup() {
+    const confirmMsg = `Create "TNPSC Group 1" exam category and import syllabus topics?\n\nThis will:\n- Create the exam (only if missing)\n- Create Group 1 test categories + topic sessions\n\nSafe to run multiple times (duplicates skipped).`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        showNotification('Creating Group 1 exam (if missing)...', 'info');
+        const examId = await ensureGroup1ExamCategoryId();
+
+        // Re-render cards so the new Group 1 exam card appears
+        await loadTestCategories();
+        populateSessionDropdowns();
+
+        // Run setup for the exam
+        await setupGroup1Syllabus(examId, { skipConfirm: true });
+    } catch (error) {
+        console.error('Error creating Group 1 exam / setup:', error);
+        showNotification(error?.message || 'Failed to create Group 1 exam / setup', 'error');
+    }
+}
+
+// Copy questions from Group 4 into Group 1 by matching session topic names
+async function copyGroup4QuestionsToGroup1(targetExamId) {
+    if (!targetExamId) return;
+
+    const targetExam = (examCategories || []).find(e => Number(e.id) === Number(targetExamId));
+    const sourceExam = (examCategories || []).find(e => String(e.name || '').toLowerCase().includes('group 4'));
+    if (!sourceExam) {
+        showNotification('Group 4 exam category not found', 'error');
+        return;
+    }
+
+    const confirmMsg = `Copy questions from "${sourceExam.name}" to "${targetExam ? targetExam.name : 'Group 1'}" by matching topic names?\n\nRules:\n- It matches sessions by topic name (fuzzy match)\n- It copies questions ONLY if target session has 0 questions (safe)\n\nRun safe multiple times.`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        showNotification('Copying Group 4 questions to Group 1 (matching topics)...', 'info');
+
+        const response = await fetch(`${API_BASE_URL}/admin/sessions/copy_questions_by_topic_match.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source_exam_id: Number(sourceExam.id),
+                target_exam_id: Number(targetExamId),
+                replace_existing: false
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+            showNotification(data?.message || data?.error || `Request failed (${response.status})`, 'error');
+            return;
+        }
+
+        showNotification(
+            `✅ Copied Sessions: ${data.copied_sessions || 0}, Questions: ${data.questions_copied || 0} (matched ${data.matched_sessions || 0}, skipped-with-questions ${data.skipped_target_has_questions || 0})`,
+            'success'
+        );
+
+        await loadQuestionSessions();
+        await loadSessionCards();
+        try { showPage('questionSessions'); } catch (e) {}
+    } catch (error) {
+        console.error('Error copying Group 4 questions to Group 1:', error);
+        showNotification('Error copying Group 4 questions to Group 1', 'error');
+    }
+}
+
+// Setup TNPSC Group 1 syllabus (creates test categories + topic sessions)
+async function setupGroup1Syllabus(targetExamId, options = {}) {
+    if (!targetExamId) return;
+
+    const targetExam = (examCategories || []).find(e => Number(e.id) === Number(targetExamId));
+    if (!options.skipConfirm) {
+        const confirmMsg = `Setup TNPSC Group 1 syllabus for "${targetExam ? targetExam.name : 'this exam'}"?\n\nThis will create:\n- Test Categories (General Science, Geography, Polity, Economy, etc.)\n- Question Sessions (all syllabus topics)\n\nExisting items will be skipped, and inactive sessions will be re-activated.\n\nSource: TNPSC Group 1 syllabus page.`;
+        if (!confirm(confirmMsg)) return;
+    }
+
+    try {
+        showNotification('Setting up Group 1 syllabus...', 'info');
+
+        const formData = new FormData();
+        formData.append('exam_id', targetExamId);
+
+        const response = await fetch(`${API_BASE_URL}/admin/sessions/bulk_setup_group1.php`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const raw = await response.text();
+        let data = null;
+        try {
+            data = raw ? JSON.parse(raw) : null;
+        } catch (parseErr) {
+            console.error('Non-JSON response:', raw);
+            showNotification(`Server error (${response.status}). Please try again.`, 'error');
+            return;
+        }
+
+        if (!response.ok) {
+            showNotification(data?.message || data?.error || `Request failed (${response.status})`, 'error');
+            return;
+        }
+
+        if (data?.success) {
+            showNotification(
+                `✅ Group 1 Ready — Categories +${data.categories_created ?? 0} (skipped ${data.categories_skipped ?? 0}), Sessions +${data.sessions_created ?? 0} (re-activated ${data.sessions_reactivated ?? 0}, skipped ${data.sessions_skipped ?? 0})`,
+                'success'
+            );
+
+            // Refresh cached data + UI
+            await loadTestCategories();
+            populateSessionDropdowns();
+            await loadQuestionSessions();
+            await loadSessionCards();
+
+            // Go to sessions page for verification
+            try { showPage('questionSessions'); } catch (e) {}
+        } else {
+            showNotification(data?.message || data?.error || 'Failed to setup Group 1 syllabus', 'error');
+        }
+    } catch (error) {
+        console.error('Error setting up Group 1 syllabus:', error);
+        showNotification('Error setting up Group 1 syllabus', 'error');
     }
 }
 
@@ -3498,6 +4992,9 @@ async function loadQuestionSessions() {
             questionSessions = sessionData.sessions;
             const examCategories = examData.success ? examData.categories : [];
             const testCategories = testData.success ? testData.categories : [];
+
+            // Summary: pending topics by exam
+            try { renderQuestionSessionsPendingSummary(examCategories, questionSessions); } catch (e) {}
             
             // Build hierarchy: Exam > Test Category > Sessions
             const hierarchy = {};
@@ -3561,23 +5058,34 @@ async function loadQuestionSessions() {
                 }
             });
             
+            const filterMode = qsSessionFilterMode || 'all';
+            
             // Render the hierarchical view
             const container = document.getElementById('questionSessionsByExamGrid');
             if (container) {
                 let html = '';
                 
                 Object.values(hierarchy).forEach(exam => {
+                    const examKey = qsKeyPart(exam.examId);
+                    const examBodyId = `qs-exam-body-${examKey}`;
+                    const examToggleIconId = `qs-exam-toggle-${examKey}`;
+
                     // Check if this exam has any sessions
                     let totalSessions = 0;
                     Object.values(exam.testCategories).forEach(tc => {
-                        totalSessions += tc.sessions.length;
+                        const all = Array.isArray(tc.sessions) ? tc.sessions : [];
+                        if (filterMode === 'pending') {
+                            totalSessions += all.filter(isPendingSession).length;
+                        } else {
+                            totalSessions += all.length;
+                        }
                     });
                     
                     // Skip exams with no sessions (except show empty state)
                     if (totalSessions === 0 && exam.examId !== null) return;
                     
                     html += `
-                    <div class="exam-session-card" style="background: white; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden;">
+                    <div class="exam-session-card" id="qs-exam-${examKey}" style="background: white; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden;">
                         <div class="exam-card-header" style="background: linear-gradient(135deg, ${exam.examColor}, ${adjustColor(exam.examColor, -20)}); padding: 20px 24px; color: white; display: flex; align-items: center; justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 15px;">
                                 <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -3585,32 +5093,82 @@ async function loadQuestionSessions() {
                                 </div>
                                 <div>
                                     <h3 style="margin: 0; font-size: 20px; font-weight: 600;">${exam.examName}</h3>
-                                    <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">${totalSessions} Question Sessions</p>
+                                    <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 14px;">${totalSessions} ${filterMode === 'pending' ? 'Pending Topics' : 'Question Sessions'}</p>
                                 </div>
                             </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button class="btn" onclick="toggleQsCollapse('${examBodyId}', '${examToggleIconId}')" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px;" title="Collapse / Expand">
+                                    <i id="${examToggleIconId}" class="fas fa-chevron-right"></i>
+                                </button>
                         </div>
-                        <div class="exam-card-body" style="padding: 20px;">
+                        </div>
+                        <div class="exam-card-body" id="${examBodyId}" data-collapsed="1" style="display: none; padding: 20px;">
                     `;
                     
                     // Loop through test categories
                     Object.values(exam.testCategories).forEach(testCat => {
-                        if (testCat.sessions.length === 0) return;
+                        const isUncategorizedTest = (testCat.testId === null || testCat.testId === 'uncategorized');
+                        const allSessions = Array.isArray(testCat.sessions) ? testCat.sessions : [];
+                        const sessionsToRender = (filterMode === 'pending')
+                            ? allSessions.filter(isPendingSession)
+                            : allSessions;
+
+                        const isEmptyAll = (allSessions.length === 0);
+                        const isEmptyRender = (sessionsToRender.length === 0);
+
+                        // In pending view: show only categories that have pending sessions
+                        if (filterMode === 'pending') {
+                            if (isEmptyRender) return;
+                        }
+
+                        // In normal view: hide only the empty "Uncategorized" placeholder to avoid noise
+                        const isEmptyTest = isEmptyAll;
+                        // Hide only the empty "Uncategorized" placeholder to avoid noise
+                        if (isUncategorizedTest && isEmptyTest) return;
+
+                        const testKey = qsKeyPart(testCat.testId);
+                        const testBodyId = `qs-test-body-${examKey}-${testKey}`;
+                        const testToggleIconId = `qs-test-toggle-${examKey}-${testKey}`;
+                        
+                        const pendingCountAll = allSessions.filter(isPendingSession).length;
+                        const badgesHtml = (filterMode === 'pending')
+                            ? `<span style="background: rgba(255, 107, 107, 0.9); padding: 2px 10px; border-radius: 10px; font-size: 12px;">${sessionsToRender.length} pending</span>`
+                            : `
+                                <span style="background: rgba(255,255,255,0.3); padding: 2px 10px; border-radius: 10px; font-size: 12px;">${allSessions.length} sessions</span>
+                                ${pendingCountAll > 0 ? `<span style="background: rgba(255, 107, 107, 0.9); padding: 2px 10px; border-radius: 10px; font-size: 12px;">${pendingCountAll} pending</span>` : ``}
+                              `;
                         
                         html += `
-                        <div class="test-category-section" style="margin-bottom: 20px; background: #f8f9fa; border-radius: 12px; overflow: hidden;">
+                        <div class="test-category-section" id="qs-exam-${examKey}-test-${testKey}" style="margin-bottom: 20px; background: #f8f9fa; border-radius: 12px; overflow: hidden;">
                             <div style="background: linear-gradient(135deg, ${testCat.testColor}, ${adjustColor(testCat.testColor, -15)}); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 12px; color: white;">
                                     <i class="${testCat.testIcon}" style="font-size: 18px;"></i>
                                     <span style="font-weight: 600;">${testCat.testName}</span>
-                                    <span style="background: rgba(255,255,255,0.3); padding: 2px 10px; border-radius: 10px; font-size: 12px;">${testCat.sessions.length} sessions</span>
+                                    ${badgesHtml}
                                 </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
                                 <button class="btn" onclick="openSessionModalForTestCategory(${exam.examId}, ${testCat.testId})" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 6px 12px; font-size: 12px;">
                                     <i class="fas fa-plus"></i> Add
                                 </button>
+                                    <button class="btn" onclick="toggleQsCollapse('${testBodyId}', '${testToggleIconId}')" style="background: rgba(255,255,255,0.25); color: white; border: none; padding: 6px 10px; font-size: 12px;" title="Collapse / Expand">
+                                        <i id="${testToggleIconId}" class="fas fa-chevron-right"></i>
+                                </button>
                             </div>
-                            <div style="padding: 15px;">
+                            </div>
+                            <div id="${testBodyId}" data-collapsed="1" style="display: none; padding: 15px;">
+                                ${filterMode === 'all' && isEmptyAll ? `
+                                    <div style="text-align: center; padding: 18px; color: #777;">
+                                        <i class="fas fa-folder-open" style="font-size: 28px; opacity: 0.6; margin-bottom: 10px;"></i>
+                                        <div style="font-weight: 600; margin-bottom: 6px;">No sessions yet</div>
+                                        <div style="font-size: 12px; color: #999; margin-bottom: 10px;">This category was duplicated but sessions are not created yet.</div>
+                                        <button class="btn btn-primary" onclick="openSessionModalForTestCategory(${exam.examId}, ${testCat.testId})">
+                                            <i class="fas fa-plus"></i> Add Session
+                                        </button>
+                                    </div>
+                                ` : `
                                 <div class="sessions-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;">
-                                    ${testCat.sessions.map(session => {
+                                    ${sessionsToRender.map(session => {
+                                        const isPending = isPendingSession(session);
                                         const progress = session.total_questions > 0 
                                             ? Math.round((session.actual_question_count || 0) / session.total_questions * 100) 
                                             : 0;
@@ -3625,7 +5183,10 @@ async function loadQuestionSessions() {
                                                         <i class="fas fa-clock"></i> ${session.duration || 180} mins
                                                     </p>
                                                 </div>
+                                                <div style="display:flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                                                 <span class="badge ${session.is_active ? 'badge-success' : 'badge-danger'}" style="font-size: 10px;">${session.is_active ? 'Active' : 'Off'}</span>
+                                                    ${isPending ? `<span class="badge badge-danger" style="font-size: 10px; background: #FF6B6B;">PENDING</span>` : `<span class="badge badge-success" style="font-size: 10px; background: #4CAF50;">OK</span>`}
+                                                </div>
                                             </div>
                                             <div style="margin-bottom: 10px;">
                                                 <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
@@ -3654,6 +5215,7 @@ async function loadQuestionSessions() {
                                         `;
                                     }).join('')}
                                 </div>
+                                `}
                             </div>
                         </div>
                         `;
@@ -6244,6 +7806,9 @@ async function loadSettings() {
         
         // Load guest login toggle
         await loadGuestLoginSetting();
+
+        // Load subscription payment type
+        await loadSubscriptionPaymentTypeSetting();
     } catch (error) {
         console.error('Error loading settings:', error);
         // Fallback to default values
@@ -6258,11 +7823,13 @@ function switchSettingsTab(tab) {
     const termsTab = document.getElementById('termsTab');
     const updateTab = document.getElementById('updateTab');
     const premiumVideoTab = document.getElementById('premiumVideoTab');
+    const paymentTypeTab = document.getElementById('paymentTypeTab');
     const aboutSection = document.getElementById('aboutSection');
     const privacySection = document.getElementById('privacySection');
     const termsSection = document.getElementById('termsSection');
     const updateSection = document.getElementById('updateSection');
     const premiumVideoSection = document.getElementById('premiumVideoSection');
+    const paymentTypeSection = document.getElementById('paymentTypeSection');
     
     // Remove active class from all tabs
     if (aboutTab) aboutTab.classList.remove('active');
@@ -6270,11 +7837,13 @@ function switchSettingsTab(tab) {
     if (termsTab) termsTab.classList.remove('active');
     if (updateTab) updateTab.classList.remove('active');
     if (premiumVideoTab) premiumVideoTab.classList.remove('active');
+    if (paymentTypeTab) paymentTypeTab.classList.remove('active');
     if (aboutTab) aboutTab.style.borderBottom = '3px solid transparent';
     if (privacyTab) privacyTab.style.borderBottom = '3px solid transparent';
     if (termsTab) termsTab.style.borderBottom = '3px solid transparent';
     if (updateTab) updateTab.style.borderBottom = '3px solid transparent';
     if (premiumVideoTab) premiumVideoTab.style.borderBottom = '3px solid transparent';
+    if (paymentTypeTab) paymentTypeTab.style.borderBottom = '3px solid transparent';
     
     // Hide all sections
     if (aboutSection) aboutSection.style.display = 'none';
@@ -6282,6 +7851,7 @@ function switchSettingsTab(tab) {
     if (termsSection) termsSection.style.display = 'none';
     if (updateSection) updateSection.style.display = 'none';
     if (premiumVideoSection) premiumVideoSection.style.display = 'none';
+    if (paymentTypeSection) paymentTypeSection.style.display = 'none';
     
     // Show selected tab and section
     if (tab === 'about' && aboutTab && aboutSection) {
@@ -6305,6 +7875,60 @@ function switchSettingsTab(tab) {
         premiumVideoTab.style.borderBottom = '3px solid #6C63FF';
         premiumVideoSection.style.display = 'block';
         loadPremiumVideo();
+    } else if (tab === 'payment_type' && paymentTypeTab && paymentTypeSection) {
+        paymentTypeTab.classList.add('active');
+        paymentTypeTab.style.borderBottom = '3px solid #6C63FF';
+        paymentTypeSection.style.display = 'block';
+    }
+}
+
+// Settings: Subscription payment type
+async function loadSubscriptionPaymentTypeSetting() {
+    try {
+        const el = document.getElementById('subscriptionPaymentType');
+        if (!el) return;
+
+        const res = await fetch(`${API_BASE_URL}/admin/settings/crud.php?key=subscription_payment_type`);
+        const data = await res.json();
+
+        const value = (data && data.success && data.setting) ? (data.setting.setting_value || '') : '';
+        el.value = value || 'legacy_5';
+    } catch (e) {
+        console.error('Error loading subscription payment type setting:', e);
+        const el = document.getElementById('subscriptionPaymentType');
+        if (el) el.value = 'legacy_5';
+    }
+}
+
+async function saveSubscriptionPaymentType() {
+    try {
+        const el = document.getElementById('subscriptionPaymentType');
+        if (!el) return;
+
+        const value = (el.value || 'legacy_5').toString();
+
+        const response = await fetch(`${API_BASE_URL}/admin/settings/crud.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                setting_key: 'subscription_payment_type',
+                setting_value: value,
+                setting_type: 'text',
+                description: 'Controls which subscription offer screen users see (legacy ₹5 mandate vs ₹2 trial fee)'
+            })
+        });
+
+        const data = await response.json();
+        if (data && data.success) {
+            showNotification('✅ Payment type saved successfully!', 'success');
+        } else {
+            showNotification('❌ Failed to save payment type', 'error');
+        }
+    } catch (e) {
+        console.error('Error saving payment type:', e);
+        showNotification('❌ Error saving payment type: ' + e.message, 'error');
     }
 }
 
@@ -6942,6 +8566,416 @@ function showNotification(message, type = 'info') {
             }
         }, 300);
     }, 3000);
+}
+
+// Referral Links (Admin)
+function buildReferralPublicUrl(code) {
+    const c = String(code || '').trim();
+    const origin = window.location.origin || `${window.location.protocol}//${window.location.host}`;
+    // code is expected to be A-Z a-z 0-9 _ -
+    return `${origin}/r/${encodeURIComponent(c)}`;
+}
+
+async function loadReferralLinks() {
+    const tbody = document.getElementById('referralLinksTableBody');
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                    <p style="margin-top: 10px; color: #666;">Loading referral links...</p>
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/referral_links/crud.php`);
+        const data = await res.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load referral links');
+        }
+
+        const rows = Array.isArray(data.data) ? data.data : [];
+        if (!tbody) return;
+
+        if (rows.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 40px; color: #666;">
+                        No referral links yet. Create your first link above.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = rows.map((r, idx) => {
+            const id = parseInt(r.id || 0, 10) || 0;
+            const name = escapeHtml(r.name || '');
+            const code = String(r.code || '').trim();
+            const codeEsc = escapeHtml(code);
+            const clicks = parseInt(r.click_count || 0, 10) || 0;
+            const installs = parseInt(r.installs || 0, 10) || 0;
+            const trials = parseInt(r.trials || 0, 10) || 0;
+            const purchases = parseInt(r.purchases || 0, 10) || 0;
+            const isActive = Number(r.is_active) === 1 || r.is_active === true || r.is_active === '1';
+            const url = buildReferralPublicUrl(code);
+
+            const statusBadge = `<span class="badge badge-${isActive ? 'success' : 'danger'}">${isActive ? 'active' : 'off'}</span>`;
+
+            return `
+                <tr data-ref-id="${id}">
+                    <td>${idx + 1}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <strong data-role="ref-name">${name || '-'}</strong>
+                        </div>
+                    </td>
+                    <td><code style="color:#333;">${codeEsc || '-'}</code></td>
+                    <td>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span style="font-family: 'Courier New', monospace; font-size: 12px; color: #444; word-break: break-all;">${escapeHtml(url)}</span>
+                            <button class="btn-icon btn-view" onclick="copyReferralLink(${JSON.stringify(code)})" title="Copy link">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td>${clicks}</td>
+                    <td>${installs}</td>
+                    <td><strong>${trials}</strong></td>
+                    <td><strong>${purchases}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td style="text-align:center;">
+                        <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+                            <button class="btn-icon btn-view" onclick="openReferralDetails(${JSON.stringify(code)})" title="Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-icon btn-edit" onclick="editReferralLinkName(${id})" title="Rename">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="btn-icon btn-view" onclick="toggleReferralLinkActive(${id}, ${isActive ? 0 : 1})" title="${isActive ? 'Disable' : 'Enable'}">
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteReferralLink(${id})" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Error loading referral links:', e);
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 40px; color: #f44336;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p style="margin: 0;">Failed to load referral links</p>
+                        <small style="color:#777;">${escapeHtml(e.message || '')}</small>
+                    </td>
+                </tr>
+            `;
+        }
+        if (typeof showNotification === 'function') showNotification('Failed to load referral links', 'error');
+    }
+}
+
+async function createReferralLink() {
+    const nameEl = document.getElementById('refLinkName');
+    const codeEl = document.getElementById('refLinkCode');
+    const name = (nameEl?.value || '').trim();
+    let code = (codeEl?.value || '').trim();
+
+    if (!name || !code) {
+        showNotification('Name and code are required', 'warning');
+        return;
+    }
+
+    code = code.replace(/\s+/g, '');
+    if (!/^[A-Za-z0-9_-]{2,64}$/.test(code)) {
+        showNotification('Invalid code. Allowed: letters, numbers, _ and - (2-64 chars)', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/referral_links/crud.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, code }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showNotification('✅ Referral link created', 'success');
+            if (nameEl) nameEl.value = '';
+            if (codeEl) codeEl.value = '';
+            loadReferralLinks();
+        } else {
+            showNotification(data.message || 'Failed to create referral link', 'error');
+        }
+    } catch (e) {
+        console.error('Error creating referral link:', e);
+        showNotification('Error creating referral link: ' + (e.message || ''), 'error');
+    }
+}
+
+async function editReferralLinkName(id) {
+    let currentName = '';
+    try {
+        const row = document.querySelector(`#referralLinksTableBody tr[data-ref-id="${id}"]`);
+        currentName = row?.querySelector('[data-role="ref-name"]')?.textContent?.trim() || '';
+    } catch (e) {
+        currentName = '';
+    }
+
+    const next = prompt('Enter referral name', currentName);
+    if (next == null) return; // cancelled
+    const name = next.trim();
+    if (!name) {
+        showNotification('Name cannot be empty', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/referral_links/crud.php`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, name }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showNotification('✅ Updated', 'success');
+            loadReferralLinks();
+        } else {
+            showNotification(data.message || 'Failed to update', 'error');
+        }
+    } catch (e) {
+        console.error('Error updating referral link:', e);
+        showNotification('Error updating: ' + (e.message || ''), 'error');
+    }
+}
+
+async function toggleReferralLinkActive(id, isActive) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/referral_links/crud.php`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, is_active: isActive ? 1 : 0 }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showNotification('✅ Updated', 'success');
+            loadReferralLinks();
+        } else {
+            showNotification(data.message || 'Failed to update', 'error');
+        }
+    } catch (e) {
+        console.error('Error toggling referral link:', e);
+        showNotification('Error updating: ' + (e.message || ''), 'error');
+    }
+}
+
+async function deleteReferralLink(id) {
+    if (!confirm('Delete this referral link?')) return;
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/referral_links/crud.php`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            showNotification('✅ Deleted', 'success');
+            loadReferralLinks();
+        } else {
+            showNotification(data.message || 'Failed to delete', 'error');
+        }
+    } catch (e) {
+        console.error('Error deleting referral link:', e);
+        showNotification('Error deleting: ' + (e.message || ''), 'error');
+    }
+}
+
+async function copyReferralLink(code) {
+    const url = buildReferralPublicUrl(code);
+    try {
+        await navigator.clipboard.writeText(url);
+        showNotification('✅ Link copied', 'success');
+    } catch (e) {
+        // Fallback
+        try {
+            prompt('Copy this link:', url);
+        } catch (_) {}
+    }
+}
+
+function formatDateTime(dt) {
+    if (!dt) return '-';
+    try {
+        const d = new Date(dt);
+        if (isNaN(d.getTime())) return String(dt);
+        return d.toLocaleString();
+    } catch (e) {
+        return String(dt);
+    }
+}
+
+function renderRefSummaryChip(label, value) {
+    return `
+        <div style="background:#f8fafc; border:1px solid #e5e7eb; padding:10px 12px; border-radius: 12px; min-width: 120px;">
+            <div style="font-size:11px; color:#6b7280; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;">${escapeHtml(label)}</div>
+            <div style="font-size:18px; color:#111827; font-weight:800; margin-top:4px;">${escapeHtml(String(value))}</div>
+        </div>
+    `;
+}
+
+async function openReferralDetails(code) {
+    const c = String(code || '').trim();
+    if (!c) return;
+
+    const codeEl = document.getElementById('refDetailsCode');
+    const summaryEl = document.getElementById('refDetailsSummary');
+    const bodyEl = document.getElementById('referralDetailsBody');
+    if (codeEl) codeEl.textContent = c;
+    if (summaryEl) summaryEl.innerHTML = '';
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div style="text-align:center; padding: 30px; color:#666;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                <p style="margin-top: 10px;">Loading details...</p>
+            </div>
+        `;
+    }
+
+    openModal('referralDetailsModal');
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/admin/referral_links/details.php?code=${encodeURIComponent(c)}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Failed to load details');
+
+        const summary = data.summary || {};
+        if (summaryEl) {
+            summaryEl.innerHTML = [
+                renderRefSummaryChip('Clicks', summary.clicks || 0),
+                renderRefSummaryChip('Installs', summary.installs || 0),
+                renderRefSummaryChip('Trials', summary.trials || 0),
+                renderRefSummaryChip('Purchases', summary.purchases || 0),
+                renderRefSummaryChip('Revenue', '₹' + (summary.revenue || 0)),
+                renderRefSummaryChip('Users', summary.unique_users || 0),
+            ].join('');
+        }
+
+        const installs = Array.isArray(data.installs) ? data.installs : [];
+        const trials = Array.isArray(data.trials) ? data.trials : [];
+        const purchases = Array.isArray(data.purchases) ? data.purchases : [];
+
+        const userCell = (uid, name, mobile) => {
+            const idNum = parseInt(uid || 0, 10) || 0;
+            const n = escapeHtml(name || '-');
+            const m = escapeHtml(mobile || '');
+            if (idNum > 0) {
+                return `<div><strong>${n}</strong><div style="font-size:12px; color:#6b7280;">${m} | <a href="javascript:void(0)" onclick="viewUser(${idNum})">#${idNum}</a></div></div>`;
+            }
+            return `<div><strong>${n}</strong><div style="font-size:12px; color:#6b7280;">${m || '-'}</div></div>`;
+        };
+
+        const installsHtml = installs.length ? `
+            <div style="margin-top: 10px; font-weight: 800; color:#111827;">Installs (First Open) (${installs.length})</div>
+            <div class="table-container" style="margin-top: 10px; overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">#</th>
+                            <th>User</th>
+                            <th style="width:200px;">Device</th>
+                            <th style="width:220px;">First Open</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${installs.map((r, idx) => `
+                            <tr>
+                                <td>${idx + 1}</td>
+                                <td>${userCell(r.user_id, r.user_name, r.user_mobile)}</td>
+                                <td><code style="color:#333;">${escapeHtml((r.device_id || '').toString())}</code></td>
+                                <td>${escapeHtml(formatDateTime(r.first_open_at))}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        ` : `<div style="margin-top: 10px; color:#666;">No installs recorded yet.</div>`;
+
+        const trialsHtml = trials.length ? `
+            <div style="margin-top: 20px; font-weight: 800; color:#111827;">Trials Activated (${trials.length})</div>
+            <div class="table-container" style="margin-top: 10px; overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">#</th>
+                            <th>User</th>
+                            <th style="width:220px;">Trial Activated At</th>
+                            <th style="width:240px;">Razorpay Sub</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${trials.map((r, idx) => `
+                            <tr>
+                                <td>${idx + 1}</td>
+                                <td>${userCell(r.user_id, r.user_name, r.user_mobile)}</td>
+                                <td>${escapeHtml(formatDateTime(r.created_at))}</td>
+                                <td><code style="color:#333;">${escapeHtml((r.razorpay_subscription_id || '').toString())}</code></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        ` : `<div style="margin-top: 20px; color:#666;">No trials recorded yet.</div>`;
+
+        const purchasesHtml = purchases.length ? `
+            <div style="margin-top: 20px; font-weight: 800; color:#111827;">Purchases (${purchases.length})</div>
+            <div class="table-container" style="margin-top: 10px; overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">#</th>
+                            <th>User</th>
+                            <th style="width:140px;">Amount</th>
+                            <th style="width:220px;">Paid At</th>
+                            <th style="width:240px;">Razorpay Pay</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${purchases.map((r, idx) => `
+                            <tr>
+                                <td>${idx + 1}</td>
+                                <td>${userCell(r.user_id, r.user_name, r.user_mobile)}</td>
+                                <td><strong>${escapeHtml((r.currency || 'INR').toString())}</strong> ${escapeHtml(String(r.amount || 0))}</td>
+                                <td>${escapeHtml(formatDateTime(r.created_at))}</td>
+                                <td><code style="color:#333;">${escapeHtml((r.razorpay_payment_id || '').toString())}</code></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        ` : `<div style="margin-top: 20px; color:#666;">No purchases recorded yet.</div>`;
+
+        if (bodyEl) {
+            bodyEl.innerHTML = installsHtml + trialsHtml + purchasesHtml;
+        }
+    } catch (e) {
+        console.error('Referral details error:', e);
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div style="text-align:center; padding: 30px; color:#f44336;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                    <p style="margin: 0;">Failed to load details</p>
+                    <small style="color:#777;">${escapeHtml(e.message || '')}</small>
+                </div>
+            `;
+        }
+    }
 }
 
 // User Rankings Functions
@@ -7714,9 +9748,11 @@ showPage = function(page) {
     originalShowPage(page);
     if (page === 'feedback') {
         loadFeedback(true);
-    } // else if (page === 'questionScraper') { // REMOVED
-        // Initialize scraper if needed
-    // }
+    } else if (page === 'dailyIncome') {
+        initDailyIncomePage();
+    } else if (page === 'weeklyAdIncome') {
+        initWeeklyAdIncomePage();
+    }
 };
 
 // ============================================

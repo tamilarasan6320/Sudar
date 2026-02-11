@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sudar.tnpscapp.nativeapp.core.network.model.QuestionDto
 import com.sudar.tnpscapp.nativeapp.ui.components.RichHtmlContent
+import com.sudar.tnpscapp.nativeapp.ui.components.containsHtmlImage
 import com.sudar.tnpscapp.nativeapp.ui.components.containsLatex
 import com.sudar.tnpscapp.nativeapp.ui.components.convertLatexToPlainText
 import com.sudar.tnpscapp.nativeapp.ui.components.cleanHtmlText
@@ -311,18 +312,30 @@ fun TestResultsScreen(
 
                                 Spacer(modifier = Modifier.width(12.dp))
 
-                                // Option text - handle LaTeX and clean HTML
-                                val displayText = if (containsLatex(text)) {
-                                    convertLatexToPlainText(text)
-                                } else {
-                                    cleanHtmlText(text)
+                                // Option text - handle images, LaTeX, and plain HTML
+                                Column(modifier = Modifier.weight(1f)) {
+                                    if (containsHtmlImage(text)) {
+                                        // Option contains image - render with RichHtmlContent
+                                        RichHtmlContent(
+                                            htmlString = text,
+                                            fontSize = 14,
+                                            textColor = AppColors.TextPrimary,
+                                            lineHeight = 18
+                                        )
+                                    } else {
+                                        // Standard text rendering (LaTeX or plain)
+                                        val displayText = if (containsLatex(text)) {
+                                            convertLatexToPlainText(text)
+                                        } else {
+                                            cleanHtmlText(text)
+                                        }
+                                        Text(
+                                            text = displayText,
+                                            fontSize = 14.sp,
+                                            color = AppColors.TextPrimary
+                                        )
+                                    }
                                 }
-                                Text(
-                                    text = displayText,
-                                    fontSize = 14.sp,
-                                    color = AppColors.TextPrimary,
-                                    modifier = Modifier.weight(1f)
-                                )
 
                                 // Show indicator for correct/selected
                                 if (isCorrectOption || (isSelected && !isCorrect)) {

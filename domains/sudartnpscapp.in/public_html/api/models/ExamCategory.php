@@ -27,6 +27,15 @@ class ExamCategory {
         return $stmt;
     }
 
+    // Admin: show both active and inactive categories (so admin can re-enable via eye toggle)
+    public function getAllAdmin() {
+        $query = "SELECT * FROM " . $this->table_name . "
+                  ORDER BY display_order, name";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt;
+    }
+
     public function getById() {
         $query = "SELECT * FROM " . $this->table_name . " WHERE id = ? LIMIT 1";
         $stmt = $this->conn->prepare($query);

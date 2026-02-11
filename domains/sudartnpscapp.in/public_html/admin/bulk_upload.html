@@ -193,6 +193,8 @@
         const API_BASE = '../api/admin';
         let selectedFiles = [];
         let sessions = [];
+        let sessionsLoaded = false;
+        let sessionsLoadError = null;
         let totalUploaded = 0;
         let totalFailed = 0;
         
@@ -214,44 +216,128 @@
             handleFiles(e.dataTransfer.files);
         });
         
-        async function loadSessions() {
+        function normalizeForMatch(str) {
+            if (!str) return '';
+            return String(str)
+                .toLowerCase()
+                .replace(/&/g, ' and ')
+                .replace(/_/g, ' ')
+                .replace(/-/g, ' ')
+                .replace(/[()]/g, ' ')
+                .replace(/[^a-z0-9\u0B80-\u0BFF ]+/g, ' ')
+                .replace(/\b(mcq|question|questions|practice|test|paper|set|poem|prose|drama)\b/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        async function loadSessions(force = false) {
             try {
-                const res = await fetch(`${API_BASE}/sessions/crud.php`);
-                const data = await res.json();
-                if (data.success) {
-                    sessions = data.sessions;
-                    log(`✅ Loaded ${sessions.length} sessions from database`, 'success');
+                if (sessionsLoaded && !force) return true;
+
+                sessionsLoaded = false;
+                sessionsLoadError = null;
+
+                const res = await fetch(`${API_BASE}/sessions/crud.php`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const raw = await res.text();
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    throw new Error('Invalid server response while loading sessions');
                 }
+
+                if (!res.ok || !data || !data.success) {
+                    // If session expired, redirect to login
+                    if (res.status === 401 || data?.authenticated === false) {
+                        alert('Session expired. Please login again.');
+                        window.location.href = 'login.html';
+                        return false;
+                    }
+                    throw new Error(data?.message || data?.error || `Failed to load sessions (HTTP ${res.status})`);
+                }
+
+                sessions = Array.isArray(data.sessions) ? data.sessions : [];
+                // Add normalized name for faster matching + sort for easier manual selection
+                sessions = sessions.map(s => ({ ...s, _norm: normalizeForMatch(s.name) }))
+                    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }));
+
+                sessionsLoaded = true;
+                return true;
             } catch (e) {
-                log('❌ Could not load sessions: ' + e.message, 'error');
+                sessionsLoadError = e.message || 'Could not load sessions';
+                console.error('❌ Could not load sessions:', e);
+                // Show an on-screen error (log section is hidden until upload starts)
+                const fileListEl = document.getElementById('fileList');
+                if (fileListEl) {
+                    fileListEl.innerHTML = `
+                        <div class="alert alert-danger" style="margin-top: 15px;">
+                            <strong>Could not load sessions.</strong><br>
+                            ${sessionsLoadError}<br><br>
+                            <a class="btn btn-sm btn-light" href="login.html">Go to Login</a>
+                        </div>
+                    `;
+                }
+                return false;
             }
         }
         
         function findSessionByName(filename) {
-            // Clean filename: remove prefix, numbers, extension
-            // BotZoo_Evolution_28Qs_1765341938708.json → Evolution
-            const cleanName = filename
+            // Supports filenames like:
+            // - Abbreviations_MCQ_Questions_51q.json
+            // - Active_Voice_and_Passive_Voice_MCQ_Questions_61q.json
+            let base = String(filename || '')
                 .replace(/\.json$/i, '')
-                .replace(/_\d+Qs_\d+$/, '')
-                .replace(/^[A-Za-z]+_/, '');
-            
-            // Direct match
-            let session = sessions.find(s => 
-                s.name.toLowerCase() === cleanName.toLowerCase()
-            );
-            
-            if (!session) {
-                // Partial match
-                session = sessions.find(s => 
-                    s.name.toLowerCase().includes(cleanName.toLowerCase()) ||
-                    cleanName.toLowerCase().includes(s.name.toLowerCase().split(' ')[0])
-                );
+                .replace(/_\d+Qs?_\d+$/i, '')                 // old pattern: _28Qs_1765...
+                .replace(/_MCQ_Questions?_?\d+q$/i, '')        // ..._MCQ_Questions_51q
+                .replace(/_MCQ_Questions?$/i, '')              // ..._MCQ_Questions
+                .replace(/_\d+q$/i, '')                        // ..._51q
+                .replace(/_+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const target = normalizeForMatch(base);
+            if (!target) return null;
+
+            // Exact normalized match
+            let session = sessions.find(s => s._norm && s._norm === target);
+            if (session) return session;
+
+            // Containment match
+            session = sessions.find(s => s._norm && (s._norm.includes(target) || target.includes(s._norm)));
+            if (session) return session;
+
+            // Token overlap best match
+            const tTokens = target.split(' ').filter(Boolean);
+            let best = null;
+            let bestScore = 0;
+            for (const s of sessions) {
+                const sn = s._norm || '';
+                if (!sn) continue;
+                const sTokens = sn.split(' ').filter(Boolean);
+                let score = 0;
+                for (const tok of tTokens) {
+                    if (sTokens.includes(tok)) score++;
+                }
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = s;
+                }
             }
-            
-            return session;
+            // Require at least 2 matching words to avoid wrong matches
+            if (best && bestScore >= 2) return best;
+
+            return null;
         }
         
         async function handleFiles(files) {
+            // Ensure sessions are loaded BEFORE building dropdowns
+            const ok = await loadSessions();
+            if (!ok) return;
+
             selectedFiles = [];
             let totalQs = 0;
             
@@ -301,6 +387,14 @@
                 const item = document.createElement('div');
                 item.className = 'file-item';
                 item.id = `file-${idx}`;
+                const label = (s) => {
+                    const parts = [];
+                    if (s.exam_category_name) parts.push(s.exam_category_name);
+                    if (s.category_name) parts.push(s.category_name);
+                    parts.push(s.name);
+                    return parts.join(' / ');
+                };
+
                 item.innerHTML = `
                     <i class="fas fa-file-code icon"></i>
                     <div class="name">${fd.name}</div>
@@ -309,7 +403,7 @@
                         <option value="">-- Select Session --</option>
                         ${sessions.map(s => `
                             <option value="${s.id}" ${s.id === fd.sessionId ? 'selected' : ''}>
-                                ${s.name} (${s.total_questions || 0})
+                                ${label(s)}
                             </option>
                         `).join('')}
                     </select>
@@ -372,80 +466,82 @@
                 statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
                 
                 log(`\n📤 [${fIdx + 1}/${filesToUpload.length}] ${fileData.name} → "${fileData.sessionName}"`, 'info');
-                
-                // Clear existing questions for this session first
-                try {
-                    log(`   🗑️ Clearing existing questions...`, 'warn');
-                    await fetch(`${API_BASE}/questions/crud.php`, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ session_id: fileData.sessionId })
-                    });
-                } catch (e) {
-                    log(`   ⚠️ Clear warning: ${e.message}`, 'warn');
-                }
-                
-                // Upload questions one by one
-                let fileSuccess = 0;
-                let fileError = 0;
-                
-                for (let qIdx = 0; qIdx < fileData.rawQuestions.length; qIdx++) {
+
+                // Transform all questions first (client-side) so server receives clean format
+                const transformed = [];
+                let transformSkipped = 0;
+                for (let qIdx = 0; qIdx < (fileData.rawQuestions?.length || 0); qIdx++) {
                     const q = fileData.rawQuestions[qIdx];
-                    
-                    // Transform question to API format
                     const apiQuestion = transformQuestion(q, fileData.sessionId, qIdx + 1);
-                    
                     if (!apiQuestion) {
-                        fileError++;
+                        transformSkipped++;
                         continue;
                     }
-                    
-                    try {
-                        const res = await fetch(`${API_BASE}/questions/crud.php`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(apiQuestion)
-                        });
-                        
-                        const result = await res.json();
-                        
-                        if (result.success) {
-                            fileSuccess++;
-                        } else {
-                            fileError++;
-                            if (qIdx < 3) { // Only log first few errors
-                                log(`   ❌ Q${qIdx + 1}: ${result.message}`, 'error');
-                            }
-                        }
-                    } catch (e) {
-                        fileError++;
+                    transformed.push(apiQuestion);
+                }
+
+                statusEl.textContent = '📤 Uploading...';
+
+                let added = 0;
+                let failed = 0;
+                let skipped = transformSkipped;
+
+                try {
+                    const res = await fetch(`${API_BASE}/questions/bulk_create.php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: fileData.sessionId,
+                            replace_existing: true,
+                            questions: transformed
+                        })
+                    });
+
+                    const result = await res.json();
+
+                    if (!res.ok || !result.success) {
+                        throw new Error(result?.message || result?.error || `HTTP ${res.status}`);
                     }
-                    
-                    // Update progress
-                    const overallProgress = Math.round(
-                        ((fIdx + (qIdx + 1) / fileData.count) / filesToUpload.length) * 100
-                    );
-                    document.getElementById('progressBar').style.width = overallProgress + '%';
-                    document.getElementById('progressPercent').textContent = overallProgress + '%';
-                    document.getElementById('progressText').textContent = 
-                        `File ${fIdx + 1}/${filesToUpload.length}: Q${qIdx + 1}/${fileData.count}`;
-                    
-                    statusEl.textContent = `📤 ${qIdx + 1}/${fileData.count}`;
+
+                    added = result.added || 0;
+                    failed = result.failed || 0;
+                    skipped += (result.skipped || 0);
+
+                    // Update totals
+                    totalUploaded += added;
+                    totalFailed += (failed + skipped);
+
+                    if (failed === 0 && skipped === 0) {
+                        statusEl.className = 'status success';
+                        statusEl.textContent = `✅ ${added} uploaded`;
+                        log(`   ✅ SUCCESS: ${added} questions uploaded!`, 'success');
+                    } else if (added > 0) {
+                        statusEl.className = 'status success';
+                        statusEl.textContent = `⚠️ ${added}/${fileData.count}`;
+                        log(`   ⚠️ Uploaded ${added}, Skipped ${skipped}, Failed ${failed}`, 'warn');
+                        if (Array.isArray(result.errors) && result.errors.length) {
+                            log(`   ⚠️ Sample errors: ${result.errors.join(' | ')}`, 'warn');
+                        }
+                    } else {
+                        statusEl.className = 'status error';
+                        statusEl.textContent = `❌ 0/${fileData.count}`;
+                        log(`   ❌ Failed (Skipped ${skipped}, Failed ${failed})`, 'error');
+                        if (Array.isArray(result.errors) && result.errors.length) {
+                            log(`   ❌ Errors: ${result.errors.join(' | ')}`, 'error');
+                        }
+                    }
+                } catch (e) {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = `❌ Error`;
+                    totalFailed += fileData.count;
+                    log(`   ❌ Upload error: ${e.message}`, 'error');
                 }
-                
-                // Update file status
-                totalUploaded += fileSuccess;
-                totalFailed += fileError;
-                
-                if (fileError === 0) {
-                    statusEl.className = 'status success';
-                    statusEl.textContent = `✅ ${fileSuccess} uploaded`;
-                    log(`   ✅ SUCCESS: ${fileSuccess} questions uploaded!`, 'success');
-                } else {
-                    statusEl.className = fileSuccess > 0 ? 'status success' : 'status error';
-                    statusEl.textContent = `${fileSuccess > 0 ? '⚠️' : '❌'} ${fileSuccess}/${fileData.count}`;
-                    log(`   ⚠️ ${fileSuccess} OK, ${fileError} failed`, 'warn');
-                }
+
+                // Update progress (per file)
+                const overallProgress = Math.round(((fIdx + 1) / filesToUpload.length) * 100);
+                document.getElementById('progressBar').style.width = overallProgress + '%';
+                document.getElementById('progressPercent').textContent = overallProgress + '%';
+                document.getElementById('progressText').textContent = `File ${fIdx + 1}/${filesToUpload.length} complete`;
                 
                 document.getElementById('uploadedCount').textContent = totalUploaded;
                 document.getElementById('failedCount').textContent = totalFailed;

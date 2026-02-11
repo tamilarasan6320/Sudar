@@ -140,14 +140,32 @@ class MetaAppEventsService {
     String? orderId,
   }) async {
     try {
+      if (amount <= 0 || amount.isNaN || amount.isInfinite) {
+        debugPrint('[fb_mobile_purchase] ❌ Skipped: amount must be a finite number > 0 (got $amount)');
+        return;
+      }
+
+      // Normalize types for Meta diagnostics:
+      // - amount must be numeric > 0
+      // - currency should be ISO 4217 (e.g. INR)
+      final safeCurrency = currency.trim().toUpperCase();
+      final safeAmount = double.tryParse(amount.toStringAsFixed(2)) ?? amount;
+
       debugPrint('════════════════════════════════════════════════════════════');
       debugPrint('[fb_mobile_purchase] TRIGGERING...');
-      debugPrint('[fb_mobile_purchase] Amount: $amount $currency');
+      debugPrint('[fb_mobile_purchase] Amount: $safeAmount $safeCurrency');
       debugPrint('[fb_mobile_purchase] ContentId: $contentId');
       debugPrint('[fb_mobile_purchase] OrderId: $orderId');
       debugPrint('════════════════════════════════════════════════════════════');
       
-      final Map<String, dynamic> parameters = {};
+      final Map<String, dynamic> parameters = {
+        // Explicit value/currency params for Meta Diagnostics (some views look for `value`)
+        'fb_currency': safeCurrency,
+        '_valueToSum': safeAmount,
+        'value': safeAmount,
+        'currency': safeCurrency,
+        'amount': safeAmount,
+      };
       
       if (contentId != null) {
         parameters['fb_content_id'] = contentId;
@@ -160,9 +178,9 @@ class MetaAppEventsService {
       }
 
       await _fb.logPurchase(
-        amount: amount,
-        currency: currency,
-        parameters: parameters.isNotEmpty ? parameters : null,
+        amount: safeAmount,
+        currency: safeCurrency,
+        parameters: parameters,
       );
       
       debugPrint('[fb_mobile_purchase] ✅ SUCCESS');

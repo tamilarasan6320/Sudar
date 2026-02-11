@@ -93,6 +93,10 @@
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
 
+# Install Referrer
+-keep class com.android.installreferrer.** { *; }
+-dontwarn com.android.installreferrer.**
+
 # Compose
 -keep class androidx.compose.** { *; }
 -dontwarn androidx.compose.**

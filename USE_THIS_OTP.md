@@ -4,6 +4,16 @@
 
 ---
 
+## ✅ **DEFAULT OTP (LOCALHOST)**
+
+If you're running the backend on **localhost** (XAMPP) with the latest OTP config, you can always use:
+
+- **Default OTP**: `111111`
+
+If you still want a fresh/random OTP every time, use the `CHECK_OTP.php` method below.
+
+---
+
 ## 📱 **STEP 1: Get Your OTP**
 
 ### Open this page in your browser RIGHT NOW:

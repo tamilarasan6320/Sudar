@@ -40,10 +40,22 @@ class SubscriptionViewModel @Inject constructor(
     val uiState: StateFlow<SubscriptionUiState> = _uiState.asStateFlow()
 
     init {
-        // Load cached premium video path on init
+        // Load & refresh premium video path on init (from Admin Settings → Premium Video)
         viewModelScope.launch {
-            val videoPath = premiumVideoService.getCachedVideoPath()
-            _uiState.value = _uiState.value.copy(premiumVideoPath = videoPath)
+            // 1) show cached quickly (if exists)
+            val cachedPath = premiumVideoService.getCachedVideoPath()
+            _uiState.value = _uiState.value.copy(premiumVideoPath = cachedPath)
+
+            // 2) best-effort sync from server, then refresh path
+            try {
+                premiumVideoService.sync()
+                val refreshedPath = premiumVideoService.getCachedVideoPath()
+                if (!refreshedPath.isNullOrBlank() && refreshedPath != cachedPath) {
+                    _uiState.value = _uiState.value.copy(premiumVideoPath = refreshedPath)
+                }
+            } catch (_: Exception) {
+                // ignore; keep cached
+            }
         }
     }
 

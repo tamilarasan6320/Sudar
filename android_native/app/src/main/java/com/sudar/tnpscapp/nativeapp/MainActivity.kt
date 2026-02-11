@@ -1,6 +1,7 @@
 package com.sudar.tnpscapp.nativeapp
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -10,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sudar.tnpscapp.nativeapp.core.services.OneSignalService
+import com.sudar.tnpscapp.nativeapp.core.services.UpdateService
 import com.sudar.tnpscapp.nativeapp.ui.SudarApp
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -27,6 +29,9 @@ class MainActivity : AppCompatActivity() {
     
     @Inject
     lateinit var oneSignalService: OneSignalService
+    
+    @Inject
+    lateinit var updateService: UpdateService
     
     // Permission request launcher for Android 13+ notifications
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -76,6 +81,13 @@ class MainActivity : AppCompatActivity() {
         } else {
             Log.d(TAG, "Android < 13, notification permission not required")
         }
+    }
+    
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        // Forward to UpdateService for in-app update flow handling
+        updateService.handleActivityResult(requestCode, resultCode)
     }
 }
 

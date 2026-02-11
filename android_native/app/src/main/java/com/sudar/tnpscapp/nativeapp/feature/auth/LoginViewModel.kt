@@ -221,7 +221,7 @@ class LoginViewModel @Inject constructor(
                             ),
                             token ?: ""
                         )
-                        
+
                         // Set OneSignal user ID for push notifications
                         try {
                             oneSignalService.setUserId(user.id.toString())

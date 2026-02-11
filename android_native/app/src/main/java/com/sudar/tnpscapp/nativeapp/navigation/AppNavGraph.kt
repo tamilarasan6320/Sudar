@@ -2,6 +2,12 @@ package com.sudar.tnpscapp.nativeapp.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -16,8 +22,11 @@ import com.sudar.tnpscapp.nativeapp.feature.profile.EditProfileScreen
 import com.sudar.tnpscapp.nativeapp.feature.splash.SplashDestination
 import com.sudar.tnpscapp.nativeapp.feature.splash.SplashScreen
 import com.sudar.tnpscapp.nativeapp.feature.startup.StartupScreen
+import com.sudar.tnpscapp.nativeapp.feature.subscription.NewSubscriptionOfferScreen
 import com.sudar.tnpscapp.nativeapp.feature.subscription.SubscriptionOfferScreen
 import com.sudar.tnpscapp.nativeapp.feature.subscription.SubscriptionScreen
+import com.sudar.tnpscapp.nativeapp.feature.subscription.SubscriptionPaymentType
+import com.sudar.tnpscapp.nativeapp.feature.subscription.SubscriptionPaymentTypeViewModel
 import com.sudar.tnpscapp.nativeapp.feature.support.AboutScreen
 import com.sudar.tnpscapp.nativeapp.feature.support.AccountDeletionScreen
 import com.sudar.tnpscapp.nativeapp.feature.support.FeedbackScreen
@@ -173,31 +182,57 @@ fun AppNavGraph(navController: NavHostController) {
             )
         ) { backStackEntry ->
             val mode = backStackEntry.arguments?.getString("mode") ?: "startup"
-            SubscriptionOfferScreen(
-                onSkip = {
-                    if (mode == "gate") {
-                        // In gate mode, just pop back to the previous screen (TestIntro)
-                        navController.popBackStack()
-                    } else {
-                        // In startup mode, navigate to Main
-                        navController.navigate(Routes.Main) {
-                            popUpTo(Routes.SubscriptionOffer) { inclusive = true }
-                        }
-                    }
-                },
-                onSubscribed = {
-                    if (mode == "gate") {
-                        // In gate mode, set flag on TestIntro backstack entry to auto-start test
-                        navController.previousBackStackEntry?.savedStateHandle?.set("subscribed", true)
-                        navController.popBackStack()
-                    } else {
-                        // In startup mode, navigate to Main (now premium)
-                        navController.navigate(Routes.Main) {
-                            popUpTo(Routes.SubscriptionOffer) { inclusive = true }
-                        }
+            val paymentTypeViewModel: SubscriptionPaymentTypeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val paymentTypeState by paymentTypeViewModel.uiState.collectAsState()
+
+            LaunchedEffect(Unit) {
+                paymentTypeViewModel.load()
+            }
+
+            val onSkip: () -> Unit = {
+                if (mode == "gate") {
+                    navController.popBackStack()
+                    Unit
+                } else {
+                    navController.navigate(Routes.Main) {
+                        popUpTo(Routes.SubscriptionOffer) { inclusive = true }
                     }
                 }
-            )
+            }
+
+            val onSubscribed: () -> Unit = {
+                if (mode == "gate") {
+                    navController.previousBackStackEntry?.savedStateHandle?.set("subscribed", true)
+                    navController.popBackStack()
+                    Unit
+                } else {
+                    navController.navigate(Routes.Main) {
+                        popUpTo(Routes.SubscriptionOffer) { inclusive = true }
+                    }
+                }
+            }
+
+            if (paymentTypeState.isLoading) {
+                // Lightweight loader (avoid flashing wrong screen)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                when (paymentTypeState.paymentType) {
+                    SubscriptionPaymentType.TrialFee2NonRefundable -> {
+                        NewSubscriptionOfferScreen(
+                            onSkip = onSkip,
+                            onSubscribed = onSubscribed
+                        )
+                    }
+                    SubscriptionPaymentType.LegacyMandate5Refunded -> {
+                        SubscriptionOfferScreen(
+                            onSkip = onSkip,
+                            onSubscribed = onSubscribed
+                        )
+                    }
+                }
+            }
         }
 
         composable(Routes.Subscription) {

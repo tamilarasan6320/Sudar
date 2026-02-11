@@ -110,6 +110,55 @@ try {
     $subscription->id = $subData['id'];
     $subscription->updateUserPremiumStatus($subData['user_id'], true, $trialEnd);
 
+    // Step 6: Track trial activation for referral link (best-effort)
+    try {
+        // Ensure tables exist
+        $db->exec("CREATE TABLE IF NOT EXISTS referral_installs (
+            id INT(11) AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(64) NOT NULL,
+            device_id VARCHAR(64) NOT NULL,
+            user_id INT(11) NULL,
+            install_referrer TEXT NULL,
+            first_open_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_device (device_id),
+            KEY idx_code (code),
+            KEY idx_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS referral_trials (
+            id INT(11) AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(64) NOT NULL,
+            user_id INT(11) NOT NULL,
+            subscription_id INT(11) NOT NULL,
+            razorpay_subscription_id VARCHAR(100) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_rzp_sub (razorpay_subscription_id),
+            KEY idx_code (code),
+            KEY idx_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Find latest code for this user (from install attribution)
+        $codeStmt = $db->prepare("SELECT code FROM referral_installs WHERE user_id = ? ORDER BY first_open_at DESC LIMIT 1");
+        $codeStmt->execute([$subData['user_id']]);
+        $codeRow = $codeStmt->fetch(PDO::FETCH_ASSOC);
+        $refCode = isset($codeRow['code']) ? trim((string)$codeRow['code']) : '';
+
+        if ($refCode !== '') {
+            $ins = $db->prepare("INSERT IGNORE INTO referral_trials (code, user_id, subscription_id, razorpay_subscription_id)
+                                 VALUES (?, ?, ?, ?)");
+            $ins->execute([
+                $refCode,
+                (int)$subData['user_id'],
+                (int)$subData['id'],
+                (string)$data->razorpay_subscription_id,
+            ]);
+        }
+    } catch (Exception $e) {
+        // ignore
+    }
+
     // Success response
     http_response_code(200);
     echo json_encode([

@@ -68,6 +68,7 @@ data class UserDto(
     @SerializedName("education") val education: String? = null,
     @SerializedName("language") val language: String? = null,
     @SerializedName("profile_pic") val profilePic: String? = null,
+    @SerializedName("referral_code") val referralCode: String? = null,
 )
 
 data class UserProfileResponse(
@@ -90,6 +91,7 @@ data class UserProfileDto(
     @SerializedName("premium_expiry_date") val premiumExpiryDate: String? = null,
     @SerializedName("selected_exam_id") val selectedExamId: Int? = null,
     @SerializedName("selected_exam_name") val selectedExamName: String? = null,
+    @SerializedName("referral_code") val referralCode: String? = null,
 )
 
 data class SubscriptionStatusResponse(

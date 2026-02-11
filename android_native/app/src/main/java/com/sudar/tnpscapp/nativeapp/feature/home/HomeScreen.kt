@@ -1,6 +1,7 @@
 package com.sudar.tnpscapp.nativeapp.feature.home
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +55,7 @@ import com.sudar.tnpscapp.nativeapp.ui.theme.AppColors
 fun HomeScreen(
     onChangeExam: () -> Unit,
     onTests: () -> Unit,
+    onOpenTestCategory: (categoryId: Int, categoryName: String) -> Unit,
     onHistory: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -97,18 +101,24 @@ fun HomeScreen(
                 if (uiState.testCategories.isNotEmpty()) {
                     CategoryCarousel(
                         categories = uiState.testCategories,
-                        onCategoryClick = { onTests() }
+                        onCategoryClick = { category -> onOpenTestCategory(category.id, category.name) }
                     )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // Test Categories Grid
-                TestCategoriesSection(
-                    categories = uiState.testCategories,
-                    isLoading = uiState.isLoadingCategories,
-                    onViewAll = onTests,
-                    onCategoryClick = { onTests() }
+                HomeProudCard(
+                    metricValueText = "5000K",
+                    metricLabelText = "Daily Practice",
+                    subtitle = "We are proud to help thousands of students in securing their dream job"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Bottom: Privacy Policy (expand/collapse like your reference screenshot)
+                HomeExpandableInfoCard(
+                    title = "Privacy Policy",
+                    bodyText = "We are committed to protecting your personal information and your right to privacy. We may collect details like your mobile number (for login), app usage, and test progress to improve your learning experience. We follow strong privacy and security standards while doing this."
                 )
 
                 Spacer(modifier = Modifier.height(80.dp))
@@ -224,8 +234,8 @@ private fun HomeAppBar(
 private fun BannerSlider() {
     // Banner images from assets
     val bannerImages = listOf(
-        "file:///android_asset/banner1.png",
-        "file:///android_asset/banner2.png"
+        "file:///android_asset/banner1.webp",
+        "file:///android_asset/banner2.webp"
     )
     
     val pagerState = rememberPagerState(pageCount = { bannerImages.size })
@@ -248,7 +258,8 @@ private fun BannerSlider() {
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                // Taller banner to better fit 1024x1024 creatives (less cropping)
+                .height(260.dp)
                 .padding(horizontal = 16.dp),
             pageSpacing = 12.dp
         ) { page ->
@@ -487,11 +498,11 @@ private fun CarouselCategoryCard(
     val imageUrl = UrlUtils.resolveTestCategoryImageUrl(rawImagePath)
     val hasImage = imageUrl != null
 
-    // Same size as test page cards: ~110dp width x 180dp height
+    // Popular category image card size (bigger, more prominent)
     Card(
         modifier = Modifier
-            .width(110.dp)
-            .height(180.dp)
+            .width(135.dp)
+            .height(210.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -513,24 +524,7 @@ private fun CarouselCategoryCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-                
-                // Professional gradient overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.85f)
-                                ),
-                                startY = 0f
-                            )
-                        )
-                )
-                
-                // No text overlay - image only like test page
+                // No overlay - image only
             } else {
                 // Fallback: Gradient with icon (no image)
                 Box(
@@ -785,6 +779,241 @@ private fun getCategoryIcon(name: String): ImageVector {
         name.contains("Polity", ignoreCase = true) || name.contains("Constitution", ignoreCase = true) -> Icons.Rounded.Gavel
         name.contains("Geography", ignoreCase = true) -> Icons.Rounded.Terrain
         else -> Icons.AutoMirrored.Filled.MenuBook
+    }
+}
+
+@Composable
+private fun HomeProudCard(
+    metricValueText: String,
+    metricLabelText: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+) {
+    val borderBrush = Brush.linearGradient(listOf(AppColors.Primary, AppColors.Secondary))
+    val innerBg = Color(0xFF1A1A1A)
+
+    // Modern "highlight" card: gradient border + clean content
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(borderBrush, RoundedCornerShape(18.dp))
+            .padding(1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(innerBg)
+                .padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Small header chip
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = AppColors.SurfaceLight
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoStories,
+                        contentDescription = null,
+                        tint = AppColors.PrimaryLight,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "SUDAR COMMUNITY",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.TextSecondary,
+                        letterSpacing = 0.6.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = metricValueText,
+                fontSize = 34.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = AppColors.PrimaryLight,
+            )
+            Text(
+                text = metricLabelText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.TextPrimary,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = subtitle,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = AppColors.TextSecondary,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 10.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            HomeAvatarRow(
+                count = 6,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeAvatarRow(
+    count: Int,
+    modifier: Modifier = Modifier,
+) {
+    val size = 32.dp
+    val overlap = 10.dp
+    val step = size - overlap
+    val initials = listOf("S", "U", "D", "A", "R", "T", "N", "P", "C")
+    val gradients = listOf(
+        listOf(AppColors.Primary, AppColors.PrimaryDark),
+        listOf(AppColors.Secondary, AppColors.SecondaryDark),
+        listOf(Color(0xFF10B981), Color(0xFF047857)), // emerald
+        listOf(Color(0xFFF59E0B), Color(0xFFB45309)), // amber
+        listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9)), // violet
+        listOf(Color(0xFF06B6D4), Color(0xFF0E7490)), // cyan
+    )
+
+    Box(
+        modifier = modifier
+            .height(size)
+            .width(size + step * (count - 1))
+    ) {
+        repeat(count) { index ->
+            val initial = initials.getOrElse(index) { "S" }
+            val gradient = gradients[index % gradients.size]
+
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .offset(x = step * index)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(gradient))
+                    .padding(2.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color(0xFF0F0F0F).copy(alpha = 0.25f))
+                        .padding(2.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .padding(0.dp)
+                            .background(Color.Transparent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initial,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+
+            // Border ring on top (to separate overlaps)
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .offset(x = step * index)
+                    .clip(CircleShape)
+                    .background(Color.Transparent)
+                    .padding(0.dp)
+            ) {
+                // Using border via background stroke is not available on Box, so we overlay a Surface ring
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = androidx.compose.foundation.BorderStroke(2.dp, AppColors.Background),
+                    shadowElevation = 0.dp,
+                    content = {}
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeExpandableInfoCard(
+    title: String,
+    bodyText: String,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(true) }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Accent bar (matches reference style)
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(22.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(AppColors.Secondary)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = AppColors.TextSecondary
+                )
+            }
+
+            if (expanded) {
+                Text(
+                    text = bodyText,
+                    fontSize = 14.sp,
+                    color = AppColors.TextSecondary,
+                    lineHeight = 22.sp,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                )
+            }
+        }
     }
 }
 

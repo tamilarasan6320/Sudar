@@ -62,23 +62,53 @@ class PremiumVideoService @Inject constructor(
                 return@withContext false
             }
 
-            // Parse the setting value (it's JSON stored as string)
-            val settingValue = body["setting_value"] as? String
-            if (settingValue.isNullOrBlank()) {
-                Log.d(TAG, "Empty setting_value")
+            // Parse the setting value from public settings API
+            // GET /api/settings/get_public.php?key=premium_video returns { success, key, value }
+            // - value may be a JSON string OR already-decoded map (depending on setting_type)
+            val rawValue = body["value"] ?: body["setting_value"]
+            if (rawValue == null) {
+                Log.d(TAG, "premium_video value missing")
                 return@withContext false
             }
 
-            // Parse JSON
-            val videoData = try {
-                org.json.JSONObject(settingValue)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to parse video data JSON", e)
-                return@withContext false
-            }
+            val serverVersion: String
+            val serverPath: String
 
-            val serverVersion = videoData.optString("version", "")
-            val serverPath = videoData.optString("path", "")
+            when (rawValue) {
+                is String -> {
+                    if (rawValue.isBlank()) {
+                        Log.d(TAG, "premium_video value is blank")
+                        return@withContext false
+                    }
+                    val videoData = try {
+                        org.json.JSONObject(rawValue)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to parse premium_video JSON string", e)
+                        return@withContext false
+                    }
+                    serverVersion = videoData.optString("version", "")
+                    serverPath = videoData.optString("path", "")
+                }
+                is Map<*, *> -> {
+                    serverVersion = rawValue["version"]?.toString() ?: ""
+                    serverPath = rawValue["path"]?.toString() ?: ""
+                }
+                else -> {
+                    val asString = rawValue.toString()
+                    if (asString.isBlank()) {
+                        Log.d(TAG, "premium_video value is blank (non-string)")
+                        return@withContext false
+                    }
+                    val videoData = try {
+                        org.json.JSONObject(asString)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to parse premium_video value", e)
+                        return@withContext false
+                    }
+                    serverVersion = videoData.optString("version", "")
+                    serverPath = videoData.optString("path", "")
+                }
+            }
 
             if (serverVersion.isBlank() || serverPath.isBlank()) {
                 Log.d(TAG, "Invalid video data: version=$serverVersion, path=$serverPath")
@@ -91,7 +121,10 @@ class PremiumVideoService @Inject constructor(
             val cachedFile = cachedPath?.let { File(it) }
 
             if (cachedVersion == serverVersion && cachedFile?.exists() == true) {
-                Log.d(TAG, "Premium video already up to date (version=$serverVersion)")
+                Log.d(
+                    TAG,
+                    "Premium video cached OK (version=$serverVersion, path=${cachedFile.absolutePath}, size=${cachedFile.length()} bytes)"
+                )
                 return@withContext true
             }
 
@@ -139,7 +172,10 @@ class PremiumVideoService @Inject constructor(
 
             // Update cache info
             sessionStore.setPremiumVideoCache(serverVersion, videoFile.absolutePath)
-            Log.d(TAG, "Premium video downloaded and cached successfully")
+            Log.d(
+                TAG,
+                "Premium video downloaded and cached successfully (version=$serverVersion, path=${videoFile.absolutePath}, size=${videoFile.length()} bytes)"
+            )
 
             return@withContext true
         } catch (e: Exception) {

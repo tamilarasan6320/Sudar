@@ -4,12 +4,15 @@
  * 
  * Creates a subscription with:
  * - Plan: ₹299/month
- * - Offer: ₹297 discount on first payment
- * - First payment: ₹2 (₹299 - ₹297)
- * - Trial: 7 days before next ₹299 charge
+ * - Trial: 7 days before first ₹299 charge (handled via `start_at`)
+ * 
+ * Optional (Payment Type = ₹2 non-refundable):
+ * - Collect ₹2 upfront during authentication (single checkout) using Razorpay `addons`
  * 
  * POST /api/subscriptions/create.php
- * Body: { "user_id": 123 }
+ * Body:
+ *  - { "user_id": 123 }
+ *  - { "user_id": 123, "payment_type": "legacy_5" | "trial_fee_2" }
  */
 
 require_once '../config/cors.php';
@@ -34,6 +37,10 @@ if (empty($data->user_id)) {
     exit;
 }
 
+$paymentType = isset($data->payment_type) ? trim((string)$data->payment_type) : '';
+$paymentType = $paymentType ?: 'legacy_5';
+$upfrontAmountPaise = ($paymentType === 'trial_fee_2') ? 200 : 0;
+
 $database = new Database();
 $db = $database->getConnection();
 
@@ -46,6 +53,7 @@ try {
     if ($existing) {
         // If payment not completed (UPI pending / user closed), allow resuming the same subscription
         if (in_array($existing['status'], ['created', 'pending'])) {
+            $amountDue = $upfrontAmountPaise;
             http_response_code(200);
             echo json_encode([
                 'success' => true,
@@ -54,7 +62,9 @@ try {
                     'key' => RAZORPAY_KEY_ID,
                     'subscription_id' => $existing['razorpay_subscription_id'],
                     'name' => 'TNPSC Study App',
-                    'description' => $config['description'],
+                    'description' => ($paymentType === 'trial_fee_2')
+                        ? 'TNPSC Study App Premium - 7-day FREE trial (₹2 verification, non-refundable)'
+                        : $config['description'],
                     'image' => 'https://sudartnpscapp.in/assets/logo.png',
                     'theme' => [
                         'color' => '#6C63FF'
@@ -63,8 +73,8 @@ try {
                         'user_id' => (string)$data->user_id
                     ],
                     'short_url' => $existing['short_url'] ?? null,
-                    'amount_due' => $config['first_payment'],
-                    'amount_due_display' => '₹' . ($config['first_payment'] / 100),
+                    'amount_due' => $amountDue,
+                    'amount_due_display' => '₹' . ($amountDue / 100),
                     'plan_amount' => $config['amount'],
                     'plan_amount_display' => '₹' . ($config['amount'] / 100),
                     'trial_days' => $config['trial_days'],
@@ -149,11 +159,23 @@ try {
         'notes' => [
             'user_id' => (string)$user['id'],
             'user_name' => $user['name'],
-            'user_mobile' => $user['mobile']
+            'user_mobile' => $user['mobile'],
+            'payment_type' => $paymentType,
         ]
     ];
 
-    // No offer/discount/₹2 logic. Trial is handled by start_at.
+    // Optional: upfront amount collected during authentication (single checkout)
+    if ($upfrontAmountPaise > 0) {
+        $subscriptionData['addons'] = [
+            [
+                'item' => [
+                    'name' => 'Trial verification fee (₹2, non-refundable)',
+                    'amount' => $upfrontAmountPaise,
+                    'currency' => $config['currency'],
+                ]
+            ]
+        ];
+    }
 
     $subResponse = razorpayApiRequest('subscriptions', 'POST', $subscriptionData);
     
@@ -193,7 +215,9 @@ try {
             'key' => RAZORPAY_KEY_ID,
             'subscription_id' => $razorpaySub['id'],
             'name' => 'TNPSC Study App',
-            'description' => $config['description'],
+            'description' => ($paymentType === 'trial_fee_2')
+                ? 'TNPSC Study App Premium - 7-day FREE trial (₹2 verification, non-refundable)'
+                : $config['description'],
             'image' => 'https://sudartnpscapp.in/assets/logo.png',
             'prefill' => [
                 'name' => $user['name'],
@@ -204,7 +228,8 @@ try {
                 'color' => '#6C63FF'
             ],
             'notes' => [
-                'user_id' => (string)$user['id']
+                'user_id' => (string)$user['id'],
+                'payment_type' => $paymentType,
             ],
             
             // Additional info for app
@@ -213,7 +238,10 @@ try {
             'plan_amount_display' => '₹' . ($config['amount'] / 100),
             'trial_days' => $config['trial_days'],
             'currency' => $config['currency'],
-            'start_at' => $startAt
+            'start_at' => $startAt,
+            'upfront_amount' => $upfrontAmountPaise,
+            'upfront_amount_display' => '₹' . ($upfrontAmountPaise / 100),
+            'payment_type' => $paymentType,
         ]
     ]);
 

@@ -28,6 +28,7 @@ import com.sudar.tnpscapp.nativeapp.ui.theme.AppColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    inBottomNav: Boolean = false,
     viewModel: ProfileViewModel = hiltViewModel(),
     onEditProfile: () -> Unit = {},
     onTestHistory: () -> Unit = {},
@@ -49,6 +50,9 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                // MainScreen already applies status bar padding for bottom-nav tabs.
+                // Avoid double top inset (dark gap above title) when nested.
+                windowInsets = if (inBottomNav) WindowInsets(0, 0, 0, 0) else TopAppBarDefaults.windowInsets,
                 title = {
                     Text(
                         "Profile",
@@ -69,6 +73,13 @@ fun ProfileScreen(
                     }
                 }
             )
+        },
+        // When embedded inside Main bottom-nav content, the bottom navigation already handles
+        // navigation bar insets. Avoid adding them again here (prevents a big blank gap).
+        contentWindowInsets = if (inBottomNav) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
         },
         containerColor = AppColors.Background
     ) { padding ->
@@ -154,12 +165,6 @@ fun ProfileScreen(
                         title = "Privacy Policy",
                         subtitle = "View our privacy policy",
                         onClick = onPrivacyPolicy
-                    ),
-                    ProfileMenuItem(
-                        icon = Icons.Outlined.DeleteForever,
-                        title = "Delete Account",
-                        subtitle = "Request account deletion",
-                        onClick = onAccountDeletion
                     )
                 )
             )

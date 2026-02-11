@@ -134,6 +134,20 @@ try {
     $db->exec($query5);
     echo "✅ Subscriptions table updated with last_payment_status column!\n";
 
+    // 6. Add meta_trial_cancel_event_sent_at column for idempotency (Meta App Events)
+    $query6 = "ALTER TABLE subscriptions 
+               ADD COLUMN IF NOT EXISTS meta_trial_cancel_event_sent_at DATETIME NULL AFTER cancelled_at";
+    
+    $db->exec($query6);
+    echo "✅ Subscriptions table updated with meta_trial_cancel_event_sent_at column!\n";
+
+    // 7. Add meta_trial_paid_event_sent_at column for idempotency (trial -> paid ₹299 event)
+    $query7 = "ALTER TABLE subscriptions
+               ADD COLUMN IF NOT EXISTS meta_trial_paid_event_sent_at DATETIME NULL AFTER meta_trial_cancel_event_sent_at";
+
+    $db->exec($query7);
+    echo "✅ Subscriptions table updated with meta_trial_paid_event_sent_at column!\n";
+
     echo "\n==========================================\n";
     echo "🎉 All tables created successfully!\n";
     echo "==========================================\n\n";

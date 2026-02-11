@@ -370,17 +370,40 @@ fun TakeTestScreen(
                                         // English Option
                                         if (q.hasEnglish == true && optionsEn[idx].isNotBlank()) {
                                             val optionText = optionsEn[idx]
-                                            val displayText = if (containsLatex(optionText)) {
-                                                "$optionLabel) ${convertLatexToPlainText(optionText)}"
+                                            val textColor = if (isSelected) AppColors.Primary else AppColors.TextPrimary
+                                            val fontWt = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                            
+                                            // Check if option contains an image
+                                            if (containsHtmlImage(optionText)) {
+                                                // Show label separately, then render image with RichHtmlContent
+                                                Text(
+                                                    text = "$optionLabel)",
+                                                    fontSize = 15.sp,
+                                                    fontWeight = fontWt,
+                                                    color = textColor,
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                RichHtmlContent(
+                                                    htmlString = optionText,
+                                                    fontSize = 15,
+                                                    fontWeight = fontWt,
+                                                    textColor = textColor,
+                                                    lineHeight = 20
+                                                )
                                             } else {
-                                                "$optionLabel) ${cleanHtmlText(optionText)}"
+                                                // Standard text rendering (LaTeX or plain)
+                                                val displayText = if (containsLatex(optionText)) {
+                                                    "$optionLabel) ${convertLatexToPlainText(optionText)}"
+                                                } else {
+                                                    "$optionLabel) ${cleanHtmlText(optionText)}"
+                                                }
+                                                Text(
+                                                    text = displayText,
+                                                    fontSize = 15.sp,
+                                                    fontWeight = fontWt,
+                                                    color = textColor,
+                                                )
                                             }
-                                            Text(
-                                                text = displayText,
-                                                fontSize = 15.sp,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                                color = if (isSelected) AppColors.Primary else AppColors.TextPrimary,
-                                            )
                                         }
                                         // Tamil Option
                                         if (q.hasTamil == true && optionsTa[idx].isNotBlank()) {
@@ -389,17 +412,40 @@ fun TakeTestScreen(
                                             }
                                             val tamilLabels = listOf("அ", "ஆ", "இ", "ஈ")
                                             val optionText = optionsTa[idx]
-                                            val displayText = if (containsLatex(optionText)) {
-                                                "${tamilLabels[idx]}) ${convertLatexToPlainText(optionText)}"
+                                            val textColor = if (isSelected) AppColors.Primary else AppColors.TextPrimary
+                                            val fontWt = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                            
+                                            // Check if Tamil option contains an image
+                                            if (containsHtmlImage(optionText)) {
+                                                // Show label separately, then render image with RichHtmlContent
+                                                Text(
+                                                    text = "${tamilLabels[idx]})",
+                                                    fontSize = 15.sp,
+                                                    fontWeight = fontWt,
+                                                    color = textColor,
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                RichHtmlContent(
+                                                    htmlString = optionText,
+                                                    fontSize = 15,
+                                                    fontWeight = fontWt,
+                                                    textColor = textColor,
+                                                    lineHeight = 20
+                                                )
                                             } else {
-                                                "${tamilLabels[idx]}) ${cleanHtmlText(optionText)}"
+                                                // Standard text rendering (LaTeX or plain)
+                                                val displayText = if (containsLatex(optionText)) {
+                                                    "${tamilLabels[idx]}) ${convertLatexToPlainText(optionText)}"
+                                                } else {
+                                                    "${tamilLabels[idx]}) ${cleanHtmlText(optionText)}"
+                                                }
+                                                Text(
+                                                    text = displayText,
+                                                    fontSize = 15.sp,
+                                                    fontWeight = fontWt,
+                                                    color = textColor,
+                                                )
                                             }
-                                            Text(
-                                                text = displayText,
-                                                fontSize = 15.sp,
-                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                                color = if (isSelected) AppColors.Primary else AppColors.TextPrimary,
-                                            )
                                         }
                                     }
                                 }

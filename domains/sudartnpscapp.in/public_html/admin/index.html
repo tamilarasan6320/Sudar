@@ -77,9 +77,29 @@
                 <i class="fas fa-crown"></i>
                 <span>Subscriptions</span>
             </a>
+            <a href="#settlement" class="nav-item" onclick="showPage('settlement')">
+                <i class="fas fa-calendar-check"></i>
+                <span>Sattlement</span>
+            </a>
+            <a href="#dailyIncome" class="nav-item" onclick="showPage('dailyIncome')">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Daily Income</span>
+            </a>
+            <a href="#weeklyAdIncome" class="nav-item" onclick="showPage('weeklyAdIncome')">
+                <i class="fas fa-chart-pie"></i>
+                <span>Weekly Ad & Income</span>
+            </a>
+            <a href="#userCategories" class="nav-item" onclick="showPage('userCategories')">
+                <i class="fas fa-filter"></i>
+                <span>User Categories</span>
+            </a>
             <a href="#marketing" class="nav-item" onclick="showPage('marketing')">
                 <i class="fas fa-chart-bar"></i>
                 <span>Marketing</span>
+            </a>
+            <a href="#referralLinks" class="nav-item" onclick="showPage('referralLinks')">
+                <i class="fas fa-link"></i>
+                <span>Referral</span>
             </a>
             <a href="#reports" class="nav-item" onclick="showPage('reports')">
                 <i class="fas fa-file-download"></i>
@@ -115,6 +135,21 @@
 
         <!-- Dashboard Page -->
         <div id="dashboard" class="page active">
+            <!-- Analytics Period -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+                <div style="min-width: 200px;">
+                    <select id="analyticsPeriod" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;" onchange="loadDashboard()">
+                        <option value="week" selected>Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                        <option value="year">Last 1 Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary" onclick="loadDashboard()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon" style="background: #6C63FF;">
@@ -176,6 +211,42 @@
                 </div>
             </div>
 
+            <!-- Today's & Yesterday's Revenue Highlight -->
+            <div class="stats-grid" style="margin-top: 20px;">
+                <div class="stat-card" style="background: linear-gradient(135deg, #EC4899 0%, #BE185D 100%); color: white;">
+                    <div class="stat-icon" style="background: rgba(255,255,255,0.2);">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3 id="todayReceivedAmount" style="color: white; font-size: 28px;">₹0</h3>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 14px;">Today's Received</p>
+                        <span id="todayReceivedCount" style="font-size: 12px; color: rgba(255,255,255,0.8);">0 users paid</span>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); color: white;">
+                    <div class="stat-icon" style="background: rgba(255,255,255,0.2);">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3 id="yesterdayReceivedAmount" style="color: white; font-size: 28px;">₹0</h3>
+                        <p style="color: rgba(255,255,255,0.9); font-size: 14px;">Yesterday's Received</p>
+                        <span id="yesterdayReceivedCount" style="font-size: 12px; color: rgba(255,255,255,0.8);">0 users paid</span>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white;">
+                    <div class="stat-icon" style="background: rgba(255,255,255,0.2);">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3 id="activeTrialCount" style="color: white;">0</h3>
+                        <p style="color: rgba(255,255,255,0.9);">Trial Active</p>
+                        <span style="font-size: 11px; color: rgba(255,255,255,0.7);">₹5 trial users</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Revenue & Subscription Stats -->
             <div class="stats-grid" style="margin-top: 20px;">
                 <div class="stat-card" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white;">
@@ -200,14 +271,14 @@
                     </div>
                 </div>
 
-                <div class="stat-card" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white;">
+                <div class="stat-card" style="background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); color: white;">
                     <div class="stat-icon" style="background: rgba(255,255,255,0.2);">
-                        <i class="fas fa-user-clock"></i>
+                        <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-details">
-                        <h3 id="activeTrialCount" style="color: white;">0</h3>
-                        <p style="color: rgba(255,255,255,0.9);">Trial Active</p>
-                        <span style="font-size: 11px; color: rgba(255,255,255,0.7);">₹5 trial users</span>
+                        <h3 id="totalUsersAll" style="color: white;">0</h3>
+                        <p style="color: rgba(255,255,255,0.9);">Total Users</p>
+                        <span style="font-size: 11px; color: rgba(255,255,255,0.7);">All registered users</span>
                     </div>
                 </div>
             </div>
@@ -338,6 +409,89 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- User Categories Page -->
+        <div id="userCategories" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-filter" style="color: #6C63FF;"></i> User Categories</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="refreshUserCategoriesPage()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-secondary" onclick="showPage('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+                    <div style="min-width: 240px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Category</label>
+                        <select id="userCategorySelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: #fff;" onchange="resetUserCategoriesAndLoad()">
+                            <option value="no_trial">Registered (No Trial Yet)</option>
+                            <option value="trial_cancelled">Trial Cancelled</option>
+                            <option value="active">Active Users (Subscription/Premium)</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 260px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Search (name/mobile/email)</label>
+                        <input type="text" id="userCategorySearch" placeholder="Type and press Enter..." style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;" onkeyup="handleUserCategorySearchKeyup(event)">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="resetUserCategoriesAndLoad()">
+                            <i class="fas fa-search"></i> Load
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="downloadUserCategoriesSheet()">
+                            <i class="fas fa-file-download"></i> Download Sheet
+                        </button>
+                    </div>
+                </div>
+                <div id="userCategoriesSummary" style="margin-top: 12px; color: #666; font-size: 13px;"></div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container">
+                <table class="data-table" id="userCategoriesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">ID</th>
+                            <th>Name</th>
+                            <th>Mobile</th>
+                            <th>Info</th>
+                            <th style="width: 90px; text-align: center;">View</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userCategoriesTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                                <p style="margin-top: 10px; color: #666;">Loading...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination -->
+                <div id="userCategoriesPagination" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; margin-top: 15px; border-top: 1px solid #e5e7eb;">
+                    <div style="color: #6b7280; font-size: 14px;">
+                        Showing <span id="userCategoriesShowingFrom">0</span>-<span id="userCategoriesShowingTo">0</span> of <span id="userCategoriesTotalCount">0</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="userCategoriesPrevBtn" onclick="loadUserCategoriesPrevPage()" class="btn btn-secondary" style="padding: 8px 16px;" disabled>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <span id="userCategoriesPageInfo" style="padding: 8px 15px; background: #f3f4f6; border-radius: 6px; color: #374151;">Page 1</span>
+                        <button id="userCategoriesNextBtn" onclick="loadUserCategoriesNextPage()" class="btn btn-secondary" style="padding: 8px 16px;">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -544,7 +698,7 @@
                 </div>
 
                 <!-- Bulk Upload Card -->
-                <div class="management-card" onclick="window.location.href='bulk_upload.html'">
+                <div class="management-card" onclick="window.location.href='bulk_upload.html?v=20260130191000'">
                     <div class="management-card-icon" style="background: linear-gradient(135deg, #9C27B0, #7b1fa2);">
                         <i class="fas fa-cloud-upload-alt"></i>
                     </div>
@@ -618,10 +772,18 @@
             </div>
             <div class="page-header">
                 <h2><i class="fas fa-clipboard-list" style="margin-right: 10px;"></i>Question Sessions</h2>
-                <button class="btn btn-primary" onclick="openModal('questionSessionModal')">
-                    <i class="fas fa-plus"></i> Add Session
-                </button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <select id="questionSessionsViewFilter" class="form-control" style="width: 220px;">
+                        <option value="all">All Sessions</option>
+                        <option value="pending">Pending Topics (Need questions)</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="openModal('questionSessionModal')">
+                        <i class="fas fa-plus"></i> Add Session
+                    </button>
+                </div>
             </div>
+
+            <div id="questionSessionsPendingSummary" style="margin: 0 0 15px 0;"></div>
 
             <!-- Exam Category > Test Category > Sessions Grid -->
             <div id="questionSessionsByExamGrid"></div>
@@ -975,6 +1137,101 @@
             </div>
         </div>
 
+        <!-- Settlement Page -->
+        <div id="settlement" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-calendar-check" style="color: #10B981;"></i> Sattlement</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="refreshSettlementPage()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-secondary" onclick="showPage('dashboard')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Date Filter -->
+            <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+                    <div style="min-width: 220px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Select Start Date</label>
+                        <input type="date" id="settlementDate" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="loadSettlementBySelectedDate()">
+                            <i class="fas fa-search"></i> Load
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="setSettlementDateAndLoad('today')">Today</button>
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary" onclick="setSettlementDateAndLoad('yesterday')">Yesterday</button>
+                    </div>
+                </div>
+                <div id="settlementSummary" style="margin-top: 12px; color: #666; font-size: 13px;"></div>
+            </div>
+
+            <!-- ₹5 Trial Users Section -->
+            <div class="page-header" style="margin-top: 10px;">
+                <h3 style="font-size: 18px;"><i class="fas fa-rupee-sign" style="color: #F59E0B;"></i> ₹5 Trial Users (Started on selected date)</h3>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="settlementTrialsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Sub ID</th>
+                            <th>User</th>
+                            <th>Mobile</th>
+                            <th>Status</th>
+                            <th>Razorpay Status</th>
+                            <th>Trial Start</th>
+                            <th>Trial End (7 days)</th>
+                            <th style="width: 70px;">View</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settlementTrialsTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                                <p style="margin-top: 10px; color: #666;">Loading trial users...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paid Users Section -->
+            <div class="page-header" style="margin-top: 30px;">
+                <h3 style="font-size: 18px;"><i class="fas fa-credit-card" style="color: #4CAF50;"></i> Paid Users (Started on selected date)</h3>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="settlementPaidTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Sub ID</th>
+                            <th>User</th>
+                            <th>Mobile</th>
+                            <th>Status</th>
+                            <th>Razorpay Status</th>
+                            <th>Period Start</th>
+                            <th>Period End (30 days)</th>
+                            <th style="width: 70px;">View</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settlementPaidTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6C63FF;"></i>
+                                <p style="margin-top: 10px; color: #666;">Loading paid users...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Marketing Page (Meta Ads) -->
         <div id="marketing" class="page">
             <div class="page-header">
@@ -1085,6 +1342,66 @@
                         <tr>
                             <td colspan="9" style="text-align: center; padding: 40px; color: #666;">
                                 Click "Load Data" to fetch Meta Ads insights
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Referral Links Page -->
+        <div id="referralLinks" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-link" style="color: #0EA5E9;"></i> Referral Links</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="loadReferralLinks()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Create Link -->
+            <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <h3 style="margin: 0 0 15px 0; color: #333;">Create Referral Link</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+                    <div style="min-width: 220px; flex: 1;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Name</label>
+                        <input type="text" id="refLinkName" placeholder="Example: Chemistry Campaign" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div style="min-width: 180px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Code</label>
+                        <input type="text" id="refLinkCode" placeholder="CHEM001" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <button class="btn btn-primary" onclick="createReferralLink()">
+                        <i class="fas fa-plus"></i> Create
+                    </button>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    Allowed code: letters, numbers, <code>_</code> and <code>-</code> (2-64 chars). Link format: <code>/r/CODE</code>
+                </div>
+            </div>
+
+            <!-- Links Table -->
+            <div class="table-container" style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">#</th>
+                            <th>Name</th>
+                            <th style="width: 140px;">Code</th>
+                            <th>Link</th>
+                            <th style="width: 110px;">Clicks</th>
+                            <th style="width: 110px;">Installs</th>
+                            <th style="width: 110px;">Trials</th>
+                            <th style="width: 110px;">Purchases</th>
+                            <th style="width: 110px;">Status</th>
+                            <th style="width: 160px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="referralLinksTableBody">
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 40px; color: #666;">
+                                Click Refresh to load referral links
                             </td>
                         </tr>
                     </tbody>
@@ -1278,6 +1595,186 @@
                     </div>
                     <div id="reportPreviewStats" style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 8px; font-size: 14px; color: #666;"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Daily Income Page -->
+        <div id="dailyIncome" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-money-bill-wave" style="color: #10B981;"></i> Daily Income Report</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="loadDailyIncome()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Date Range Filter -->
+            <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+                    <div style="min-width: 180px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Start Date</label>
+                        <input type="date" id="incomeStartDate" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div style="min-width: 180px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">End Date</label>
+                        <input type="date" id="incomeEndDate" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="loadDailyIncome()">
+                            <i class="fas fa-search"></i> Load
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" onclick="downloadDailyIncomeCSV()" style="background: #10B981;">
+                            <i class="fas fa-download"></i> Download CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Total Income</div>
+                    <div style="font-size: 28px; font-weight: bold; margin-top: 5px;" id="incomeTotalAmount">₹0</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Total Transactions</div>
+                    <div style="font-size: 28px; font-weight: bold; margin-top: 5px;" id="incomeTotalTransactions">0</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Average Daily Income</div>
+                    <div style="font-size: 28px; font-weight: bold; margin-top: 5px;" id="incomeAvgDaily">₹0</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Days with Income</div>
+                    <div style="font-size: 28px; font-weight: bold; margin-top: 5px;" id="incomeDaysActive">0</div>
+                </div>
+            </div>
+
+            <!-- Income Table -->
+            <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden;">
+                <table class="data-table" id="dailyIncomeTable">
+                    <thead style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white;">
+                        <tr>
+                            <th style="color: white; width: 150px;">Date</th>
+                            <th style="color: white; text-align: center;">No. of Users</th>
+                            <th style="color: white; text-align: right;">Total Amount (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dailyIncomeTableBody">
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #10B981;"></i>
+                                <p style="margin-top: 10px; color: #666;">Loading daily income data...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot style="background: #f8f9fa; font-weight: bold;">
+                        <tr>
+                            <td style="padding: 15px;">TOTAL</td>
+                            <td style="text-align: center; padding: 15px;" id="incomeTableTotalUsers">0</td>
+                            <td style="text-align: right; padding: 15px;" id="incomeTableTotalAmount">₹0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Weekly Ad & Income Page -->
+        <div id="weeklyAdIncome" class="page">
+            <div class="page-header">
+                <h2><i class="fas fa-chart-pie" style="color: #8B5CF6;"></i> Weekly Ad Spend & Income</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="loadWeeklyAdIncome()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Date Range Filter -->
+            <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
+                    <div style="min-width: 180px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Start Date</label>
+                        <input type="date" id="weeklyStartDate" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div style="min-width: 180px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">End Date</label>
+                        <input type="date" id="weeklyEndDate" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="loadWeeklyAdIncome()">
+                            <i class="fas fa-search"></i> Load
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" onclick="downloadWeeklyAdIncomeCSV()" style="background: #8B5CF6;">
+                            <i class="fas fa-download"></i> Download CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Total Ad Spend</div>
+                    <div style="font-size: 24px; font-weight: bold; margin-top: 5px;" id="weeklyTotalAdSpend">₹0</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Total Income</div>
+                    <div style="font-size: 24px; font-weight: bold; margin-top: 5px;" id="weeklyTotalIncome">₹0</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">Net Profit/Loss</div>
+                    <div style="font-size: 24px; font-weight: bold; margin-top: 5px;" id="weeklyNetProfit">₹0</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 14px; opacity: 0.9;">ROI</div>
+                    <div style="font-size: 24px; font-weight: bold; margin-top: 5px;" id="weeklyROI">0%</div>
+                </div>
+            </div>
+
+            <!-- Info Note -->
+            <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;">
+                <i class="fas fa-info-circle" style="color: #F59E0B;"></i>
+                <strong>Note:</strong> Income is matched to Ad Spend week + 7 days (trial period). So Ad Week Jan 9-15 → Income Week Jan 16-22. Ad Spend is shown <strong>excl GST</strong> (Meta Insights). <strong>Incl GST</strong> is shown inside the Ad Spend cell for invoice matching. <strong>Profit/ROI are calculated using Ad Spend incl GST</strong>.
+            </div>
+
+            <!-- Weekly Table -->
+            <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow-x: auto;">
+                <table class="data-table" id="weeklyAdIncomeTable">
+                    <thead style="background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); color: white;">
+                        <tr>
+                            <th style="color: white;">Ad Week</th>
+                            <th style="color: white; text-align: right;">Ad Spend</th>
+                            <th style="color: white;">Income Week</th>
+                            <th style="color: white; text-align: right;">Income</th>
+                            <th style="color: white; text-align: right;">Profit</th>
+                            <th style="color: white; text-align: center;">ROI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weeklyAdIncomeTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #8B5CF6;"></i>
+                                <p style="margin-top: 10px; color: #666;">Loading weekly data...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot style="background: #f8f9fa; font-weight: bold;">
+                        <tr>
+                            <td style="padding: 15px;">TOTAL</td>
+                            <td style="text-align: right; padding: 15px;" id="weeklyTableTotalSpend">₹0</td>
+                            <td style="padding: 15px;"></td>
+                            <td style="text-align: right; padding: 15px;" id="weeklyTableTotalIncome">₹0</td>
+                            <td style="text-align: right; padding: 15px;" id="weeklyTableTotalProfit">₹0</td>
+                            <td style="text-align: center; padding: 15px;" id="weeklyTableTotalROI">0%</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
 
@@ -1992,6 +2489,9 @@
                 <button class="settings-tab" onclick="switchSettingsTab('premium_video')" id="premiumVideoTab" style="flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s;">
                     <i class="fas fa-video"></i> Premium Video
                 </button>
+                <button class="settings-tab" onclick="switchSettingsTab('payment_type')" id="paymentTypeTab" style="flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s;">
+                    <i class="fas fa-credit-card"></i> Payment Type
+                </button>
             </div>
 
             <!-- About Section -->
@@ -2221,6 +2721,31 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Payment Type Section -->
+            <div id="paymentTypeSection" class="settings-section" style="display: none; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3><i class="fas fa-credit-card"></i> Subscription Payment Type</h3>
+                    <button class="btn btn-primary" onclick="saveSubscriptionPaymentType()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Payment Type</label>
+                    <select id="subscriptionPaymentType" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 14px;">
+                        <option value="legacy_5">₹5 Mandate (Refunded) — Old Screen (with video)</option>
+                        <option value="trial_fee_2">₹2 Trial Fee (Non‑Refundable) — New Screen (no video)</option>
+                    </select>
+                    <small style="color: #666; display: block; margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> This setting controls which subscription offer screen is shown to users (startup + test gate).
+                    </small>
+                </div>
+
+                <div style="padding: 14px; border-radius: 10px; background: #fff8e1; border: 1px solid #ffe0b2; color: #7a5200; font-size: 13px;">
+                    <strong>Note:</strong> ₹2 non‑refundable requires a separate Razorpay Order payment before subscription mandate. Make sure the app build supports this flow.
+                </div>
+            </div>
         </div>
 
         <!-- Question Scraper Page - REMOVED -->
@@ -2401,6 +2926,26 @@
                 <button id="deleteConfirmBtn" class="btn" style="background: #f44336; color: white; min-width: 120px;" onclick="confirmDeleteAction()">
                     <i class="fas fa-trash"></i> Delete
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Details Modal -->
+    <div id="referralDetailsModal" class="modal">
+        <div class="modal-content modal-large" style="max-width: 1200px; max-height: 95vh; overflow-y: auto;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%); color: white;">
+                <h2 style="margin:0;">
+                    <i class="fas fa-link"></i>
+                    Referral Details - <span id="refDetailsCode" style="font-family: 'Courier New', monospace;"></span>
+                </h2>
+                <span class="close" onclick="closeModal('referralDetailsModal')" style="color:white;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div id="refDetailsSummary" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 16px;"></div>
+                <div id="referralDetailsBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('referralDetailsModal')">Close</button>
             </div>
         </div>
     </div>
@@ -3304,7 +3849,7 @@
         </div>
     </div>
 
-    <script src="js/script.js?v=20260120225500"></script>
+    <script src="js/script.js?v=20260208100000"></script>
     <script>
         // Store multiple HTML blocks
         let savedHtmlBlocks = [];
@@ -5172,7 +5717,7 @@
                     let batchFailedQuestions = []; // Track failed questions in this batch
                     
                     for (let i = startIdx; i < endIdx; i++) {
-                        const q = jsonData.questions[i];
+                        const q = questionsArray[i];
                         
                         // Parse question data
                         let questionEn = (q.question_en || q.question || '').trim();

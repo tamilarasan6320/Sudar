@@ -132,5 +132,19 @@ function verifyPaymentSignature($subscriptionId, $paymentId, $signature) {
     $expectedSignature = hash_hmac('sha256', $payload, RAZORPAY_KEY_SECRET);
     return hash_equals($expectedSignature, $signature);
 }
+
+/**
+ * Verify Razorpay Order Payment Signature
+ *
+ * @param string $orderId Razorpay order ID
+ * @param string $paymentId Razorpay payment ID
+ * @param string $signature Razorpay signature
+ * @return bool
+ */
+function verifyOrderPaymentSignature($orderId, $paymentId, $signature) {
+    $payload = $orderId . '|' . $paymentId;
+    $expectedSignature = hash_hmac('sha256', $payload, RAZORPAY_KEY_SECRET);
+    return hash_equals($expectedSignature, $signature);
+}
 ?>
 

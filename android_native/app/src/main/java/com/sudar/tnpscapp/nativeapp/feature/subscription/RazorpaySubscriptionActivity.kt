@@ -22,6 +22,8 @@ import com.razorpay.Checkout
 import com.razorpay.PaymentData
 import com.razorpay.PaymentResultWithDataListener
 import com.sudar.tnpscapp.nativeapp.core.network.SudarApi
+import com.sudar.tnpscapp.nativeapp.core.services.FirebaseService
+import com.sudar.tnpscapp.nativeapp.core.services.MetaAppEventsService
 import com.sudar.tnpscapp.nativeapp.core.session.SessionStore
 import com.sudar.tnpscapp.nativeapp.ui.theme.AppColors
 import com.sudar.tnpscapp.nativeapp.ui.theme.SudarTheme
@@ -30,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
 
@@ -52,16 +55,44 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
     @Inject
     lateinit var sessionStore: SessionStore
 
+    @Inject
+    lateinit var metaAppEventsService: MetaAppEventsService
+
+    @Inject
+    lateinit var firebaseService: FirebaseService
+
     private var subscriptionId: String? = null
     private var statusMessage = mutableStateOf("Initializing payment...")
     private var isLoading = mutableStateOf(true)
+    private var checkoutPaymentType: String = "legacy_5"
+    private var upfrontAmountPaise: Int = 0
+
+    private enum class Flow {
+        LegacySubscription,
+        TrialFeeThenSubscription
+    }
+
+    private var flow: Flow = Flow.LegacySubscription
 
     companion object {
         private const val TAG = "RazorpaySubscription"
+
+        const val EXTRA_FLOW = "payment_flow"
+        const val FLOW_LEGACY_SUBSCRIPTION = "legacy_subscription"
+        const val FLOW_TRIAL_FEE_THEN_SUBSCRIPTION = "trial_fee_then_subscription"
+
+        // Default preferred payment method to surface first in Razorpay Checkout UI
+        // (user can still switch methods in the checkout screen).
+        private const val DEFAULT_PREFERRED_PAYMENT_METHOD = "upi"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        flow = when (intent.getStringExtra(EXTRA_FLOW)) {
+            FLOW_TRIAL_FEE_THEN_SUBSCRIPTION -> Flow.TrialFeeThenSubscription
+            else -> Flow.LegacySubscription
+        }
 
         setContent {
             SudarTheme {
@@ -74,13 +105,34 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
 
         // Start the subscription creation flow
         lifecycleScope.launch {
-            createSubscriptionAndOpenCheckout()
+            when (flow) {
+                Flow.LegacySubscription -> {
+                    createSubscriptionAndOpenCheckout(paymentType = "legacy_5")
+                }
+                Flow.TrialFeeThenSubscription -> {
+                    // Single checkout: collect ₹2 upfront via subscription addons + authorize mandate
+                    createSubscriptionAndOpenCheckout(paymentType = "trial_fee_2")
+                }
+            }
         }
     }
 
-    private suspend fun createSubscriptionAndOpenCheckout() {
+    private suspend fun createSubscriptionAndOpenCheckout(paymentType: String) {
         try {
             statusMessage.value = "Creating subscription..."
+            checkoutPaymentType = paymentType
+            
+            // Log begin checkout event for analytics
+            try {
+                val beginValue = if (paymentType == "trial_fee_2") 2.0 else 299.0
+                firebaseService.logBeginCheckout(
+                    value = beginValue,
+                    currency = "INR",
+                    itemName = "Premium Monthly"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Begin checkout analytics failed: ${e.message}")
+            }
             
             val userId = sessionStore.userId.first()
             if (userId == null) {
@@ -89,8 +141,12 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
             }
 
             // Step 1: Call backend to create subscription
+            val req = mutableMapOf<String, Any?>(
+                "user_id" to userId,
+                "payment_type" to paymentType,
+            )
             val response = withContext(Dispatchers.IO) {
-                api.createSubscription(mapOf("user_id" to userId))
+                api.createSubscription(req)
             }
 
             if (!response.isSuccessful) {
@@ -112,6 +168,10 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
                 showErrorAndFinish("Invalid response from server")
                 return
             }
+
+            // Cache dynamic amounts from backend (used for analytics values)
+            upfrontAmountPaise = (data["upfront_amount"] as? Number)?.toInt()
+                ?: if (paymentType == "trial_fee_2") 200 else 0
 
             // Extract checkout options from response
             val key = data["key"] as? String ?: run {
@@ -174,6 +234,10 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
                 options.put("notes", notesObj)
             }
 
+            // Prefer a specific payment method (ex: UPI first) in Razorpay Checkout UI.
+            // Docs: Razorpay Checkout "Payment Methods Configuration" (config.display.sequence)
+            applyPreferredPaymentMethod(options, DEFAULT_PREFERRED_PAYMENT_METHOD)
+
             Log.d(TAG, "Opening Razorpay checkout with options: $options")
             
             // Hide loading and open checkout
@@ -188,6 +252,30 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
         }
     }
 
+    private fun applyPreferredPaymentMethod(options: JSONObject, preferredMethod: String) {
+        try {
+            val preferred = preferredMethod.trim().lowercase()
+            if (preferred.isBlank()) return
+
+            val methods = listOf(preferred, "upi", "card", "netbanking", "wallet")
+                .distinct()
+                .filter { it.isNotBlank() }
+
+            val sequence = JSONArray()
+            methods.forEach { sequence.put(it) }
+
+            val preferences = JSONObject().put("show_default_blocks", true)
+            val display = JSONObject()
+                .put("sequence", sequence)
+                .put("preferences", preferences)
+
+            val config = JSONObject().put("display", display)
+            options.put("config", config)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to apply preferred payment method config: ${e.message}")
+        }
+    }
+
     override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {
         Log.d(TAG, "Payment success: paymentId=$razorpayPaymentId")
         
@@ -195,7 +283,7 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
         statusMessage.value = "Verifying payment..."
 
         lifecycleScope.launch {
-            verifyPayment(paymentData)
+            verifySubscriptionMandate(paymentData)
         }
     }
 
@@ -218,7 +306,7 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
         finish()
     }
 
-    private suspend fun verifyPayment(paymentData: PaymentData?) {
+    private suspend fun verifySubscriptionMandate(paymentData: PaymentData?) {
         try {
             val paymentId = paymentData?.paymentId
             val signature = paymentData?.signature
@@ -258,6 +346,50 @@ class RazorpaySubscriptionActivity : ComponentActivity(), PaymentResultWithDataL
 
             // Step 4: Update session store to mark user as premium
             sessionStore.setPremium(true)
+
+            // Step 4.5: Log analytics events (Firebase + Meta) for attribution
+            try {
+                val userId = sessionStore.userId.first()
+                val purchaseAmountInr = when {
+                    upfrontAmountPaise > 0 -> upfrontAmountPaise / 100.0
+                    checkoutPaymentType == "legacy_5" -> 5.0
+                    else -> 299.0
+                }
+                val transactionId = "${checkoutPaymentType}_${subId}_${paymentId}"
+                
+                // Firebase Analytics
+                if (userId != null) {
+                    firebaseService.setUserId(userId.toString())
+                }
+                firebaseService.logPurchase(
+                    amount = purchaseAmountInr,
+                    currency = "INR",
+                    transactionId = transactionId,
+                    itemName = if (checkoutPaymentType == "trial_fee_2") {
+                        "Premium Monthly Trial (₹2 verification)"
+                    } else {
+                        "Premium Monthly Trial"
+                    }
+                )
+                
+                // Meta (Facebook) App Events
+                if (userId != null) {
+                    metaAppEventsService.setUserId(userId.toString())
+                }
+                metaAppEventsService.logPurchase(
+                    amount = purchaseAmountInr,
+                    currency = "INR",
+                    contentId = if (checkoutPaymentType == "trial_fee_2") {
+                        "premium_monthly_trial_fee_2"
+                    } else {
+                        "premium_monthly_trial"
+                    },
+                    contentType = "subscription",
+                    orderId = transactionId
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Analytics purchase event failed: ${e.message}")
+            }
 
             Log.d(TAG, "Payment verified successfully!")
             

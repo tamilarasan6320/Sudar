@@ -399,6 +399,8 @@ private fun SubscribeView(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
+                // Keep CTA + "Skip" above system navigation bar (3-button / gesture)
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

@@ -12,7 +12,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     // Get all exam categories
     $examCategory = new ExamCategory($db);
-    $stmt = $examCategory->getAll();
+    // Admin should see active + inactive categories, so we can toggle visibility (eye icon)
+    $stmt = $examCategory->getAllAdmin();
     $categories = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $categories[] = $row;

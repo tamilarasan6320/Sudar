@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sudar.tnpscapp.nativeapp.core.network.SudarApi
 import com.sudar.tnpscapp.nativeapp.core.network.model.CreateUserRequest
+import com.sudar.tnpscapp.nativeapp.core.services.FirebaseService
+import com.sudar.tnpscapp.nativeapp.core.services.MetaAppEventsService
 import com.sudar.tnpscapp.nativeapp.core.session.SessionStore
 import com.sudar.tnpscapp.nativeapp.core.session.UserSession
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,7 +29,9 @@ data class ProfileSetupUiState(
 @HiltViewModel
 class ProfileSetupViewModel @Inject constructor(
     private val api: SudarApi,
-    private val sessionStore: SessionStore
+    private val sessionStore: SessionStore,
+    private val metaAppEventsService: MetaAppEventsService,
+    private val firebaseService: FirebaseService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileSetupUiState())
@@ -82,6 +86,19 @@ class ProfileSetupViewModel @Inject constructor(
                                 ),
                                 token ?: ""
                             )
+
+                            // Log analytics events (Firebase + Meta) for attribution
+                            try {
+                                // Firebase Analytics
+                                firebaseService.setUserId(user.id.toString())
+                                firebaseService.logSignUp(state.verificationMethod)
+                                
+                                // Meta (Facebook) App Events
+                                metaAppEventsService.setUserId(user.id.toString())
+                                metaAppEventsService.logCompleteRegistration(state.verificationMethod)
+                            } catch (e: Exception) {
+                                // Ignore analytics errors
+                            }
 
                             _uiState.update {
                                 it.copy(

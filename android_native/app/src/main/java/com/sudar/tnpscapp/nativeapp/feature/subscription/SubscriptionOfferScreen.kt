@@ -102,6 +102,8 @@ fun SubscriptionOfferScreen(
         if (!isLaunchingPayment) {
             isLaunchingPayment = true
             val intent = Intent(context, RazorpaySubscriptionActivity::class.java)
+            // Explicit legacy flow (₹5 mandate refunded, old screen with video)
+            intent.putExtra(RazorpaySubscriptionActivity.EXTRA_FLOW, RazorpaySubscriptionActivity.FLOW_LEGACY_SUBSCRIPTION)
             razorpayLauncher.launch(intent)
         }
     }
@@ -257,6 +259,8 @@ fun SubscriptionOfferScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(DarkBackground)
+                // Keep CTA + "Skip" above system navigation bar (3-button / gesture)
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -310,7 +314,7 @@ fun SubscriptionOfferScreen(
 }
 
 @Composable
-private fun VideoPremiumBanner(videoPath: String?) {
+fun VideoPremiumBanner(videoPath: String?) {
     // Red/coral gradient border container
     Box(
         modifier = Modifier
@@ -352,7 +356,7 @@ private fun VideoPremiumBanner(videoPath: String?) {
 }
 
 @Composable
-private fun TimelineStep(
+fun TimelineStep(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     iconColor: Color,
     iconBackground: Color,

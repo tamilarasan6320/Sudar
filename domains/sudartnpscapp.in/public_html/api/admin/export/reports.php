@@ -191,7 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $trialStmt = $db->prepare("
                         SELECT DATE(trial_start) as day, COUNT(DISTINCT user_id) as count 
                         FROM subscriptions 
-                        WHERE trial_start IS NOT NULL AND DATE(trial_start) BETWEEN ? AND ?
+                        WHERE trial_start IS NOT NULL 
+                        AND DATE(trial_start) BETWEEN ? AND ?
                         GROUP BY DATE(trial_start)
                     ");
                     $trialStmt->execute([$start_date, $end_date]);
@@ -230,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     header('Content-Disposition: attachment; filename="daily_user_metrics_' . $start_date . '_to_' . $end_date . '.csv"');
 
                     $output = fopen('php://output', 'w');
-                    fputcsv($output, ['Date', 'Registrations', 'Trial Users', 'Active Users', 'Total Users']);
+                    fputcsv($output, ['Date', 'Registrations', '₹5 Trial Starts', 'Active Users', 'Total Users']);
 
                     foreach ($dates as $date) {
                         fputcsv($output, [
@@ -300,7 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $registrations[$row['day']] = (int)$row['count'];
                 }
 
-                // Get daily ACTIVE trial users
+                // Get daily trial starts (₹5 users who started trial on that date - regardless of current status)
                 $trialUsers = [];
                 $tableCheck = $db->query("SHOW TABLES LIKE 'subscriptions'");
                 if ($tableCheck->rowCount() > 0) {
@@ -308,7 +309,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         SELECT DATE(trial_start) as day, COUNT(DISTINCT user_id) as count 
                         FROM subscriptions 
                         WHERE trial_start IS NOT NULL 
-                        AND LOWER(status) = 'authenticated'
                         AND DATE(trial_start) BETWEEN ? AND ?
                         GROUP BY DATE(trial_start)
                     ");
@@ -397,7 +397,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     fputcsv($output, [
                         'Date', 
                         'Registrations', 
-                        'Active ₹5 Trial',
+                        '₹5 Trial Starts',
                         'Ad Spend',
                         'Installs',
                         'Cost/Install',

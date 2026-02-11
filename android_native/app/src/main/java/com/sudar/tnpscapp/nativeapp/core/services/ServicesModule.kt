@@ -52,4 +52,12 @@ object ServicesModule {
     ): SmsRetrieverService {
         return SmsRetrieverService(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideMetaAppEventsService(
+        @ApplicationContext context: Context
+    ): MetaAppEventsService {
+        return MetaAppEventsService(context)
+    }
 }

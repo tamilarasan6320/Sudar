@@ -34,6 +34,9 @@ class SessionStore @Inject constructor(
         val SelectedExamId: Preferences.Key<Int> = intPreferencesKey("selectedExamId")
         val IsPremium: Preferences.Key<Boolean> = booleanPreferencesKey("is_premium")
         val DeviceId: Preferences.Key<String> = stringPreferencesKey("deviceId")
+        // Referral attribution (install referrer)
+        val ReferralInstallSent: Preferences.Key<Boolean> = booleanPreferencesKey("referral_install_sent")
+        val PendingReferralCode: Preferences.Key<String> = stringPreferencesKey("pending_referral_code")
         // Premium video cache
         val PremiumVideoVersion: Preferences.Key<String> = stringPreferencesKey("premium_video_version")
         val PremiumVideoLocalPath: Preferences.Key<String> = stringPreferencesKey("premium_video_local_path")
@@ -48,6 +51,8 @@ class SessionStore @Inject constructor(
     val selectedExamId: Flow<Int?> = ds.data.map { it[Keys.SelectedExamId] }
     val isPremium: Flow<Boolean> = ds.data.map { it[Keys.IsPremium] ?: false }
     val deviceId: Flow<String?> = ds.data.map { it[Keys.DeviceId] }
+    val referralInstallSent: Flow<Boolean> = ds.data.map { it[Keys.ReferralInstallSent] ?: false }
+    val pendingReferralCode: Flow<String?> = ds.data.map { it[Keys.PendingReferralCode] }
     val premiumVideoVersion: Flow<String?> = ds.data.map { it[Keys.PremiumVideoVersion] }
     val premiumVideoLocalPath: Flow<String?> = ds.data.map { it[Keys.PremiumVideoLocalPath] }
 
@@ -114,6 +119,23 @@ class SessionStore @Inject constructor(
     suspend fun getPremiumVideoVersion(): String? = premiumVideoVersion.first()
     suspend fun getPremiumVideoLocalPath(): String? = premiumVideoLocalPath.first()
 
+    // Referral attribution helpers
+    suspend fun getReferralInstallSent(): Boolean = referralInstallSent.first()
+
+    suspend fun setReferralInstallSent(value: Boolean) {
+        ds.edit { it[Keys.ReferralInstallSent] = value }
+    }
+
+    suspend fun getPendingReferralCode(): String? = pendingReferralCode.first()
+
+    suspend fun setPendingReferralCode(value: String) {
+        ds.edit { it[Keys.PendingReferralCode] = value }
+    }
+
+    suspend fun clearPendingReferralCode() {
+        ds.edit { it.remove(Keys.PendingReferralCode) }
+    }
+
     suspend fun clearSession() {
         ds.edit {
             it[Keys.IsLoggedIn] = false
@@ -125,6 +147,7 @@ class SessionStore @Inject constructor(
             it.remove(Keys.SelectedExamId)
             it.remove(Keys.IsPremium)
             // NOTE: keep deviceId stable across logouts
+            // NOTE: keep referralInstallSent stable across logouts (install attribution is per-install)
         }
     }
 

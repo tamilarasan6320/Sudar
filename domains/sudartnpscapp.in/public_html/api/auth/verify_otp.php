@@ -133,6 +133,34 @@ try {
                 $user->updateLastLogin();
             }
 
+            // Link install attribution (if any) for this device to this user
+            if ($deviceId) {
+                try {
+                    $db->exec("CREATE TABLE IF NOT EXISTS referral_installs (
+                        id INT(11) AUTO_INCREMENT PRIMARY KEY,
+                        code VARCHAR(64) NOT NULL,
+                        device_id VARCHAR(64) NOT NULL,
+                        user_id INT(11) NULL,
+                        install_referrer TEXT NULL,
+                        first_open_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY uniq_device (device_id),
+                        KEY idx_code (code),
+                        KEY idx_user (user_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                    $linkStmt = $db->prepare("UPDATE referral_installs
+                                              SET user_id = ?
+                                              WHERE device_id = ?
+                                                AND (user_id IS NULL OR user_id = 0)
+                                              LIMIT 1");
+                    $linkStmt->execute([$userData['id'], $deviceId]);
+                } catch (Exception $e) {
+                    // best-effort
+                }
+            }
+
             // Use session token for auth (not the JSON token)
             $token = $sessionToken;
 

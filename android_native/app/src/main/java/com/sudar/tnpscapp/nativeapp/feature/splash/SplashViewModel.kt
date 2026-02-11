@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sudar.tnpscapp.nativeapp.core.repo.StartupRepository
 import com.sudar.tnpscapp.nativeapp.core.services.FirebaseService
+import com.sudar.tnpscapp.nativeapp.core.services.MetaAppEventsService
 import com.sudar.tnpscapp.nativeapp.core.session.SessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,8 @@ import javax.inject.Inject
 class SplashViewModel @Inject constructor(
     private val sessionStore: SessionStore,
     private val startupRepository: StartupRepository,
-    private val firebaseService: FirebaseService
+    private val firebaseService: FirebaseService,
+    private val metaAppEventsService: MetaAppEventsService
 ) : ViewModel() {
 
     private val _destination = MutableStateFlow<SplashDestination?>(null)
@@ -25,9 +27,10 @@ class SplashViewModel @Inject constructor(
 
     fun checkLoginStatus() {
         viewModelScope.launch {
-            // Log app open for analytics
+            // Log app open for analytics (Firebase + Meta)
             try {
-                firebaseService.logEvent("app_open", null)
+                firebaseService.logAppOpen()
+                metaAppEventsService.logActivateApp()
             } catch (e: Exception) {
                 // Ignore analytics errors
             }
@@ -103,8 +106,9 @@ class SplashViewModel @Inject constructor(
                     isPremium = status?.isPremium ?: false
                     sessionStore.setPremium(isPremium)
 
-                    // Set user ID for analytics
+                    // Set user ID for analytics (Firebase + Meta)
                     firebaseService.setUserId(userId.toString())
+                    metaAppEventsService.setUserId(userId.toString())
                 }
             } catch (e: Exception) {
                 // Use cached value

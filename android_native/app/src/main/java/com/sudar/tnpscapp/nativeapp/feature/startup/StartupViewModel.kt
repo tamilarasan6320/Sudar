@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,10 +26,20 @@ class StartupViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Start premium video sync in background (non-blocking)
-            launch { premiumVideoService.sync() }
-            
-            _destination.value = decideNextRoute()
+            // Start premium video sync in background
+            val videoSyncJob = launch { premiumVideoService.sync() }
+
+            val route = decideNextRoute()
+
+            // If we're going to show the subscription offer, wait briefly so video is ready locally
+            // (avoid showing fallback asset video on first open).
+            if (route.startsWith("subscription_offer")) {
+                withTimeoutOrNull(10_000) {
+                    videoSyncJob.join()
+                }
+            }
+
+            _destination.value = route
         }
     }
 

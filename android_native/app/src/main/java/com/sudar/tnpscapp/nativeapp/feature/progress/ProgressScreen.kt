@@ -25,6 +25,7 @@ import com.sudar.tnpscapp.nativeapp.ui.theme.AppColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgressScreen(
+    inBottomNav: Boolean = false,
     viewModel: ProgressViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -36,6 +37,9 @@ fun ProgressScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                // MainScreen already applies status bar padding for bottom-nav tabs.
+                // Avoid double top inset (dark gap above title) when nested.
+                windowInsets = if (inBottomNav) WindowInsets(0, 0, 0, 0) else TopAppBarDefaults.windowInsets,
                 title = {
                     Text(
                         "Your Progress",
@@ -57,6 +61,13 @@ fun ProgressScreen(
                     containerColor = AppColors.Background
                 )
             )
+        },
+        // When embedded inside Main bottom-nav content, the bottom navigation already handles
+        // navigation bar insets. Avoid adding them again here (prevents a big blank gap).
+        contentWindowInsets = if (inBottomNav) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
         },
         containerColor = AppColors.Background
     ) { padding ->

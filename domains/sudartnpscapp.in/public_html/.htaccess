@@ -8,6 +8,11 @@
 # Enable Rewrite Engine
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # Referral links: /r/CODE -> /r/index.php?code=CODE
+    # Keep this ABOVE Flutter routing rewrite so it doesn't get swallowed.
+    RewriteRule ^r/([A-Za-z0-9_-]+)/?$ /r/index.php?code=$1 [L,QSA]
+
     RewriteBase /app/
     
     # Handle Flutter routing - redirect all requests to index.html

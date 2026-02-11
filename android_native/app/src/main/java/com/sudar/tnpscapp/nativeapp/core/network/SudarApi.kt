@@ -104,6 +104,15 @@ interface SudarApi {
     @POST("subscriptions/verify.php")
     suspend fun verifySubscription(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
 
+    @POST("subscriptions/trial_fee_create_order.php")
+    suspend fun createTrialFeeOrder(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
+
+    @POST("subscriptions/trial_fee_verify.php")
+    suspend fun verifyTrialFee(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
+
+    @POST("referrals/track_install.php")
+    suspend fun trackReferralInstall(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
+
     @GET("tests/get_performance.php")
     suspend fun getPerformance(
         @Query("user_id") userId: Int,

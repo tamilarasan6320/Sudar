@@ -3,7 +3,10 @@ package com.sudar.tnpscapp.nativeapp.feature.tests
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -31,6 +35,7 @@ import com.sudar.tnpscapp.nativeapp.core.network.UrlUtils
 import com.sudar.tnpscapp.nativeapp.core.network.model.QuestionSessionDto
 import com.sudar.tnpscapp.nativeapp.core.network.model.TestCategoryDto
 import com.sudar.tnpscapp.nativeapp.ui.theme.AppColors
+import kotlin.math.roundToInt
 
 /**
  * Tests Page - Exact Flutter replica
@@ -42,10 +47,30 @@ fun TestCategoriesScreen(
     onBack: () -> Unit,
     onOpenCategory: (Int) -> Unit,
     onStartTest: (sessionId: Int, title: String, categoryName: String, duration: Int, totalQuestions: Int) -> Unit = { _, _, _, _, _ -> },
+    inBottomNav: Boolean = false,
+    openCategoryId: Int? = null,
+    openCategoryName: String? = null,
+    onOpenCategoryConsumed: () -> Unit = {},
     viewModel: TestCategoriesViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState
-    var selectedCategory by remember { mutableStateOf<TestCategoryDto?>(null) }
+    // If requested by parent (e.g., Home tap), open category immediately (no "Test Categories" flash).
+    // We can use a lightweight placeholder category (id + name) even before network data is ready.
+    var selectedCategory by remember { 
+        mutableStateOf<TestCategoryDto?>(
+            openCategoryId?.let { id ->
+                TestCategoryDto(
+                    id = id,
+                    name = openCategoryName ?: "Category"
+                )
+            }
+        ) 
+    }
+
+    // Clear the pending request in the parent so BackHandler works normally (won't re-open automatically).
+    LaunchedEffect(openCategoryId) {
+        if (openCategoryId != null) onOpenCategoryConsumed()
+    }
 
     // Handle back press
     BackHandler(enabled = selectedCategory != null) {
@@ -97,6 +122,14 @@ fun TestCategoriesScreen(
                     }
                 }
             }
+        },
+        // When embedded inside Main bottom-nav content, the bottom navigation already handles
+        // navigation bar insets. If we apply them again here, it creates a big blank black area
+        // above the bottom nav.
+        contentWindowInsets = if (inBottomNav) {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
         },
         containerColor = AppColors.Background
     ) { paddingValues ->
@@ -469,14 +502,14 @@ private fun CategoryCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Progress bar (placeholder - would need completed count)
-                LinearProgressIndicator(
-                    progress = { 0f },
+                SudarProgressBar(
+                    progress = 0f,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(5.dp)
                         .clip(RoundedCornerShape(3.dp)),
                     color = color,
-                    trackColor = color.copy(alpha = 0.15f)
+                    trackColor = color.copy(alpha = 0.15f),
                 )
             }
         }
@@ -513,35 +546,89 @@ private fun TestsGrid(
         return
     }
 
-    Column(
+    val totalCount = sessions.size
+    val completedCount = sessions.count { completedTests.containsKey(it.id) }
+    val overallProgress = if (totalCount > 0) (completedCount.toFloat() / totalCount.toFloat()) else 0f
+    val overallPercent = (overallProgress * 100f).roundToInt().coerceIn(0, 100)
+
+    // One-by-one list (single column) + progress header at start
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 2 cards per row
-        sessions.chunked(2).forEach { rowSessions ->
-            Row(
+        item {
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardBackground),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
-                rowSessions.forEach { session ->
-                    val completedTest = completedTests[session.id]
-                    val isCompleted = completedTest != null
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Your Progress",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppColors.TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Completed $completedCount of $totalCount tests",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppColors.TextPrimary
+                            )
+                        }
 
-                    TestCard(
-                        modifier = Modifier.weight(1f),
-                        session = session,
-                        completedTest = completedTest,
-                        onClick = { onTestClick(session, isCompleted) }
+                        Text(
+                            text = "$overallPercent%",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = AppColors.Primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    SudarProgressBar(
+                        progress = overallProgress,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(7.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = AppColors.Primary,
+                        trackColor = AppColors.BorderLight,
                     )
                 }
-                // Fill empty space
-                if (rowSessions.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        items(
+            items = sessions,
+            key = { it.id }
+        ) { session ->
+            val completedTest = completedTests[session.id]
+            val isCompleted = completedTest != null
+
+            TestCard(
+                modifier = Modifier.fillMaxWidth(),
+                session = session,
+                completedTest = completedTest,
+                onClick = { onTestClick(session, isCompleted) }
+            )
+        }
+
+        // Extra scroll space at the end so the last card is never covered by bottom navigation,
+        // without leaving a permanent empty gap while scrolling.
+        item {
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }
@@ -809,6 +896,7 @@ private fun TestCard(
     val isCompleted = completedTest != null
     val score = completedTest?.percentage?.toDouble() ?: 0.0
     val isPassed = score >= 50
+    val progress = (score / 100.0).coerceIn(0.0, 1.0).toFloat()
     
     // Get theme based on title
     val theme = getTestTheme(title)
@@ -819,184 +907,270 @@ private fun TestCard(
         else -> theme.primaryColor
     }
 
-    // Card with colored left accent border
+    // Pass-Elite style card (like your reference screenshot)
+    val headerBrush = Brush.linearGradient(
+        colors = listOf(
+            theme.primaryColor.copy(alpha = 0.95f),
+            theme.primaryColor.copy(alpha = 0.65f)
+        )
+    )
+    val stripBrush = Brush.linearGradient(
+        colors = listOf(
+            theme.primaryColor.copy(alpha = 0.55f),
+            theme.primaryColor.copy(alpha = 0.35f)
+        )
+    )
+
     Card(
-        modifier = modifier.height(190.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.BorderLight),
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                        colors = listOf(
-                            theme.primaryColor.copy(alpha = 0.25f),
-                            Color(0xFF1A1A1A)
-                        ),
-                        startX = 0f,
-                        endX = 200f
-                    )
-                )
+                .fillMaxWidth()
                 .clickable(onClick = onClick)
         ) {
-            // Left colored accent bar
+            // Gradient header
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(theme.primaryColor)
-            )
-            
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(14.dp)
+                    .fillMaxWidth()
+                    .background(headerBrush)
+                    .padding(16.dp)
             ) {
-                // Top row: Icon and Start badge
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Icon box
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(theme.primaryColor.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        modifier = Modifier.size(46.dp),
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.92f)
                     ) {
-                        Icon(
-                            imageVector = theme.icon,
-                            contentDescription = null,
-                            tint = theme.primaryColor,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = theme.icon,
+                                contentDescription = null,
+                                tint = theme.primaryColor,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
                     }
 
-                    // Start/Done badge
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = statusColor
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White.copy(alpha = 0.18f)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = when {
-                                    isCompleted && isPassed -> Icons.Filled.CheckCircle
-                                    isCompleted -> Icons.Filled.Refresh
-                                    else -> Icons.Filled.PlayArrow
-                                },
+                                imageVector = Icons.Default.ChevronRight,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = when {
-                                    isCompleted && isPassed -> "Done"
-                                    isCompleted -> "Retry"
-                                    else -> "Start"
-                                },
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-
-                // Score for completed tests
-                if (isCompleted) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Score: ",
-                            fontSize = 12.sp,
-                            color = Color(0xFF9CA3AF)
-                        )
-                        Text(
-                            text = "${score.toInt()}%",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPassed) AppColors.Success else AppColors.Warning
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Test name
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Stats row
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Questions count
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF2A2A2A)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Quiz,
-                                contentDescription = null,
-                                tint = theme.primaryColor,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = totalQuestions.toString(),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFE5E5E5)
-                            )
-                        }
-                    }
-
-                    // Duration
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF2A2A2A)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Timer,
-                                contentDescription = null,
-                                tint = theme.primaryColor,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${duration}m",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFE5E5E5)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
                 }
             }
+
+            // Middle strip (like "Total Tests / Free Tests")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(stripBrush)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${totalQuestions} Questions  •  ${duration} min",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.95f)
+                )
+
+                val badgeText = when {
+                    isCompleted && isPassed -> "Done"
+                    isCompleted -> "Retry"
+                    else -> "Start"
+                }
+                val badgeIcon = when {
+                    isCompleted && isPassed -> Icons.Default.CheckCircle
+                    isCompleted -> Icons.Default.Refresh
+                    else -> Icons.Default.PlayArrow
+                }
+                val badgeColor = when {
+                    isCompleted && isPassed -> AppColors.Success
+                    isCompleted -> AppColors.Warning
+                    else -> AppColors.Success
+                }
+
+                TestBadge(
+                    text = badgeText,
+                    icon = badgeIcon,
+                    containerColor = badgeColor
+                )
+            }
+
+            // Bottom features area
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF262626))
+                    .padding(16.dp)
+            ) {
+                val leftItems: List<String>
+                val rightItems: List<String>
+
+                if (isCompleted) {
+                    val attempted = completedTest?.attempted ?: 0
+                    val correct = completedTest?.correct ?: 0
+                    val wrong = completedTest?.wrong ?: 0
+                    val unanswered = completedTest?.unanswered ?: 0
+                    leftItems = listOf("Score: ${score.toInt()}%", "Correct: $correct")
+                    rightItems = listOf("Attempted: $attempted", "Wrong: $wrong")
+                    // Keep unanswered as tooltip-like info in progress label below
+                } else {
+                    leftItems = listOf("Timer based test", "No negative marking")
+                    rightItems = listOf("Review answers", "Instant score")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        leftItems.forEach { item ->
+                            TestFeatureItem(text = item, accentColor = theme.primaryColor)
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        rightItems.forEach { item ->
+                            TestFeatureItem(text = item, accentColor = theme.primaryColor)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Progress indicator (kept, but styled to fit this card)
+                SudarProgressBar(
+                    progress = progress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = statusColor,
+                    trackColor = Color.White.copy(alpha = 0.12f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TestBadge(
+    text: String,
+    icon: ImageVector,
+    containerColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        color = containerColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = text,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun TestFeatureItem(
+    text: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = accentColor,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color.White.copy(alpha = 0.85f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SudarProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    color: Color,
+    trackColor: Color,
+) {
+    val p = progress.coerceIn(0f, 1f)
+    Box(
+        modifier = modifier.background(trackColor)
+    ) {
+        if (p > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(p)
+                    .background(color)
+            )
         }
     }
 }

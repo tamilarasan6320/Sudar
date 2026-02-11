@@ -18,7 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'category_performance' => [],
             'revenue_trends' => [],
             'top_performers' => [],
-            'recent_activity' => []
+            'recent_activity' => [],
+            'referrals' => []
         ];
 
         // Date range calculation
@@ -61,6 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $monthly_revenue = 0;
         $total_payments = 0;
         $total_revenue = 0;
+        $today_received_amount = 0;
+        $today_received_count = 0;
+        $yesterday_received_amount = 0;
+        $yesterday_received_count = 0;
         
         try {
             // Check if subscriptions table exists
@@ -89,6 +94,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 
                 // Total Revenue (all time) - sum of all last_payment_amount
                 $total_revenue = $db->query("SELECT COALESCE(SUM(last_payment_amount), 0) FROM subscriptions WHERE last_payment_amount > 0")->fetchColumn();
+                
+                // Today's Received Amount (IST) - payments received today
+                $today_received = $db->query("
+                    SELECT 
+                        COALESCE(SUM(last_payment_amount), 0) as amount,
+                        COUNT(*) as count
+                    FROM subscriptions 
+                    WHERE last_payment_amount > 0 
+                    AND DATE(CONVERT_TZ(last_payment_date,'+00:00','+05:30')) = DATE(CONVERT_TZ(UTC_TIMESTAMP(),'+00:00','+05:30'))
+                ")->fetch(PDO::FETCH_ASSOC);
+                $today_received_amount = $today_received['amount'] ?? 0;
+                $today_received_count = $today_received['count'] ?? 0;
+                
+                // Yesterday's Received Amount (IST) - payments received yesterday
+                $yesterday_received = $db->query("
+                    SELECT 
+                        COALESCE(SUM(last_payment_amount), 0) as amount,
+                        COUNT(*) as count
+                    FROM subscriptions 
+                    WHERE last_payment_amount > 0 
+                    AND DATE(CONVERT_TZ(last_payment_date,'+00:00','+05:30')) = DATE(CONVERT_TZ(UTC_TIMESTAMP(),'+00:00','+05:30') - INTERVAL 1 DAY)
+                ")->fetch(PDO::FETCH_ASSOC);
+                $yesterday_received_amount = $yesterday_received['amount'] ?? 0;
+                $yesterday_received_count = $yesterday_received['count'] ?? 0;
             }
         } catch (PDOException $subEx) {
             // Subscriptions table may not exist - fail silently with 0 counts
@@ -98,6 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $monthly_revenue = 0;
             $total_payments = 0;
             $total_revenue = 0;
+            $today_received_amount = 0;
+            $today_received_count = 0;
+            $yesterday_received_amount = 0;
+            $yesterday_received_count = 0;
         }
 
         $response_data['overview'] = [
@@ -114,8 +147,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'paid_active_299_count' => (int)$paid_active_299_count,
             'monthly_revenue' => (float)$monthly_revenue,
             'total_payments' => (int)$total_payments,
-            'total_revenue' => (float)$total_revenue
+            'total_revenue' => (float)$total_revenue,
+            'today_received_amount' => (float)$today_received_amount,
+            'today_received_count' => (int)$today_received_count,
+            'yesterday_received_amount' => (float)$yesterday_received_amount,
+            'yesterday_received_count' => (int)$yesterday_received_count
         ];
+
+        // Referral system removed (will be redesigned later)
+        $response_data['referrals'] = [];
 
         // --- User Activity Trend (Last 7/30/365 days in IST) ---
         $days = $period === 'week' ? 7 : ($period === 'month' ? 30 : ($period === 'year' ? 365 : 7));

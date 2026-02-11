@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.sudar.tnpscapp.nativeapp.core.network.UrlUtils
 import com.sudar.tnpscapp.nativeapp.ui.theme.AppColors
 
 /**
@@ -109,10 +110,12 @@ fun parseHtmlContent(html: String): List<HtmlPart> {
                 parts.add(HtmlPart.Text(cleanedText))
             }
             
-            // Add the image
-            val imageUrl = match.groupValues[1]
-            if (imageUrl.isNotBlank()) {
-                parts.add(HtmlPart.Image(imageUrl))
+            // Add the image - resolve relative URLs using UrlUtils
+            val rawImageUrl = match.groupValues[1]
+            if (rawImageUrl.isNotBlank()) {
+                // Resolve relative URLs to absolute URLs for proper loading
+                val resolvedUrl = UrlUtils.resolveImageUrl(rawImageUrl) ?: rawImageUrl
+                parts.add(HtmlPart.Image(resolvedUrl))
             }
             
             // Continue with remaining content

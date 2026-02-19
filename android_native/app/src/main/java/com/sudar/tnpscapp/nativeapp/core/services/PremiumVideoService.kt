@@ -31,7 +31,7 @@ class PremiumVideoService @Inject constructor(
     companion object {
         private const val TAG = "PremiumVideoService"
         private const val PREMIUM_VIDEO_DIR = "premium_video"
-        private const val PREMIUM_VIDEO_FILENAME = "premium_video.mp4"
+        private const val PREMIUM_VIDEO_PREFIX = "premium_video_"
     }
 
     /**
@@ -110,31 +110,75 @@ class PremiumVideoService @Inject constructor(
                 videoDir.mkdirs()
             }
 
-            val videoFile = File(videoDir, PREMIUM_VIDEO_FILENAME)
-            
-            // Delete old file if exists
-            if (videoFile.exists()) {
-                videoFile.delete()
+            // Save into a versioned filename so:
+            // - the UI can detect changes (path changes)
+            // - we never overwrite a file that might currently be playing
+            val safeVersion = serverVersion.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+            val extRaw = serverPath.substringAfterLast('.', "").lowercase()
+            val ext = when (extRaw) {
+                "mp4", "webm", "mov" -> extRaw
+                else -> "mp4"
+            }
+
+            val targetName = "${PREMIUM_VIDEO_PREFIX}${safeVersion}.$ext"
+            val tempName = "$targetName.download"
+            val tempFile = File(videoDir, tempName)
+            val videoFile = File(videoDir, targetName)
+
+            // Clean any stale temp file
+            if (tempFile.exists()) {
+                tempFile.delete()
             }
 
             val request = Request.Builder().url(videoUrl).build()
 
-            val downloadResponse = okHttpClient.newCall(request).execute()
-            if (!downloadResponse.isSuccessful) {
-                Log.e(TAG, "Failed to download video: ${downloadResponse.code}")
-                return@withContext false
-            }
-
-            val responseBody = downloadResponse.body ?: run {
-                Log.e(TAG, "Empty download response body")
-                return@withContext false
-            }
-
-            // Write to file
-            FileOutputStream(videoFile).use { outputStream ->
-                responseBody.byteStream().use { inputStream ->
-                    inputStream.copyTo(outputStream)
+            okHttpClient.newCall(request).execute().use { downloadResponse ->
+                if (!downloadResponse.isSuccessful) {
+                    Log.e(TAG, "Failed to download video: ${downloadResponse.code}")
+                    return@withContext false
                 }
+
+                val responseBody = downloadResponse.body ?: run {
+                    Log.e(TAG, "Empty download response body")
+                    return@withContext false
+                }
+
+                // Write to temp file first (avoid partial files)
+                FileOutputStream(tempFile).use { outputStream ->
+                    responseBody.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            }
+
+            // Swap temp -> final
+            if (videoFile.exists()) {
+                videoFile.delete()
+            }
+            val renamed = tempFile.renameTo(videoFile)
+            if (!renamed) {
+                // Fallback: copy then delete temp
+                try {
+                    tempFile.copyTo(videoFile, overwrite = true)
+                    tempFile.delete()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to finalize premium video file", e)
+                    return@withContext false
+                }
+            }
+
+            // Cleanup: keep only the latest premium video file
+            try {
+                videoDir.listFiles()?.forEach { f ->
+                    if (f.isFile && f.name.startsWith(PREMIUM_VIDEO_PREFIX) && f.absolutePath != videoFile.absolutePath) {
+                        f.delete()
+                    }
+                    if (f.isFile && f.name.endsWith(".download")) {
+                        f.delete()
+                    }
+                }
+            } catch (_: Exception) {
+                // ignore
             }
 
             // Update cache info

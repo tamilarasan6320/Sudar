@@ -57,7 +57,7 @@ import kotlinx.coroutines.delay
  * - Auto-fill support
  * - Resend timer (60 seconds)
  * - Remaining attempts warning
- * - Support button
+ * - Raise Ticket button
  * - Terms and Privacy links
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +65,7 @@ import kotlinx.coroutines.delay
 fun OtpScreen(
     phoneNumber: String,
     onBack: () -> Unit,
+    onRaiseTicket: (mobile: String) -> Unit = {},
     onVerified: (isNewUser: Boolean, mobile: String, token: String?) -> Unit,
     onExistingUser: () -> Unit,
     viewModel: OtpViewModel = hiltViewModel()
@@ -194,9 +195,9 @@ fun OtpScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.openWhatsAppSupport() }) {
+                    TextButton(onClick = { onRaiseTicket(phoneNumber) }) {
                         Text(
-                            text = "Support",
+                            text = "Raise Ticket",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = AppColors.Primary

@@ -18,10 +18,12 @@ import com.sudar.tnpscapp.nativeapp.feature.splash.SplashScreen
 import com.sudar.tnpscapp.nativeapp.feature.startup.StartupScreen
 import com.sudar.tnpscapp.nativeapp.feature.subscription.SubscriptionOfferScreen
 import com.sudar.tnpscapp.nativeapp.feature.subscription.SubscriptionScreen
+import com.sudar.tnpscapp.nativeapp.feature.tickets.RaiseTicketPublicScreen
+import com.sudar.tnpscapp.nativeapp.feature.tickets.RaiseTicketScreen
+import com.sudar.tnpscapp.nativeapp.feature.tickets.TicketDetailsScreen
+import com.sudar.tnpscapp.nativeapp.feature.tickets.TicketsScreen
 import com.sudar.tnpscapp.nativeapp.feature.support.AboutScreen
 import com.sudar.tnpscapp.nativeapp.feature.support.AccountDeletionScreen
-import com.sudar.tnpscapp.nativeapp.feature.support.FeedbackScreen
-import com.sudar.tnpscapp.nativeapp.feature.support.HelpFaqScreen
 import com.sudar.tnpscapp.nativeapp.feature.support.PrivacyPolicyScreen
 import com.sudar.tnpscapp.nativeapp.feature.progress.PerformanceScreen
 import com.sudar.tnpscapp.nativeapp.feature.settings.LanguageSettingsScreen
@@ -88,6 +90,9 @@ fun AppNavGraph(navController: NavHostController) {
                 onNavigateToOtp = { mobile ->
                     navController.navigate(Routes.otp(mobile))
                 },
+                onRaiseTicket = { mobile ->
+                    navController.navigate(Routes.raiseTicketGuest(mobile))
+                },
                 onTruecallerSuccess = { isNewUser, mobile, token ->
                     if (isNewUser) {
                         navController.navigate(Routes.profileSetup(mobile, token ?: "", "truecaller")) {
@@ -115,6 +120,9 @@ fun AppNavGraph(navController: NavHostController) {
             OtpScreen(
                 phoneNumber = mobile,
                 onBack = { navController.popBackStack() },
+                onRaiseTicket = { phone ->
+                    navController.navigate(Routes.raiseTicketGuest(phone))
+                },
                 onVerified = { isNewUser, verifiedMobile, token ->
                     if (isNewUser) {
                         navController.navigate(Routes.profileSetup(verifiedMobile, token ?: "", "otp")) {
@@ -217,8 +225,8 @@ fun AppNavGraph(navController: NavHostController) {
                 onPerformance = { /* Performance is shown in Progress tab */ },
                 onAbout = { navController.navigate(Routes.About) },
                 onPrivacyPolicy = { navController.navigate(Routes.PrivacyPolicy) },
-                onHelpFaq = { navController.navigate(Routes.HelpFaq) },
-                onFeedback = { navController.navigate(Routes.Feedback) },
+                onMyTickets = { navController.navigate(Routes.Tickets) },
+                onRaiseTicket = { navController.navigate(Routes.RaiseTicket) },
                 onAccountDeletion = { navController.navigate(Routes.AccountDeletion) },
                 onSubscription = { navController.navigate(Routes.Subscription) },
                 onLogout = {
@@ -240,21 +248,53 @@ fun AppNavGraph(navController: NavHostController) {
             )
         }
 
-        // ==================== SUPPORT SCREENS ====================
+        // ==================== TICKETS ====================
+        composable(Routes.Tickets) {
+            TicketsScreen(
+                onBack = { navController.popBackStack() },
+                onRaiseTicket = { navController.navigate(Routes.RaiseTicket) },
+                onOpenTicket = { id -> navController.navigate(Routes.ticketDetails(id)) },
+            )
+        }
+
+        composable(Routes.RaiseTicket) {
+            RaiseTicketScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { id ->
+                    navController.navigate(Routes.ticketDetails(id)) {
+                        popUpTo(Routes.RaiseTicket) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Routes.RaiseTicketGuest,
+            arguments = listOf(
+                navArgument("mobile") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { entry ->
+            val mobile = entry.arguments?.getString("mobile").orEmpty()
+            RaiseTicketPublicScreen(
+                prefillMobile = mobile,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.TicketDetails,
+            arguments = listOf(navArgument("ticketId") { type = NavType.IntType }),
+        ) { entry ->
+            val id = entry.arguments?.getInt("ticketId") ?: 0
+            TicketDetailsScreen(
+                ticketId = id,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // ==================== INFO SCREENS ====================
         composable(Routes.About) {
             AboutScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Routes.Feedback) {
-            FeedbackScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Routes.HelpFaq) {
-            HelpFaqScreen(
                 onBack = { navController.popBackStack() }
             )
         }

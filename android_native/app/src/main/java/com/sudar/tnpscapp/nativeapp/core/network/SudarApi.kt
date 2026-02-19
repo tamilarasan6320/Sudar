@@ -1,14 +1,20 @@
 package com.sudar.tnpscapp.nativeapp.core.network
 
 import com.sudar.tnpscapp.nativeapp.core.network.model.BasicResponse
+import com.sudar.tnpscapp.nativeapp.core.network.model.CloseTicketRequest
+import com.sudar.tnpscapp.nativeapp.core.network.model.CreateTicketRequest
+import com.sudar.tnpscapp.nativeapp.core.network.model.CreateTicketResponse
+import com.sudar.tnpscapp.nativeapp.core.network.model.CreatePublicTicketRequest
 import com.sudar.tnpscapp.nativeapp.core.network.model.CreateUserRequest
 import com.sudar.tnpscapp.nativeapp.core.network.model.CreateUserResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.ExamCategoriesResponse
+import com.sudar.tnpscapp.nativeapp.core.network.model.MyTicketsResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.SendOtpRequest
 import com.sudar.tnpscapp.nativeapp.core.network.model.SendOtpResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.SubscriptionStatusResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.SubmitTestResultRequest
 import com.sudar.tnpscapp.nativeapp.core.network.model.SubmitTestResultResponse
+import com.sudar.tnpscapp.nativeapp.core.network.model.TicketDetailsResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.TestCategoriesResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.TestDetailsResponse
 import com.sudar.tnpscapp.nativeapp.core.network.model.TestHistoryResponse
@@ -104,6 +110,38 @@ interface SudarApi {
     @POST("subscriptions/verify.php")
     suspend fun verifySubscription(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
 
+    @POST("subscriptions/trial_fee_create_order.php")
+    suspend fun createTrialFeeOrder(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
+
+    @POST("subscriptions/trial_fee_verify.php")
+    suspend fun verifyTrialFee(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
+
+    @POST("referrals/track_install.php")
+    suspend fun trackReferralInstall(@Body req: @JvmSuppressWildcards Map<String, Any?>): Response<Map<String, Any?>>
+
+    // ==================== SUPPORT TICKETS ====================
+
+    @POST("tickets/create.php")
+    suspend fun createTicket(@Body req: CreateTicketRequest): Response<CreateTicketResponse>
+
+    @POST("tickets/create_public.php")
+    suspend fun createTicketPublic(@Body req: CreatePublicTicketRequest): Response<CreateTicketResponse>
+
+    @GET("tickets/my_list.php")
+    suspend fun myTickets(
+        @Query("user_id") userId: Int,
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+    ): Response<MyTicketsResponse>
+
+    @GET("tickets/details.php")
+    suspend fun ticketDetails(
+        @Query("user_id") userId: Int,
+        @Query("id") ticketId: Int,
+    ): Response<TicketDetailsResponse>
+
+    @POST("tickets/close.php")
+    suspend fun closeTicket(@Body req: CloseTicketRequest): Response<BasicResponse>
     @GET("tests/get_performance.php")
     suspend fun getPerformance(
         @Query("user_id") userId: Int,

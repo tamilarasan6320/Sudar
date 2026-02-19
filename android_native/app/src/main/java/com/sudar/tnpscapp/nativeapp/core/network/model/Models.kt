@@ -292,3 +292,66 @@ data class TestDetailsAnswerDto(
     fun optionsTa(): List<String> = listOf(optionATa, optionBTa, optionCTa, optionDTa).map { it ?: "" }
 }
 
+// ==================== SUPPORT TICKETS ====================
+
+data class CreateTicketRequest(
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("subject") val subject: String,
+    @SerializedName("message") val message: String,
+    @SerializedName("category") val category: String = "general",
+)
+
+data class CreateTicketResponse(
+    @SerializedName("success") val success: Boolean? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("id") val id: Int? = null,
+)
+
+data class CreatePublicTicketRequest(
+    @SerializedName("user_name") val userName: String,
+    @SerializedName("user_mobile") val userMobile: String,
+    @SerializedName("subject") val subject: String,
+    @SerializedName("message") val message: String,
+    @SerializedName("category") val category: String = "general",
+)
+
+data class CloseTicketRequest(
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("id") val id: Int,
+)
+
+data class TicketDto(
+    @SerializedName("id") val id: Int,
+    @SerializedName("subject") val subject: String? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("category") val category: String? = null,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("admin_response") val adminResponse: String? = null,
+    @SerializedName("admin_response_at") val adminResponseAt: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+)
+
+data class TicketStatsDto(
+    @SerializedName("total") val total: Int? = null,
+    @SerializedName("pending") val pending: Int? = null,
+    @SerializedName("reviewed") val reviewed: Int? = null,
+    @SerializedName("resolved") val resolved: Int? = null,
+    @SerializedName("closed") val closed: Int? = null,
+)
+
+data class MyTicketsResponse(
+    @SerializedName("success") val success: Boolean? = null,
+    @SerializedName("count") val count: Int? = null,
+    @SerializedName("total_count") val totalCount: Int? = null,
+    @SerializedName("tickets") val tickets: List<TicketDto>? = null,
+    @SerializedName("stats") val stats: TicketStatsDto? = null,
+    @SerializedName("message") val message: String? = null,
+)
+
+data class TicketDetailsResponse(
+    @SerializedName("success") val success: Boolean? = null,
+    @SerializedName("ticket") val ticket: TicketDto? = null,
+    @SerializedName("message") val message: String? = null,
+)
+

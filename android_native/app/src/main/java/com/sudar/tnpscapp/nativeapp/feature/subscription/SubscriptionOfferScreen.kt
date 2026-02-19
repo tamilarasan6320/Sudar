@@ -329,7 +329,6 @@ fun VideoPremiumBanner(videoPath: String?) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color(0xFFB91C1C))
         ) {
@@ -339,16 +338,20 @@ fun VideoPremiumBanner(videoPath: String?) {
                 // Use bundled asset video
                 LoopingAssetVideo(
                     assetFileName = "premium_video.mp4",
-                    modifier = Modifier.fillMaxSize(),
-                    volume = 1f
+                    modifier = Modifier.fillMaxWidth(),
+                    volume = 1f,
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                    useVideoAspectRatio = true,
                 )
             } else {
                 // Use server-cached video with fallback
                 LoopingVideo(
                     filePath = videoPath,
                     assetFallback = "premium_video.mp4",
-                    modifier = Modifier.fillMaxSize(),
-                    volume = 1f
+                    modifier = Modifier.fillMaxWidth(),
+                    volume = 1f,
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                    useVideoAspectRatio = true,
                 )
             }
         }

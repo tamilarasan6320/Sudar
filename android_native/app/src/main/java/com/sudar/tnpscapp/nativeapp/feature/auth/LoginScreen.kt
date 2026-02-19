@@ -55,11 +55,12 @@ import kotlinx.coroutines.delay
  * - Continue with OTP button
  * - Truecaller auto-trigger (if available)
  * - Loading overlay
- * - Support button
+ * - Raise Ticket button
  */
 @Composable
 fun LoginScreen(
     onNavigateToOtp: (String) -> Unit,
+    onRaiseTicket: (mobile: String) -> Unit = {},
     onTruecallerSuccess: (isNewUser: Boolean, mobile: String, token: String?) -> Unit,
     onLoginSuccess: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
@@ -283,7 +284,7 @@ fun LoginScreen(
                             )
                     )
 
-                    // Support button overlaid at top-right
+                    // Raise Ticket button overlaid at top-right
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -291,9 +292,9 @@ fun LoginScreen(
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(onClick = { viewModel.openWhatsAppSupport() }) {
+                        TextButton(onClick = { onRaiseTicket(phoneNumber) }) {
                             Text(
-                                text = "Support",
+                                text = "Raise Ticket",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color.White

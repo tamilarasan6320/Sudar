@@ -28,8 +28,8 @@ android {
         minSdk = 22
         targetSdk = 35
         // Flutter is +31, native must be >= 32
-        versionCode = 43
-        versionName = "7.0.7"
+        versionCode = 44
+        versionName = "7.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

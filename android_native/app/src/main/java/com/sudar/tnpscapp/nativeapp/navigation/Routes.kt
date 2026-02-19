@@ -66,10 +66,18 @@ object Routes {
     const val Progress = "progress"
     const val Performance = "performance"
     
-    // Support screens
+    // Tickets
+    const val Tickets = "tickets"
+    const val RaiseTicket = "raise_ticket"
+    private const val RaiseTicketGuestPattern = "raise_ticket_guest?mobile={mobile}"
+    fun raiseTicketGuest(mobile: String = ""): String = "raise_ticket_guest?mobile=${Uri.encode(mobile)}"
+    const val RaiseTicketGuest = RaiseTicketGuestPattern
+    private const val TicketDetailsPattern = "ticket_details/{ticketId}"
+    fun ticketDetails(ticketId: Int): String = "ticket_details/$ticketId"
+    const val TicketDetails = TicketDetailsPattern
+
+    // Info screens
     const val About = "about"
-    const val Feedback = "feedback"
-    const val HelpFaq = "help_faq"
     const val PrivacyPolicy = "privacy_policy"
     const val AccountDeletion = "account_deletion"
     

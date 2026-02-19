@@ -35,8 +35,8 @@ fun ProfileScreen(
     onPerformance: () -> Unit = {},
     onAbout: () -> Unit = {},
     onPrivacyPolicy: () -> Unit = {},
-    onHelpFaq: () -> Unit = {},
-    onFeedback: () -> Unit = {},
+    onMyTickets: () -> Unit = {},
+    onRaiseTicket: () -> Unit = {},
     onAccountDeletion: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
@@ -63,15 +63,7 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AppColors.Background
                 ),
-                actions = {
-                    TextButton(onClick = { viewModel.openWhatsAppSupport() }) {
-                        Text(
-                            "Support",
-                            color = AppColors.Primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                actions = {}
             )
         },
         // When embedded inside Main bottom-nav content, the bottom navigation already handles
@@ -138,22 +130,31 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Support Section
+            // Help Center (Tickets)
             ProfileSection(
-                title = "Support",
+                title = "Help Center",
                 items = listOf(
                     ProfileMenuItem(
-                        icon = Icons.Outlined.Help,
-                        title = "Help & FAQ",
-                        subtitle = "Get help with the app",
-                        onClick = onHelpFaq
+                        icon = Icons.Outlined.Feedback,
+                        title = "Raise Ticket",
+                        subtitle = "Report issues or ask questions",
+                        onClick = onRaiseTicket
                     ),
                     ProfileMenuItem(
-                        icon = Icons.Outlined.Feedback,
-                        title = "Send Feedback",
-                        subtitle = "Share your thoughts",
-                        onClick = onFeedback
+                        icon = Icons.Outlined.History,
+                        title = "My Tickets",
+                        subtitle = "Track status and replies",
+                        onClick = onMyTickets
                     ),
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // About & Legal Section
+            ProfileSection(
+                title = "About & Legal",
+                items = listOf(
                     ProfileMenuItem(
                         icon = Icons.Outlined.Info,
                         title = "About",

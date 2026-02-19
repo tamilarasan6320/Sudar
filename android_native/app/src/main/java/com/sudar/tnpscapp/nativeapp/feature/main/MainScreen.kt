@@ -65,8 +65,8 @@ fun MainScreen(
     onPerformance: () -> Unit = {},
     onAbout: () -> Unit = {},
     onPrivacyPolicy: () -> Unit = {},
-    onHelpFaq: () -> Unit = {},
-    onFeedback: () -> Unit = {},
+    onMyTickets: () -> Unit = {},
+    onRaiseTicket: () -> Unit = {},
     onAccountDeletion: () -> Unit = {},
     onSubscription: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -202,8 +202,8 @@ fun MainScreen(
                         onPerformance = { selectedTabIndex = MainTab.PROGRESS.ordinal },
                         onAbout = onAbout,
                         onPrivacyPolicy = onPrivacyPolicy,
-                        onHelpFaq = onHelpFaq,
-                        onFeedback = onFeedback,
+                        onMyTickets = onMyTickets,
+                        onRaiseTicket = onRaiseTicket,
                         onAccountDeletion = onAccountDeletion,
                         onLogout = onLogout
                     )

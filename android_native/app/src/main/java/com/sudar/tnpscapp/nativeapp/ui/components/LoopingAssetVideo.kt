@@ -1,8 +1,10 @@
 package com.sudar.tnpscapp.nativeapp.ui.components
 
 import android.net.Uri
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -14,6 +16,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -35,13 +38,19 @@ import java.io.File
 fun LoopingAssetVideo(
     assetFileName: String,
     modifier: Modifier = Modifier,
-    volume: Float = 0f
+    volume: Float = 0f,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+    useVideoAspectRatio: Boolean = false,
+    defaultAspectRatio: Float = 16f / 9f,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // Used only when caller wants layout height based on actual video size.
+    val aspectRatio = remember(assetFileName) { mutableStateOf(defaultAspectRatio) }
+
     // Create and remember the ExoPlayer instance
-    val exoPlayer = remember {
+    val exoPlayer = remember(assetFileName) {
         ExoPlayer.Builder(context).build().apply {
             // Build the asset URI
             val assetUri = Uri.parse("asset:///$assetFileName")
@@ -62,6 +71,41 @@ fun LoopingAssetVideo(
         }
     }
 
+    // If enabled, compute aspect ratio from decoded video size and let Compose size the view accordingly.
+    DisposableEffect(exoPlayer, useVideoAspectRatio) {
+        if (!useVideoAspectRatio) {
+            return@DisposableEffect onDispose { }
+        }
+
+        fun updateRatio(videoSize: VideoSize) {
+            val w0 = videoSize.width
+            val h0 = videoSize.height
+            if (w0 <= 0 || h0 <= 0) return
+
+            val rotation = videoSize.unappliedRotationDegrees
+            val (w, h) = if (rotation == 90 || rotation == 270) (h0 to w0) else (w0 to h0)
+
+            // Clamp to a "max portrait" of 9:16 so super-tall videos won't make the banner huge.
+            val ratio = (w.toFloat() * videoSize.pixelWidthHeightRatio) / h.toFloat()
+            if (ratio.isFinite() && ratio > 0.05f) {
+                val minRatio = 9f / 16f // width/height
+                aspectRatio.value = ratio.coerceAtLeast(minRatio)
+            }
+        }
+
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                updateRatio(videoSize)
+            }
+        }
+
+        // Best-effort: apply immediately if already known.
+        updateRatio(exoPlayer.videoSize)
+        exoPlayer.addListener(listener)
+
+        onDispose { exoPlayer.removeListener(listener) }
+    }
+
     // Handle lifecycle events to pause/resume playback
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -79,17 +123,19 @@ fun LoopingAssetVideo(
         }
     }
 
+    val layoutModifier = if (useVideoAspectRatio) modifier.aspectRatio(aspectRatio.value) else modifier
+
     // Display the PlayerView
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exoPlayer
                 useController = false // Hide controls
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM // Fill and crop
+                this.resizeMode = resizeMode
                 setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
         },
-        modifier = modifier
+        modifier = layoutModifier
     )
 }
 
@@ -111,13 +157,16 @@ fun LoopingVideo(
     filePath: String?,
     assetFallback: String,
     modifier: Modifier = Modifier,
-    volume: Float = 0f
+    volume: Float = 0f,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+    useVideoAspectRatio: Boolean = false,
+    defaultAspectRatio: Float = 16f / 9f,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Determine the URI to use
-    val videoUri = remember(filePath) {
+    val videoUri = remember(filePath, assetFallback) {
         if (!filePath.isNullOrBlank()) {
             val file = File(filePath)
             if (file.exists()) {
@@ -129,6 +178,9 @@ fun LoopingVideo(
             Uri.parse("asset:///$assetFallback")
         }
     }
+
+    // Used only when caller wants layout height based on actual video size.
+    val aspectRatio = remember(videoUri) { mutableStateOf(defaultAspectRatio) }
 
     // Create and remember the ExoPlayer instance
     val exoPlayer = remember(videoUri) {
@@ -150,6 +202,40 @@ fun LoopingVideo(
         }
     }
 
+    // If enabled, compute aspect ratio from decoded video size and let Compose size the view accordingly.
+    DisposableEffect(exoPlayer, useVideoAspectRatio) {
+        if (!useVideoAspectRatio) {
+            return@DisposableEffect onDispose { }
+        }
+
+        fun updateRatio(videoSize: VideoSize) {
+            val w0 = videoSize.width
+            val h0 = videoSize.height
+            if (w0 <= 0 || h0 <= 0) return
+
+            val rotation = videoSize.unappliedRotationDegrees
+            val (w, h) = if (rotation == 90 || rotation == 270) (h0 to w0) else (w0 to h0)
+
+            // Clamp to a "max portrait" of 9:16 so super-tall videos won't make the banner huge.
+            val ratio = (w.toFloat() * videoSize.pixelWidthHeightRatio) / h.toFloat()
+            if (ratio.isFinite() && ratio > 0.05f) {
+                val minRatio = 9f / 16f // width/height
+                aspectRatio.value = ratio.coerceAtLeast(minRatio)
+            }
+        }
+
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                updateRatio(videoSize)
+            }
+        }
+
+        updateRatio(exoPlayer.videoSize)
+        exoPlayer.addListener(listener)
+
+        onDispose { exoPlayer.removeListener(listener) }
+    }
+
     // Handle lifecycle events to pause/resume playback
     DisposableEffect(lifecycleOwner, videoUri) {
         val observer = LifecycleEventObserver { _, event ->
@@ -167,16 +253,18 @@ fun LoopingVideo(
         }
     }
 
+    val layoutModifier = if (useVideoAspectRatio) modifier.aspectRatio(aspectRatio.value) else modifier
+
     // Display the PlayerView
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 player = exoPlayer
                 useController = false // Hide controls
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM // Fill and crop
+                this.resizeMode = resizeMode
                 setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
         },
-        modifier = modifier
+        modifier = layoutModifier
     )
 }
